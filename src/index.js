@@ -13,7 +13,9 @@ app.use('/api/registros',   require('./routes/registros.routes'));
 app.use('/api/estudiantes', require('./routes/estudiantes.routes'));
 app.use('/api/usuarios',    require('./routes/usuarios.routes'));
 app.use('/api/tipos-falta', require('./routes/tiposFalta.routes'));
+// app.use('/api/estudiantes', require('./routes/estudiantes.routes'));
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
 
 // Document IA
 app.use('/api/documents', documentosRoutes);

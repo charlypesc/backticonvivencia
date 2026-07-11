@@ -178,5 +178,21 @@ const remove = async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar registro' });
   }
 };
+const confirmar = async (req, res) => {
+  const { fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta } = req.body;
+  try {
+    await pool.query(
+      `UPDATE REGISTRO_CONVIVENCIA
+       SET fecha_incidente=?, tematica=?, antecedentes=?, acuerdos=?,
+           id_tipo_falta=?, estado_validacion='validado'
+       WHERE id_registro=?`,
+      [fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta, req.params.id]
+    );
+    res.json({ message: 'Registro confirmado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al confirmar' });
+  }
+};
 
-module.exports = { getAll, getById, create, validar, update, remove };
+module.exports = { getAll, getById, create, validar, update, remove, confirmar };
