@@ -52,7 +52,7 @@ console.log([estudiantes])
 
       // 5. Guardar documento digitalizado
       const [docResult] = await conn.query(
-        `INSERT INTO documento_digitalizado
+        `INSERT INTO DOCUMENTO_DIGITALIZADO
           (url_archivo, tipo_archivo, fecha_subida, nivel_confianza, id_registro)
          VALUES (?, ?, NOW(), ?, ?)`,
         [texto, req.file.mimetype, nivelConfianza, id_registro]
