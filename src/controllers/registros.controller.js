@@ -161,12 +161,12 @@ const update = async (req, res) => {
   }
 };
 
-// DELETE /api/registros/:id — Solo ENCARGADO dueño del registro
+// DELETE /api/registros/:id —
 const remove = async (req, res) => {
   try {
     const [result] = await pool.query(
-      `DELETE FROM REGISTRO_CONVIVENCIA WHERE id_registro = ? AND id_usuario = ?`,
-      [req.params.id, req.user.id]
+      `DELETE FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?`,
+      [req.params.id]
     );
 
     if (result.affectedRows === 0)
