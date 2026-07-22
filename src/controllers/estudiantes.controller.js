@@ -64,6 +64,22 @@ const toggleActivo = async (req, res) => {
   }
 };
 
+const remove = async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      `DELETE FROM ESTUDIANTE WHERE id_estudiante = ? AND id_establecimiento = ?`,
+      [req.params.id, req.user.id_establecimiento]
+    );
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Estudiante no encontrado' });
+    res.json({ message: 'Estudiante eliminado' });
+  } catch (err) {
+    if (err.code === 'ER_ROW_IS_REFERENCED_2')
+      return res.status(409).json({ message: 'No es posible eliminar un estudiante con registros de convivencia asociados' });
+    res.status(500).json({ message: 'Error al eliminar estudiante' });
+  }
+};
+
 // GET cursos para el select del formulario
 const getCursos = async (req, res) => {
   try {
@@ -110,4 +126,4 @@ const consultarRut = async (req, res) => {
     res.status(500).json({ message: 'Error al consultar' });
   }
 };
-module.exports = { getAll, create, update, toggleActivo, getCursos, consultarRut };
+module.exports = { getAll, create, update, toggleActivo, getCursos, consultarRut, remove };
