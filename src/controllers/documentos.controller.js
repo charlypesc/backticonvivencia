@@ -12,7 +12,7 @@ console.log('llegando al EP')
   }
 
   try {
-    console.log('llego al try')
+    // console.log('llego al try')
     const conn = await db.getConnection();
     await conn.beginTransaction();
     // 1. Catálogos del establecimiento (necesarios para crear el registro mínimo y para el LLM)
@@ -20,8 +20,8 @@ console.log('llegando al EP')
       'SELECT id_tipo_falta, nombre FROM TIPO_FALTA WHERE id_establecimiento = ?',
       [req.user.id_establecimiento]
     );
-    console.log('pase a la primera qry')
-    console.log(tiposFalta)
+    // console.log('pase a la primera qry')
+    // console.log(tiposFalta)
 
     if (tiposFalta.length === 0) {
       return res.status(400).json({ mensaje: 'El establecimiento no tiene tipos de falta configurados' });
@@ -31,7 +31,7 @@ console.log('llegando al EP')
       'SELECT id_estudiante, nombre, apellido FROM ESTUDIANTE WHERE id_establecimiento = ? AND activo = 1',
       [req.user.id_establecimiento]
     );
-console.log([estudiantes])
+// console.log([estudiantes])
 // console.log('pase estudiante')
     // 2. Document AI → texto crudo
     const { texto, nivelConfianza } = await procesarDocumento(req.file.buffer, req.file.mimetype);

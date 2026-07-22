@@ -164,6 +164,17 @@ const update = async (req, res) => {
 // DELETE /api/registros/:id —
 const remove = async (req, res) => {
   try {
+
+        await pool.query(
+      `DELETE FROM REGISTRO_ESTUDIANTE WHERE id_registro = ?`,
+      [req.params.id]
+    );
+
+    await pool.query(
+      `DELETE FROM DOCUMENTO_DIGITALIZADO WHERE id_registro = ?`,
+      [req.params.id]
+    );
+
     const [result] = await pool.query(
       `DELETE FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?`,
       [req.params.id]
