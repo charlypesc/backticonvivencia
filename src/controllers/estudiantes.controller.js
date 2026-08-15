@@ -3,7 +3,8 @@ const pool = require('../db/connection');
 const getAll = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT e.*, c.nombre AS curso_nombre, c.grado
+      `SELECT e.*, c.nombre AS curso_nombre, c.grado,
+        (SELECT COUNT(*) FROM REGISTRO_ESTUDIANTE re WHERE re.id_estudiante = e.id_estudiante) AS n_registros
        FROM ESTUDIANTE e
        JOIN CURSO c ON e.id_curso = c.id_curso
        WHERE e.id_establecimiento = ?
@@ -80,18 +81,36 @@ const remove = async (req, res) => {
   }
 };
 
-// GET cursos para el select del formulario
-const getCursos = async (req, res) => {
+const buscar = async (req, res) => {
+  const q = (req.query.q || '').trim();
+
+  if (q.length < 2) return res.json([]);
+
+  // Cada palabra escrita se busca por separado (AND), sin importar el orden
+  // ni qué haya en el medio — así "rodrigo paredes" encuentra a "Rodrigo
+  // Andrés Paredes Escobar" aunque tenga un segundo nombre entre medio.
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const condiciones = tokens.map(() => `CONCAT(e.nombre, ' ', e.apellido) LIKE ?`).join(' AND ');
+  const valores = tokens.map((t) => `%${t}%`);
+
   try {
     const [rows] = await pool.query(
-      `SELECT * FROM CURSO WHERE id_establecimiento=? ORDER BY nivel, grado`,
-      [req.user.id_establecimiento]
+      `SELECT e.id_estudiante, e.run, e.dv, e.nombre, e.apellido, c.nombre AS curso_nombre, c.grado
+       FROM ESTUDIANTE e
+       JOIN CURSO c ON e.id_curso = c.id_curso
+       WHERE e.id_establecimiento = ?
+         AND ${condiciones}
+         AND e.activo = 1
+       ORDER BY e.apellido, e.nombre
+       LIMIT 10`,
+      [req.user.id_establecimiento, ...valores]
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: 'Error al obtener cursos' });
+    res.status(500).json({ message: 'Error al buscar estudiantes' });
   }
 };
+
 const consultarRut = async (req, res) => {
   const rut = req.params.rut; // ej: 12345678-9
   const [run, dv] = rut.split('-');
@@ -111,7 +130,7 @@ const consultarRut = async (req, res) => {
     const estudiante = estudiantes[0];
 
     const [registros] = await pool.query(
-      `SELECT r.*, tf.nombre AS tipo_falta_nombre, tf.gravedad
+      `SELECT r.*, tf.nombre AS tipo_falta_nombre, tf.gravedad, re.rol_en_incidente
        FROM REGISTRO_CONVIVENCIA r
        JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro
        JOIN TIPO_FALTA tf ON r.id_tipo_falta = tf.id_tipo_falta
@@ -126,4 +145,4 @@ const consultarRut = async (req, res) => {
     res.status(500).json({ message: 'Error al consultar' });
   }
 };
-module.exports = { getAll, create, update, toggleActivo, getCursos, consultarRut, remove };
+module.exports = { getAll, create, update, toggleActivo, consultarRut, remove, buscar };

@@ -12,7 +12,7 @@ const login = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT u.*, e.nombre AS nombre_establecimiento
        FROM USUARIO u
-       JOIN ESTABLECIMIENTO e ON u.id_establecimiento = e.id_establecimiento
+       LEFT JOIN ESTABLECIMIENTO e ON u.id_establecimiento = e.id_establecimiento
        WHERE u.correo = ? AND u.activo = 1`,
       [correo]
     );
