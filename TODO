@@ -1,7 +1,13 @@
+RBAC / Autenticación (propuesta de Carlos)
+☐ PENDIENTE: definir con Carlos dónde va el scope de id_establecimiento en su modelo RBAC (en usuarios o en usuario_roles) antes de crear las tablas — ver docs/propuesta-rbac-autenticacion.md y docs/rbac_autenticacion.sql
+☐ Confirmar convención de nombres (usuarios/roles minúscula plural de Carlos vs USUARIO/ESTABLECIMIENTO mayúscula singular del resto del proyecto)
+☐ Decidir si se migran los ~10 usos de requireRole(...) a permisos granulares ahora o en una segunda etapa
+☐ Definir mapeo de usuarios existentes (USUARIO.rol) al nuevo esquema
+
 Sostenedor / Protocolo / Administrador (nuevas tablas)
 ☐ Rodrigo crea las 3 tablas a nivel de proyecto para revisión (SOSTENEDOR, PROTOCOLO + PROTOCOLO_ACTIVADO, ADMINISTRADOR) — ver plan: https://claude.ai/code/artifact/56d58282-c9bb-4e46-a9f9-70898619c1a8
 ☐ Validar tablas contra el plan antes de tocar código
-☐ CRUD Sostenedor
+✔ CRUD de Sostenedor (código de app): sostenedor.controller.js + sostenedor.routes.js, montado en /api/sostenedores, todo bajo requireRole('SUPERADMIN'). Incluye vincular/desvincular ESTABLECIMIENTO.id_sostenedor (FK nullable). Pendiente: falta que se creen la tabla SOSTENEDOR y la columna ESTABLECIMIENTO.id_sostenedor en la BD @done
 ☐ CRUD Administrador (tipo_usuario: local / sostenedor / super)
 ☐ Definir ambiente de despliegue (pendiente, no bloquea el diseño de datos)
 ☐ Confirmar decisión: ¿un establecimiento puede tener más de un sostenedor?
@@ -17,5 +23,24 @@ Sostenedor / Protocolo / Administrador (nuevas tablas)
 ✔ Se conectaron las 3 rutas nuevas en src/index.js (/api/protocolos-genericos, /api/protocolos-establecimiento, /api/protocolos-activados) @done
 ✔ Se agregó CLAUDE.md al proyecto @done
 
+2026-08-12 — Avance del día
+✔ CRUD de Cursos (mantenedor, scopeado por id_establecimiento): cursos.controller.js + cursos.routes.js, montado en /api/cursos @done
+✔ Se eliminó el endpoint duplicado GET /estudiantes/cursos — estudiantes.controller.js perdió getCursos() (era el mismo SELECT que ahora vive solo en cursos.controller.js). El frontend (estudiantes.ts) ya apuntaba a través de api.services.getCursos(), que se repuntó a /cursos sin tocar el consumidor @done
+✔ Establecimiento como registro único (no CRUD de lista): getMine/updateMine sobre req.user.id_establecimiento, sin create/remove porque cada usuario ya pertenece a un solo establecimiento vía JWT y no existe rol multi-establecimiento. PUT restringido a DIRECTOR, GET abierto a ambos roles. establecimiento.controller.js + establecimiento.routes.js, montado en /api/establecimiento @done
+
 Estudiantes / esquema BD
 ☐ Confirmar si `run` (o `run`+`dv`) tiene UNIQUE KEY en la tabla ESTUDIANTE — estudiantes.controller.js:33 asume duplicado de RUN vía `err.code === 'ER_DUP_ENTRY'`, pero no hay schema versionado en el repo (ni .sql ni en el excalidraw) para confirmarlo. Verificar con `SHOW CREATE TABLE ESTUDIANTE;` cuando haya acceso a la BD.
+
+## Registro de tiempo
+- 2026-08-13 20:09 → 20:16 (6m)
+- 2026-08-12 17:01 → 20:03 (3h2m)
+- 2026-08-12 15:19 → 20:03 (4h43m)
+- 2026-08-11 09:29 → 23:07 (13h38m)
+- 2026-08-10 21:22 → 09:22 (11h59m)
+- 2026-08-10 19:20 → 19:23 (2m)
+- 2026-08-10 17:06 → 19:19 (2h12m)
+- 2026-08-10 16:46 → 19:19 (2h33m)
+- 2026-08-10 16:46 → 19:19 (2h33m)
+- 2026-08-10 16:46 → 19:19 (2h33m)
+- 2026-08-10 16:46 → 19:19 (2h33m)
+m)

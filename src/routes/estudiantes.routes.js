@@ -1,11 +1,11 @@
 const router = require('express').Router();
-const { getAll, create, update, toggleActivo, getCursos, consultarRut, remove } = require('../controllers/estudiantes.controller');
+const { getAll, create, update, toggleActivo, consultarRut, remove, buscar } = require('../controllers/estudiantes.controller');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.use(verifyToken);
 
 router.get('/',              getAll);
-router.get('/cursos',        getCursos);
+router.get('/buscar',        buscar);
 router.get('/rut/:rut',      consultarRut);
 router.post('/',             requireRole('ENCARGADO'), create);
 router.put('/:id',           requireRole('ENCARGADO'), update);
