@@ -6,7 +6,7 @@ const getAll = async (req, res) => {
       `SELECT * FROM TIPO_FALTA 
        WHERE id_establecimiento = ?
        ORDER BY gravedad, nombre`,
-      [req.user.id_establecimiento]
+      [req.id_establecimiento]
     );
     res.json(rows);
   } catch (err) {
@@ -25,7 +25,7 @@ const create = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO TIPO_FALTA (nombre, gravedad, descripcion, medida_sugerida, id_establecimiento)
        VALUES (?, ?, ?, ?, ?)`,
-      [nombre, gravedad, descripcion || null, medida_sugerida || null, req.user.id_establecimiento]
+      [nombre, gravedad, descripcion || null, medida_sugerida || null, req.id_establecimiento]
     );
     res.status(201).json({ id_tipo_falta: result.insertId, message: 'Tipo de falta creado' });
   } catch (err) {
@@ -41,7 +41,7 @@ const update = async (req, res) => {
     await pool.query(
       `UPDATE TIPO_FALTA SET nombre=?, gravedad=?, descripcion=?, medida_sugerida=?
        WHERE id_tipo_falta = ? AND id_establecimiento = ?`,
-      [nombre, gravedad, descripcion, medida_sugerida, req.params.id, req.user.id_establecimiento]
+      [nombre, gravedad, descripcion, medida_sugerida, req.params.id, req.id_establecimiento]
     );
     res.json({ message: 'Tipo de falta actualizado' });
   } catch (err) {
@@ -54,7 +54,7 @@ const remove = async (req, res) => {
     await pool.query(
       `DELETE FROM TIPO_FALTA 
        WHERE id_tipo_falta = ? AND id_establecimiento = ?`,
-      [req.params.id, req.user.id_establecimiento]
+      [req.params.id, req.id_establecimiento]
     );
     res.json({ message: 'Tipo de falta eliminado' });
   } catch (err) {

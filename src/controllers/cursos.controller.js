@@ -31,7 +31,7 @@ const getAll = async (req, res) => {
        FROM CURSO c
        WHERE c.id_establecimiento = ?
        ORDER BY c.nivel, c.grado, c.nombre`,
-      [req.user.id_establecimiento]
+      [req.id_establecimiento]
     );
     res.json(rows);
   } catch (err) {
@@ -50,7 +50,7 @@ const create = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO CURSO (nombre, grado, nivel, id_establecimiento)
        VALUES (?, ?, ?, ?)`,
-      [nombre, grado, nivel, req.user.id_establecimiento]
+      [nombre, grado, nivel, req.id_establecimiento]
     );
     res.status(201).json({ id_curso: result.insertId, message: 'Curso creado' });
   } catch (err) {
@@ -66,7 +66,7 @@ const update = async (req, res) => {
     await pool.query(
       `UPDATE CURSO SET nombre=?, grado=?, nivel=?
        WHERE id_curso = ? AND id_establecimiento = ?`,
-      [nombre, grado, nivel, req.params.id, req.user.id_establecimiento]
+      [nombre, grado, nivel, req.params.id, req.id_establecimiento]
     );
     res.json({ message: 'Curso actualizado' });
   } catch (err) {
@@ -79,7 +79,7 @@ const remove = async (req, res) => {
     await pool.query(
       `DELETE FROM CURSO
        WHERE id_curso = ? AND id_establecimiento = ?`,
-      [req.params.id, req.user.id_establecimiento]
+      [req.params.id, req.id_establecimiento]
     );
     res.json({ message: 'Curso eliminado' });
   } catch (err) {
@@ -188,7 +188,7 @@ const importarExcel = async (req, res) => {
 
   const job = {
     job_id: crypto.randomUUID(),
-    id_establecimiento: req.user.id_establecimiento,
+    id_establecimiento: req.id_establecimiento,
     total: filas.length,
     procesadas: 0,
     cursos_creados: 0,
@@ -208,11 +208,86 @@ const importarExcel = async (req, res) => {
 
 const getProgresoImportacion = (req, res) => {
   const job = importJobs.get(req.params.jobId);
-  if (!job || job.id_establecimiento !== req.user.id_establecimiento)
+  if (!job || job.id_establecimiento !== req.id_establecimiento)
     return res.status(404).json({ message: 'Importación no encontrada' });
 
   const { id_establecimiento, ...progreso } = job;
   res.json(progreso);
 };
 
-module.exports = { getAll, create, update, remove, importarExcel, getProgresoImportacion };
+// GET /api/cursos/resumen-eliminacion
+// Qué se llevaría por delante un borrado masivo, para poder avisarlo en el
+// modal de confirmación con números reales en vez de un texto genérico.
+const resumenEliminacion = async (req, res) => {
+  try {
+    const est = req.id_establecimiento;
+    const [[r]] = await pool.query(
+      `SELECT
+         (SELECT COUNT(*) FROM CURSO WHERE id_establecimiento = ?) AS cursos,
+         (SELECT COUNT(*) FROM ESTUDIANTE WHERE id_establecimiento = ?) AS estudiantes,
+         (SELECT COUNT(DISTINCT re.id_estudiante)
+            FROM REGISTRO_ESTUDIANTE re
+            JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+           WHERE e.id_establecimiento = ?) AS estudiantes_con_registros`,
+      [est, est, est]
+    );
+    res.json(r);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al obtener el resumen' });
+  }
+};
+
+// DELETE /api/cursos — borrado masivo (deshacer una importación)
+//
+// Se niega si algún estudiante figura en un registro de convivencia: eso es
+// historial de casos de menores y no puede desaparecer como efecto secundario
+// de limpiar una importación. Para esos casos hay que borrar el registro
+// primero, de forma deliberada.
+const eliminarTodos = async (req, res) => {
+  const est = req.id_establecimiento;
+  const conn = await pool.getConnection();
+  try {
+    const [[{ bloqueados }]] = await conn.query(
+      `SELECT COUNT(DISTINCT re.id_estudiante) AS bloqueados
+         FROM REGISTRO_ESTUDIANTE re
+         JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+        WHERE e.id_establecimiento = ?`,
+      [est]
+    );
+
+    if (bloqueados > 0) {
+      conn.release();
+      return res.status(409).json({
+        message:
+          `No se puede eliminar: ${bloqueados} estudiante(s) están asociados a registros de ` +
+          `convivencia. Eliminá primero esos registros si realmente querés borrarlos.`,
+        estudiantes_con_registros: bloqueados,
+      });
+    }
+
+    await conn.beginTransaction();
+    // Los estudiantes van primero: ESTUDIANTE.id_curso -> CURSO es NO ACTION,
+    // así que borrar los cursos con alumnos dentro fallaría.
+    const [e] = await conn.query(`DELETE FROM ESTUDIANTE WHERE id_establecimiento = ?`, [est]);
+    const [c] = await conn.query(`DELETE FROM CURSO WHERE id_establecimiento = ?`, [est]);
+    await conn.commit();
+
+    res.json({
+      message: `Se eliminaron ${c.affectedRows} curso(s) y ${e.affectedRows} estudiante(s).`,
+      cursos_eliminados: c.affectedRows,
+      estudiantes_eliminados: e.affectedRows,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Error al eliminar los cursos' });
+  } finally {
+    conn.release();
+  }
+};
+
+module.exports = {
+  getAll, create, update, remove, importarExcel, getProgresoImportacion,
+  resumenEliminacion, eliminarTodos,
+};

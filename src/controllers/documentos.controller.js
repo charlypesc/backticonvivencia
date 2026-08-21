@@ -18,7 +18,7 @@ console.log('llegando al EP')
     // 1. Catálogos del establecimiento (necesarios para crear el registro mínimo y para el LLM)
     const [tiposFalta] = await conn.query(
       'SELECT id_tipo_falta, nombre FROM TIPO_FALTA WHERE id_establecimiento = ?',
-      [req.user.id_establecimiento]
+      [req.id_establecimiento]
     );
     // console.log('pase a la primera qry')
     // console.log(tiposFalta)
@@ -29,7 +29,7 @@ console.log('llegando al EP')
 
     const [estudiantes] = await conn.query(
       'SELECT id_estudiante, nombre, apellido FROM ESTUDIANTE WHERE id_establecimiento = ? AND activo = 1',
-      [req.user.id_establecimiento]
+      [req.id_establecimiento]
     );
 // console.log([estudiantes])
 // console.log('pase estudiante')

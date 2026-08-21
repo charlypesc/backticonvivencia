@@ -8,7 +8,8 @@ const {
   importarExcel,
   getProgresoImportacion,
 } = require('../controllers/establecimientosGeo.controller');
-const { verifyToken, requireRole } = require('../middleware/auth');
+const { verifyToken, requirePermission } = require('../middleware/auth');
+const { Permiso } = require('../constants/permisos');
 
 const uploadExcel = multer({
   storage: multer.memoryStorage(),
@@ -25,10 +26,10 @@ const uploadExcel = multer({
 router.use(verifyToken);
 
 router.get('/',           getAll);                                                    // ambos roles
-router.post('/',          requireRole('ENCARGADO'), create);
-router.post('/importar',  requireRole('ENCARGADO'), uploadExcel.single('archivo'), importarExcel);
-router.get('/importar/:jobId/progreso', requireRole('ENCARGADO'), getProgresoImportacion);
-router.put('/:id',        requireRole('ENCARGADO'), update);
-router.delete('/:id',     requireRole('ENCARGADO'), remove);
+router.post('/',          requirePermission(Permiso.EstablecimientoCrear), create);
+router.post('/importar',  requirePermission(Permiso.EstablecimientoImportar), uploadExcel.single('archivo'), importarExcel);
+router.get('/importar/:jobId/progreso', requirePermission(Permiso.EstablecimientoImportar), getProgresoImportacion);
+router.put('/:id',        requirePermission(Permiso.EstablecimientoEditar), update);
+router.delete('/:id',     requirePermission(Permiso.EstablecimientoEliminar), remove);
 
 module.exports = router;

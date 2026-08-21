@@ -81,7 +81,13 @@ const remove = async (req, res) => {
 const getEstablecimientos = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT * FROM ESTABLECIMIENTO WHERE id_sostenedor = ? ORDER BY nombre`,
+      // Devuelve todos los colegios del directorio vinculados al sostenedor, no
+      // solo los que son tenant: si se filtrara por es_tenant, las asignaciones
+      // hechas sobre colegios que aún no usan el sistema quedarían invisibles.
+      // Se expone es_tenant para que la UI distinga unos de otros.
+      `SELECT id_establecimiento AS id_establecimiento, nombre, rbd,
+              id_comuna, es_tenant
+       FROM ESTABLECIMIENTO WHERE id_sostenedor = ? ORDER BY nombre`,
       [req.params.id]
     );
     res.json(rows);

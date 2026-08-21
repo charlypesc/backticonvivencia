@@ -25,6 +25,20 @@ const normalizar = (texto) => {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').normalize('NFC').toLowerCase();
 };
 
+// El directorio nacional trae ~7.800 colegios, de los cuales solo un puñado
+// usa el sistema. `cantidad_usuarios` es lo que permite distinguirlos de un
+// vistazo en la pantalla de Geo, sin una consulta por fila.
+//
+// Subconsulta y no JOIN + GROUP BY a propósito: con `SELECT *` el GROUP BY
+// obligaría a listar todas las columnas o a depender de ONLY_FULL_GROUP_BY
+// estando apagado, que es justo el tipo de cosa que se rompe al cambiar de
+// servidor.
+const SELECT_CON_USUARIOS = `
+  SELECT e.*,
+         (SELECT COUNT(*) FROM USUARIO u
+           WHERE u.id_establecimiento = e.id_establecimiento) AS cantidad_usuarios
+    FROM ESTABLECIMIENTO e`;
+
 const getAll = async (req, res) => {
   try {
     const { id_comuna, rbd } = req.query;
@@ -33,17 +47,32 @@ const getAll = async (req, res) => {
     // buscador de Geo para saltar directo a un establecimiento sin tener que
     // navegar Región → Provincia → Comuna a mano.
     if (rbd) {
+      const q = rbd.trim();
+
+      // El que coincide exacto va primero, no el que sale antes por orden
+      // alfabético. Con LIMIT 20 esto no era solo incomodidad: buscar "4-3"
+      // trae cientos de RBD que lo contienen, y el colegio buscado podía
+      // quedar fuera de las 20 filas devueltas.
+      //
+      // El segundo criterio cubre el RBD escrito sin dígito verificador
+      // ("31338" para "31338-2"), que es como se dicta y se anota a mano.
       const [rows] = await pool.query(
-        `SELECT * FROM ESTABLECIMIENTO_GEO WHERE rbd LIKE ? ORDER BY nombre LIMIT 20`,
-        [`%${rbd}%`]
+        `${SELECT_CON_USUARIOS}
+          WHERE e.rbd LIKE ?
+          ORDER BY (e.rbd = ?) DESC,
+                   (SUBSTRING_INDEX(e.rbd, '-', 1) = ?) DESC,
+                   (e.rbd LIKE ?) DESC,
+                   e.nombre
+          LIMIT 20`,
+        [`%${q}%`, q, q, `${q}%`]
       );
       return res.json(rows);
     }
 
-    const where = id_comuna ? `WHERE id_comuna = ?` : '';
+    const where = id_comuna ? `WHERE e.id_comuna = ?` : '';
     const params = id_comuna ? [id_comuna] : [];
     const [rows] = await pool.query(
-      `SELECT * FROM ESTABLECIMIENTO_GEO ${where} ORDER BY nombre`,
+      `${SELECT_CON_USUARIOS} ${where} ORDER BY e.nombre`,
       params
     );
     res.json(rows);
@@ -61,11 +90,11 @@ const create = async (req, res) => {
 
   try {
     const [result] = await pool.query(
-      `INSERT INTO ESTABLECIMIENTO_GEO (nombre, rbd, direccion, telefono, correo, tipo_dependencia, id_comuna, id_sostenedor)
+      `INSERT INTO ESTABLECIMIENTO (nombre, rbd, direccion, telefono, correo, tipo_dependencia, id_comuna, id_sostenedor)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [nombre, rbd, direccion || null, telefono || null, correo || null, tipo_dependencia || null, id_comuna, id_sostenedor || null]
     );
-    res.status(201).json({ id_establecimiento_geo: result.insertId, message: 'Establecimiento creado' });
+    res.status(201).json({ id_establecimiento: result.insertId, message: 'Establecimiento creado' });
   } catch (err) {
     console.error(err);
     if (err.code === 'ER_DUP_ENTRY')
@@ -82,9 +111,9 @@ const update = async (req, res) => {
 
   try {
     await pool.query(
-      `UPDATE ESTABLECIMIENTO_GEO
+      `UPDATE ESTABLECIMIENTO
        SET nombre=?, rbd=?, direccion=?, telefono=?, correo=?, tipo_dependencia=?, id_comuna=?, id_sostenedor=?
-       WHERE id_establecimiento_geo = ?`,
+       WHERE id_establecimiento = ?`,
       [nombre, rbd, direccion || null, telefono || null, correo || null, tipo_dependencia || null, id_comuna, id_sostenedor || null, req.params.id]
     );
     res.json({ message: 'Establecimiento actualizado' });
@@ -96,11 +125,29 @@ const update = async (req, res) => {
   }
 };
 
+// Desde que ESTABLECIMIENTO es también la tabla de tenants, borrar una fila
+// dejó de ser inocuo: puede tener usuarios, cursos y estudiantes colgando. Las
+// FKs lo impedirían igual, pero con un 500 genérico que no explica el motivo.
 const remove = async (req, res) => {
   try {
-    await pool.query(`DELETE FROM ESTABLECIMIENTO_GEO WHERE id_establecimiento_geo = ?`, [req.params.id]);
+    const [[fila]] = await pool.query(
+      `SELECT es_tenant FROM ESTABLECIMIENTO WHERE id_establecimiento = ?`,
+      [req.params.id]
+    );
+    if (!fila)
+      return res.status(404).json({ message: 'Establecimiento no encontrado' });
+
+    if (fila.es_tenant)
+      return res.status(409).json({
+        message: 'No es posible eliminar un establecimiento que usa el sistema. ' +
+                 'Primero hay que darlo de baja como establecimiento cliente.',
+      });
+
+    await pool.query(`DELETE FROM ESTABLECIMIENTO WHERE id_establecimiento = ?`, [req.params.id]);
     res.json({ message: 'Establecimiento eliminado' });
   } catch (err) {
+    if (err.code === 'ER_ROW_IS_REFERENCED_2')
+      return res.status(409).json({ message: 'No es posible eliminar un establecimiento en uso.' });
     console.error(err);
     res.status(500).json({ message: 'Error al eliminar' });
   }
@@ -118,7 +165,7 @@ const remove = async (req, res) => {
 // seguro: los RBD ya insertados se saltan como "omitidos".
 const procesarImportacion = async (job, filas) => {
   try {
-    const [rbdsRows] = await pool.query(`SELECT rbd FROM ESTABLECIMIENTO_GEO`);
+    const [rbdsRows] = await pool.query(`SELECT rbd FROM ESTABLECIMIENTO`);
     const rbdsExistentes = new Set(rbdsRows.map((r) => String(r.rbd).toUpperCase()));
 
     const [comunasRows] = await pool.query(
@@ -138,7 +185,7 @@ const procesarImportacion = async (job, filas) => {
         await conn.beginTransaction();
         for (const fila of lote) {
           await conn.query(
-            `INSERT INTO ESTABLECIMIENTO_GEO (nombre, rbd, direccion, telefono, correo, tipo_dependencia, id_comuna)
+            `INSERT INTO ESTABLECIMIENTO (nombre, rbd, direccion, telefono, correo, tipo_dependencia, id_comuna)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [fila.nombre, fila.rbd, fila.direccion, fila.telefono, fila.correo, fila.tipoDependencia, fila.id_comuna]
           );
