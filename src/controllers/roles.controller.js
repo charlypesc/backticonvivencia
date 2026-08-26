@@ -20,8 +20,8 @@ const getAll = async (req, res) => {
       `SELECT r.rol_id, r.codigo, r.nombre, r.descripcion, r.es_sistema,
               r.id_establecimiento, e.nombre AS nombre_establecimiento,
               COUNT(rp.permiso_id) AS cantidad_permisos
-       FROM roles r
-       LEFT JOIN rol_permisos rp ON rp.rol_id = r.rol_id
+       FROM ROLES r
+       LEFT JOIN ROL_PERMISOS rp ON rp.rol_id = r.rol_id
        LEFT JOIN ESTABLECIMIENTO e ON e.id_establecimiento = r.id_establecimiento
        WHERE r.activo = TRUE
          ${esAdmin(req) ? '' : "AND r.codigo <> 'ADMIN'"}
@@ -91,7 +91,7 @@ const permisosFueraDeAlcance = (req, ids) => {
 const getPermisos = async (req, res) => {
   try {
     const [[rol]] = await pool.query(
-      `SELECT codigo, id_establecimiento FROM roles WHERE rol_id = ?`, [req.params.id]);
+      `SELECT codigo, id_establecimiento FROM ROLES WHERE rol_id = ?`, [req.params.id]);
     if (!rol) return res.status(404).json({ message: 'Rol no encontrado' });
     if (!alcanceValido(rol, req.id_establecimiento))
       return res.status(403).json({ message: 'Ese rol pertenece a otro establecimiento' });
@@ -104,8 +104,8 @@ const getPermisos = async (req, res) => {
 
     const [rows] = await pool.query(
       `SELECT p.permiso_id, p.codigo, p.recurso, p.accion, p.descripcion
-       FROM rol_permisos rp
-       JOIN permisos p ON p.permiso_id = rp.permiso_id
+       FROM ROL_PERMISOS rp
+       JOIN PERMISOS p ON p.permiso_id = rp.permiso_id
        WHERE rp.rol_id = ?
        ORDER BY p.recurso, p.accion`,
       [req.params.id]
@@ -127,7 +127,7 @@ const getCatalogoPermisos = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT permiso_id, codigo, recurso, accion, descripcion
-       FROM permisos ORDER BY recurso, accion`
+       FROM PERMISOS ORDER BY recurso, accion`
     );
     const propios = permisosOtorgables(req);
     res.json(propios === null ? rows : rows.filter((p) => propios.has(p.permiso_id)));
@@ -182,7 +182,7 @@ const create = async (req, res) => {
     // (codigo, id_establecimiento) NO impide dos roles globales con el mismo
     // código. Ese caso se valida acá a mano.
     const [dup] = await pool.query(
-      `SELECT rol_id FROM roles WHERE codigo = ? AND ${est == null ? 'id_establecimiento IS NULL' : 'id_establecimiento = ?'}`,
+      `SELECT rol_id FROM ROLES WHERE codigo = ? AND ${est == null ? 'id_establecimiento IS NULL' : 'id_establecimiento = ?'}`,
       est == null ? [cod] : [cod, est]
     );
     if (dup.length > 0) {
@@ -197,7 +197,7 @@ const create = async (req, res) => {
     // es_sistema = FALSE: los roles creados desde la UI sí se pueden editar y
     // borrar, a diferencia de los que vinieron del enum original.
     const [r] = await pool.query(
-      `INSERT INTO roles (nombre, codigo, descripcion, id_establecimiento, es_sistema, activo)
+      `INSERT INTO ROLES (nombre, codigo, descripcion, id_establecimiento, es_sistema, activo)
        VALUES (?, ?, ?, ?, FALSE, TRUE)`,
       [nombre, cod, descripcion || null, est]
     );
@@ -216,7 +216,7 @@ const update = async (req, res) => {
 
   try {
     const [[rol]] = await pool.query(
-      `SELECT es_sistema, id_establecimiento FROM roles WHERE rol_id = ?`, [req.params.id]);
+      `SELECT es_sistema, id_establecimiento FROM ROLES WHERE rol_id = ?`, [req.params.id]);
     if (!rol) return res.status(404).json({ message: 'Rol no encontrado' });
     if (!puedeAdministrarRol(req, rol))
       return res.status(403).json({
@@ -227,7 +227,7 @@ const update = async (req, res) => {
     if (rol.es_sistema)
       return res.status(409).json({ message: 'Los roles de sistema no se pueden editar' });
 
-    await pool.query(`UPDATE roles SET nombre = ?, descripcion = ? WHERE rol_id = ?`,
+    await pool.query(`UPDATE ROLES SET nombre = ?, descripcion = ? WHERE rol_id = ?`,
       [nombre, descripcion || null, req.params.id]);
     res.json({ message: 'Rol actualizado' });
   } catch (err) {
@@ -260,7 +260,7 @@ const setPermisos = async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const [[rol]] = await conn.query(
-      `SELECT codigo, id_establecimiento FROM roles WHERE rol_id = ?`, [req.params.id]);
+      `SELECT codigo, id_establecimiento FROM ROLES WHERE rol_id = ?`, [req.params.id]);
     if (!rol) { conn.release(); return res.status(404).json({ message: 'Rol no encontrado' }); }
     if (!puedeAdministrarRol(req, rol)) {
       conn.release();
@@ -289,7 +289,7 @@ const setPermisos = async (req, res) => {
     // los borraría sin que él los haya visto siquiera (el catálogo se los
     // recorta). Se bloquea en vez de degradar el rol en silencio.
     const [actuales] = await conn.query(
-      `SELECT permiso_id FROM rol_permisos WHERE rol_id = ?`, [req.params.id]);
+      `SELECT permiso_id FROM ROL_PERMISOS WHERE rol_id = ?`, [req.params.id]);
     const invisibles = permisosFueraDeAlcance(req, actuales.map((r) => r.permiso_id));
     if (invisibles.length > 0) {
       conn.release();
@@ -301,10 +301,10 @@ const setPermisos = async (req, res) => {
     }
 
     await conn.beginTransaction();
-    await conn.query(`DELETE FROM rol_permisos WHERE rol_id = ?`, [req.params.id]);
+    await conn.query(`DELETE FROM ROL_PERMISOS WHERE rol_id = ?`, [req.params.id]);
     if (ids.length > 0)
       await conn.query(
-        `INSERT INTO rol_permisos (rol_id, permiso_id) VALUES ?`,
+        `INSERT INTO ROL_PERMISOS (rol_id, permiso_id) VALUES ?`,
         [ids.map((id) => [req.params.id, id])]
       );
     await conn.commit();

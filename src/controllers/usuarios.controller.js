@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const pool   = require('../db/connection');
 const { rolesDe } = require('../middleware/auth');
 const { resolverEstablecimiento, establecimientoRequerido } = require('../middleware/scope');
+const { generarPassword } = require('../utils/password');
 
 // Solo un ADMIN puede otorgar o quitar el rol ADMIN. Se valida en el servidor:
 // esconder la opción en el frontend no es un control de acceso.
@@ -22,11 +23,11 @@ const getAll = async (req, res) => {
     const params = where ? [id_est] : [];
 
     const [rows] = await pool.query(
-      `SELECT u.id_usuario, u.correo, u.activo, u.id_establecimiento,
+      `SELECT u.id_usuario, u.correo, u.nombre, u.activo, u.id_establecimiento,
               GROUP_CONCAT(r.codigo ORDER BY r.codigo) AS roles
        FROM USUARIO u
-       LEFT JOIN usuario_roles ur ON ur.id_usuario = u.id_usuario
-       LEFT JOIN roles r ON r.rol_id = ur.rol_id AND r.activo = TRUE
+       LEFT JOIN USUARIO_ROLES ur ON ur.id_usuario = u.id_usuario
+       LEFT JOIN ROLES r ON r.rol_id = ur.rol_id AND r.activo = TRUE
        ${where}
        GROUP BY u.id_usuario
        ORDER BY u.correo`,
@@ -40,11 +41,17 @@ const getAll = async (req, res) => {
 };
 
 const create = async (req, res) => {
-  const { correo, password, roles } = req.body;
+  const { correo, roles } = req.body;
   const codigos = Array.isArray(roles) ? roles : roles ? [roles] : [];
+  // El nombre encabeza el documento de credenciales que se entrega en mano: sin
+  // él, quien reparte varias hojas seguidas solo tiene el correo para saber
+  // cuál es de quién. Por eso se pide en el alta y no queda opcional.
+  const nombre = (req.body.nombre || '').trim();
 
-  if (!correo || !password || codigos.length === 0)
-    return res.status(400).json({ message: 'Correo, contraseña y al menos un rol son requeridos' });
+  if (!correo || !nombre || codigos.length === 0)
+    return res.status(400).json({
+      message: 'Nombre, correo y al menos un rol son requeridos',
+    });
 
   const prohibido = codigos.find((c) => !puedeTocarRol(req, c));
   if (prohibido)
@@ -66,7 +73,7 @@ const create = async (req, res) => {
     // Solo roles globales o del mismo establecimiento del usuario: asignarle el
     // rol de otro colegio sería darle acceso cruzado entre establecimientos.
     const [rolesRows] = await conn.query(
-      `SELECT rol_id, codigo FROM roles
+      `SELECT rol_id, codigo FROM ROLES
        WHERE codigo IN (?) AND activo = TRUE
          AND (id_establecimiento IS NULL OR id_establecimiento <=> ?)`,
       [codigos, esAdminGlobal ? null : id_est]
@@ -79,18 +86,24 @@ const create = async (req, res) => {
       });
     }
 
+    // La clave la genera el servidor, no quien da de alta al usuario: es la
+    // única forma de que sea fuerte y distinta en cada alta. Viaja en claro una
+    // sola vez, en esta respuesta, para armar el documento que se entrega en
+    // mano. Después queda solo el hash: no se puede recuperar, hay que
+    // restablecerla.
+    const password = generarPassword();
     const hash = await bcrypt.hash(password, 10);
     const [ins] = await conn.query(
-      `INSERT INTO USUARIO (correo, password_hash, rol, id_establecimiento)
-       VALUES (?, ?, ?, ?)`,
-      [correo, hash, codigos[0], esAdminGlobal ? null : id_est]
+      `INSERT INTO USUARIO (correo, nombre, password_hash, rol, id_establecimiento)
+       VALUES (?, ?, ?, ?, ?)`,
+      [correo, nombre, hash, codigos[0], esAdminGlobal ? null : id_est]
     );
 
     // En la misma transacción: si esto falla, el usuario no puede quedar creado
     // sin roles, porque sería un usuario que no puede hacer absolutamente nada.
     for (const r of rolesRows)
       await conn.query(
-        `INSERT INTO usuario_roles (id_usuario, rol_id, asignado_por) VALUES (?, ?, ?)`,
+        `INSERT INTO USUARIO_ROLES (id_usuario, rol_id, asignado_por) VALUES (?, ?, ?)`,
         [ins.insertId, r.rol_id, req.user.id]
       );
 
@@ -110,7 +123,16 @@ const create = async (req, res) => {
       );
 
     await conn.commit();
-    res.status(201).json({ id_usuario: ins.insertId, message: 'Usuario creado' });
+    // El correo y la clave vuelven en la respuesta porque el frontend arma con
+    // ellos el documento a entregar. Es la única oportunidad: no hay endpoint
+    // que las relea.
+    res.status(201).json({
+      id_usuario: ins.insertId,
+      correo,
+      nombre,
+      password,
+      message: 'Usuario creado',
+    });
   } catch (err) {
     await conn.rollback();
     if (err.code === 'ER_DUP_ENTRY')
@@ -144,12 +166,72 @@ const toggleActivo = async (req, res) => {
   }
 };
 
+// Restablecer NO es lo mismo que cambiar la propia contraseña: acá no se pide
+// la clave actual, porque justamente el caso de uso es que la persona la
+// perdió. Por eso está detrás de un permiso propio y no lo puede hacer
+// cualquiera que administre usuarios.
+const resetPassword = async (req, res) => {
+  try {
+    // Sobre uno mismo no: cambiar la propia clave exige la actual
+    // (/auth/cambiar-password). Permitir restablecerse a sí mismo sería un
+    // atajo para saltarse esa verificación desde una sesión robada.
+    if (Number(req.params.id) === Number(req.user.id))
+      return res.status(409).json({
+        message: 'Para cambiar tu propia contraseña usa la opción de cambiar contraseña',
+      });
+
+    // Mismo acotamiento por establecimiento que toggleActivo: un ENCARGADO no
+    // puede tocarle la clave a alguien de otro colegio.
+    const id_est = resolverEstablecimiento(req);
+    const where  = id_est === null || id_est === undefined ? '' : 'AND id_establecimiento = ?';
+    const params = where ? [req.params.id, id_est] : [req.params.id];
+
+    const [[destino]] = await pool.query(
+      `SELECT id_usuario, correo, nombre FROM USUARIO WHERE id_usuario = ? ${where}`, params
+    );
+    if (!destino) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    // Solo un ADMIN le restablece la clave a otro ADMIN. Sin esta guardia,
+    // cualquiera con el permiso podría tomar control de la cuenta más
+    // privilegiada del sistema simplemente pidiendo un "restablecimiento".
+    const [rolesDestino] = await pool.query(
+      `SELECT r.codigo FROM USUARIO_ROLES ur
+       JOIN ROLES r ON r.rol_id = ur.rol_id
+       WHERE ur.id_usuario = ?`,
+      [destino.id_usuario]
+    );
+    if (rolesDestino.some((r) => !puedeTocarRol(req, r.codigo)))
+      return res.status(403).json({
+        message: 'No puedes restablecer la contraseña de un ADMIN',
+      });
+
+    const password = generarPassword();
+    await pool.query(
+      `UPDATE USUARIO SET password_hash = ? WHERE id_usuario = ?`,
+      [await bcrypt.hash(password, 10), destino.id_usuario]
+    );
+
+    res.json({
+      id_usuario: destino.id_usuario,
+      correo:     destino.correo,
+      // Puede venir null en los usuarios creados antes de que existiera la
+      // columna; el documento cae al correo en ese caso.
+      nombre:     destino.nombre,
+      password,
+      message:    'Contraseña restablecida',
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al restablecer la contraseña' });
+  }
+};
+
 const getRoles = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT r.rol_id, r.codigo, r.nombre, ur.asignado_at, ur.expira_at
-       FROM usuario_roles ur
-       JOIN roles r ON r.rol_id = ur.rol_id
+       FROM USUARIO_ROLES ur
+       JOIN ROLES r ON r.rol_id = ur.rol_id
        WHERE ur.id_usuario = ?
        ORDER BY r.codigo`,
       [req.params.id]
@@ -177,7 +259,7 @@ const asignarRol = async (req, res) => {
     // El rol tiene que ser global o del mismo colegio que el usuario: si no, se
     // le estaría dando acceso a otro establecimiento por la puerta de atrás.
     const [[rol]] = await pool.query(
-      `SELECT rol_id FROM roles
+      `SELECT rol_id FROM ROLES
        WHERE codigo = ? AND activo = TRUE
          AND (id_establecimiento IS NULL OR id_establecimiento <=> ?)`,
       [codigo, destino.id_establecimiento]
@@ -188,7 +270,7 @@ const asignarRol = async (req, res) => {
       });
 
     await pool.query(
-      `INSERT IGNORE INTO usuario_roles (id_usuario, rol_id, asignado_por) VALUES (?, ?, ?)`,
+      `INSERT IGNORE INTO USUARIO_ROLES (id_usuario, rol_id, asignado_por) VALUES (?, ?, ?)`,
       [req.params.id, rol.rol_id, req.user.id]
     );
     res.json({ message: 'Rol asignado' });
@@ -203,7 +285,7 @@ const asignarRol = async (req, res) => {
 const quitarRol = async (req, res) => {
   try {
     const [[rol]] = await pool.query(
-      `SELECT codigo FROM roles WHERE rol_id = ?`, [req.params.rolId]
+      `SELECT codigo FROM ROLES WHERE rol_id = ?`, [req.params.rolId]
     );
     if (!rol) return res.status(404).json({ message: 'Rol no encontrado' });
 
@@ -214,8 +296,8 @@ const quitarRol = async (req, res) => {
 
     if (rol.codigo === 'ADMIN') {
       const [[{ n }]] = await pool.query(
-        `SELECT COUNT(*) n FROM usuario_roles ur
-         JOIN roles r ON r.rol_id = ur.rol_id
+        `SELECT COUNT(*) n FROM USUARIO_ROLES ur
+         JOIN ROLES r ON r.rol_id = ur.rol_id
          JOIN USUARIO u ON u.id_usuario = ur.id_usuario AND u.activo = TRUE
          WHERE r.codigo = 'ADMIN'`
       );
@@ -226,7 +308,7 @@ const quitarRol = async (req, res) => {
     }
 
     const [r] = await pool.query(
-      `DELETE FROM usuario_roles WHERE id_usuario = ? AND rol_id = ?`,
+      `DELETE FROM USUARIO_ROLES WHERE id_usuario = ? AND rol_id = ?`,
       [req.params.id, req.params.rolId]
     );
     if (r.affectedRows === 0)
@@ -238,4 +320,7 @@ const quitarRol = async (req, res) => {
   }
 };
 
-module.exports = { getAll, create, toggleActivo, getRoles, asignarRol, quitarRol };
+module.exports = {
+  getAll, create, toggleActivo, resetPassword,
+  getRoles, asignarRol, quitarRol,
+};

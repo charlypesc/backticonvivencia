@@ -44,7 +44,7 @@ console.log('llegando al EP')
       // 4. Crear el registro de convivencia con datos mínimos (placeholder, se completa abajo)
       const [registroResult] = await conn.query(
         `INSERT INTO REGISTRO_CONVIVENCIA
-          (fecha_incidente, tematica, antecedentes, id_tipo_falta, id_usuario)
+          (fecha_incidente, asunto, antecedentes, id_tipo_falta, id_usuario)
          VALUES (CURDATE(), 'Pendiente de revisión', 'Generado automáticamente desde documento digitalizado', ?, ?)`,
         [tiposFalta[0].id_tipo_falta, req.user.id]
       );
@@ -60,19 +60,19 @@ console.log('llegando al EP')
 
       // 6. Actualizar el registro con los datos estructurados por el LLM
       const {
-        fecha_incidente, tematica, antecedentes, acuerdos,
+        fecha_incidente, asunto, antecedentes, acuerdos,
         id_tipo_falta, estudiantes: estudiantesDetectados,
       } = datosEstructurados;
 
       await conn.query(
         `UPDATE REGISTRO_CONVIVENCIA
          SET fecha_incidente = COALESCE(?, fecha_incidente),
-             tematica = COALESCE(?, tematica),
+             asunto = COALESCE(?, asunto),
              antecedentes = COALESCE(?, antecedentes),
              acuerdos = COALESCE(?, acuerdos),
              id_tipo_falta = COALESCE(?, id_tipo_falta)
          WHERE id_registro = ?`,
-        [fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta, id_registro]
+        [fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, id_registro]
       );
 
       const estudiantesConId = (estudiantesDetectados || []).filter(e => e.id_estudiante);

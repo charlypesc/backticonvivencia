@@ -36,7 +36,7 @@ const getResumen = async (req, res) => {
     // registros: un registro con 5 involucrados se comía la lista entera y los
     // registros anteriores desaparecían del dashboard.
     const [ultimos] = await pool.query(
-      `SELECT r.id_registro, r.tematica, r.estado_validacion, r.fecha_creacion,
+      `SELECT r.id_registro, r.asunto, r.estado_validacion, r.fecha_creacion,
               r.id_usuario, r.es_confidencial, r.nota_confidencial,
               r.fecha_modificacion,
               u.correo AS autor_correo, um.correo AS editor_correo,
@@ -54,10 +54,10 @@ const getResumen = async (req, res) => {
       [id_est]
     );
 
-    // Lo que un registro confidencial oculta es la temática (el contenido del
+    // Lo que un registro confidencial oculta es el asunto (el contenido del
     // caso), no quiénes están involucrados: el equipo necesita saber que esos
     // estudiantes tienen un caso abierto para no tratarlos a ciegas. Por eso
-    // alumno_nombre se conserva y solo se reemplaza la temática por la nota.
+    // alumno_nombre se conserva y solo se reemplaza el asunto por la nota.
     //
     // Acá no aplica la reducción genérica porque este widget tiene su propia
     // forma (alumno_nombre en vez de la lista de estudiantes).
@@ -66,7 +66,7 @@ const getResumen = async (req, res) => {
       if (!r.es_confidencial || puedeVerConfidencial(req, r)) return resto;
       return {
         ...resto,
-        tematica: r.nota_confidencial || 'Sin nota',
+        asunto: r.nota_confidencial || 'Sin nota',
         contenido_oculto: true,
       };
     });

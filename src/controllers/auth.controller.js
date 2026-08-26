@@ -28,19 +28,19 @@ const login = async (req, res) => {
 
     const [rolesRows] = await pool.query(
       `SELECT r.codigo
-       FROM usuario_roles ur
-       JOIN roles r ON r.rol_id = ur.rol_id AND r.activo = TRUE
+       FROM USUARIO_ROLES ur
+       JOIN ROLES r ON r.rol_id = ur.rol_id AND r.activo = TRUE
        WHERE ur.id_usuario = ?
          AND (ur.expira_at IS NULL OR ur.expira_at > NOW())`,
       [usuario.id_usuario]
     );
     let roles = rolesRows.map((r) => r.codigo);
 
-    // Sin filas en usuario_roles el usuario quedaría sin permisos y todo le
+    // Sin filas en USUARIO_ROLES el usuario quedaría sin permisos y todo le
     // respondería 403 sin explicación. Se cae a la columna legacy y se avisa:
     // es un bug de datos (usuario sin migrar), no una denegación legítima.
     if (roles.length === 0 && usuario.rol) {
-      console.warn(`Usuario ${usuario.correo} sin filas en usuario_roles; usando USUARIO.rol`);
+      console.warn(`Usuario ${usuario.correo} sin filas en USUARIO_ROLES; usando USUARIO.rol`);
       roles = [usuario.rol];
     }
 
@@ -55,7 +55,7 @@ const login = async (req, res) => {
     let permisos = [];
     if (!esAdmin) {
       const [permRows] = await pool.query(
-        `SELECT permiso_id FROM vw_permisos_efectivos WHERE id_usuario = ?`,
+        `SELECT permiso_id FROM VW_PERMISOS_EFECTIVOS WHERE id_usuario = ?`,
         [usuario.id_usuario]
       );
       permisos = permRows.map((p) => p.permiso_id);
@@ -99,4 +99,49 @@ const login = async (req, res) => {
 
 const me = (req, res) => res.json({ usuario: req.user });
 
-module.exports = { login, me };
+// Cualquier usuario autenticado puede cambiar su propia clave: no lleva permiso
+// asociado. El control de acceso es la clave actual, no el rol — por eso el id
+// sale del token y nunca del body: aceptarlo de afuera convertiría esto en un
+// "cambiar la contraseña de cualquiera".
+const cambiarPassword = async (req, res) => {
+  const { actual, nueva } = req.body;
+
+  if (!actual || !nueva)
+    return res.status(400).json({ message: 'Contraseña actual y nueva son requeridas' });
+
+  // El mínimo se valida acá y no solo en el frontend: el endpoint es alcanzable
+  // sin pasar por la pantalla.
+  if (nueva.length < 8)
+    return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 8 caracteres' });
+
+  if (actual === nueva)
+    return res.status(400).json({ message: 'La nueva contraseña debe ser distinta de la actual' });
+
+  try {
+    const [[usuario]] = await pool.query(
+      `SELECT id_usuario, password_hash FROM USUARIO WHERE id_usuario = ? AND activo = 1`,
+      [req.user.id]
+    );
+    if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    // Se pide la actual aunque la sesión ya esté iniciada: sin esto, un equipo
+    // dejado abierto alcanza para que alguien se apropie de la cuenta.
+    if (!(await bcrypt.compare(actual, usuario.password_hash)))
+      return res.status(401).json({ message: 'La contraseña actual no es correcta' });
+
+    await pool.query(
+      `UPDATE USUARIO SET password_hash = ? WHERE id_usuario = ?`,
+      [await bcrypt.hash(nueva, 10), usuario.id_usuario]
+    );
+
+    // El token sigue siendo válido hasta que expire: no hay lista de revocación.
+    // Cerrar sesión en el resto de los dispositivos exigiría versionar el token,
+    // que es un cambio bastante más grande que este.
+    res.json({ message: 'Contraseña actualizada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al cambiar la contraseña' });
+  }
+};
+
+module.exports = { login, me, cambiarPassword };
