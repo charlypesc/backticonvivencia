@@ -109,10 +109,10 @@ const getById = async (req, res) => {
 
 // POST /api/registros — Solo ENCARGADO
 const create = async (req, res) => {
-  const { fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta, estudiantes,
+  const { fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, estudiantes,
           es_confidencial, nota_confidencial } = req.body;
 
-  if (!fecha_incidente || !tematica || !antecedentes || !id_tipo_falta)
+  if (!fecha_incidente || !asunto || !antecedentes || !id_tipo_falta)
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
 
   if (es_confidencial && !nota_confidencial?.trim())
@@ -124,10 +124,10 @@ const create = async (req, res) => {
 
     const [result] = await conn.query(
       `INSERT INTO REGISTRO_CONVIVENCIA
-        (fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta, id_usuario,
+        (fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, id_usuario,
          es_confidencial, nota_confidencial)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [fecha_incidente, tematica, antecedentes, acuerdos || null, id_tipo_falta, req.user.id,
+      [fecha_incidente, asunto, antecedentes, acuerdos || null, id_tipo_falta, req.user.id,
        !!es_confidencial, es_confidencial ? nota_confidencial.trim() : null]
     );
 
@@ -173,10 +173,10 @@ const validar = async (req, res) => {
 
 // PUT /api/registros/:id — ENCARGADO o DIRECTOR
 const update = async (req, res) => {
-  const { fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta, estudiantes,
+  const { fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, estudiantes,
           es_confidencial, nota_confidencial } = req.body;
 
-  if (!fecha_incidente || !tematica || !antecedentes || !id_tipo_falta)
+  if (!fecha_incidente || !asunto || !antecedentes || !id_tipo_falta)
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
 
   // Quien no puede tocar la confidencialidad conserva la que ya tenía el
@@ -205,11 +205,11 @@ const update = async (req, res) => {
       // columna cambió de valor, y una edición que solo toca los estudiantes
       // involucrados (otra tabla) quedaría sin fecha.
       `UPDATE REGISTRO_CONVIVENCIA
-       SET fecha_incidente = ?, tematica = ?, antecedentes = ?, acuerdos = ?, id_tipo_falta = ?,
+       SET fecha_incidente = ?, asunto = ?, antecedentes = ?, acuerdos = ?, id_tipo_falta = ?,
            es_confidencial = ?, nota_confidencial = ?,
            fecha_modificacion = CURRENT_TIMESTAMP, id_usuario_modificacion = ?
        WHERE id_registro = ?`,
-      [fecha_incidente, tematica, antecedentes, acuerdos || null, id_tipo_falta,
+      [fecha_incidente, asunto, antecedentes, acuerdos || null, id_tipo_falta,
        confidencial, nota, req.user.id, req.params.id]
     );
 
@@ -268,14 +268,14 @@ const remove = async (req, res) => {
   }
 };
 const confirmar = async (req, res) => {
-  const { fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta } = req.body;
+  const { fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta } = req.body;
   try {
     await pool.query(
       `UPDATE REGISTRO_CONVIVENCIA
-       SET fecha_incidente=?, tematica=?, antecedentes=?, acuerdos=?,
+       SET fecha_incidente=?, asunto=?, antecedentes=?, acuerdos=?,
            id_tipo_falta=?, estado_validacion='validado'
        WHERE id_registro=?`,
-      [fecha_incidente, tematica, antecedentes, acuerdos, id_tipo_falta, req.params.id]
+      [fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, req.params.id]
     );
     res.json({ message: 'Registro confirmado' });
   } catch (err) {

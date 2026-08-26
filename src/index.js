@@ -17,7 +17,12 @@ app.use('/api/usuarios',    require('./routes/usuarios.routes'));
 app.use('/api/roles',       require('./routes/roles.routes'));
 app.use('/api/tipos-falta', require('./routes/tiposFalta.routes'));
 app.use('/api/protocolos-genericos',       require('./routes/protocolosGenericos.routes'));
+// El grafo de un protocolo del catálogo (pasos, transiciones, roles, campos).
+app.use('/api/protocolos-genericos/:id_protocolo/flujo', require('./routes/protocoloFlujo.routes'));
 app.use('/api/protocolos-establecimiento', require('./routes/protocolosEstablecimiento.routes'));
+// El grafo tal como lo ejecuta un colegio: heredado del catálogo o su copia propia.
+app.use('/api/protocolos-establecimiento/:id_protocolo_establecimiento/flujo',
+        require('./routes/protocoloFlujoEstablecimiento.routes'));
 app.use('/api/protocolos-activados',       require('./routes/protocolosActivados.routes'));
 app.use('/api/cursos',         require('./routes/cursos.routes'));
 app.use('/api/establecimiento', require('./routes/establecimiento.routes'));
@@ -31,6 +36,7 @@ app.use('/api/geo/establecimientos', require('./routes/establecimientosGeo.route
 // app.use('/api/estudiantes', require('./routes/estudiantes.routes'));
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/notificaciones', require('./routes/notificaciones.routes'));
 
 // Document IA
 app.use('/api/documents', documentosRoutes);
@@ -49,5 +55,8 @@ const PORT = process.env.PORT || 3000;
     console.error('\n' + err.message + '\n');
     process.exit(1);
   }
+  // Marca los pasos de protocolo cuyo plazo venció. Se puede apagar con
+  // PROTOCOLOS_JOB_MINUTOS=0 y correrlo desde un cron externo.
+  require('./services/vencimientos.service').iniciarJob();
   app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
 })();

@@ -13,7 +13,7 @@
 // Extrae y estructura la información en este JSON exacto:
 // {
 //   "fecha_incidente": "YYYY-MM-DD o null",
-//   "tematica": "texto descriptivo o null",
+//   "asunto": "texto descriptivo o null",
 //   "antecedentes": "texto descriptivo o null",
 //   "acuerdos": "texto descriptivo o null",
 //   "tipo_falta": "texto o null",
@@ -23,7 +23,7 @@
 // }
 
 // Reglas:
-// - Corrige errores ortográficos obvios del OCR (Fechz → Fecha, Temzzicz → Temática, etc.)
+// - Corrige errores ortográficos obvios del OCR (Fechz → Fecha, Asuntq → Asunto, etc.)
 // - Interpreta fechas aunque estén mal escritas (110-07-26 → 2026-07-10)
 // - Responde SOLO con el JSON, sin texto adicional, sin markdown, sin backticks
 // `;
@@ -73,7 +73,7 @@ ${catalogoEstudiantes || '(sin catálogo disponible)'}
 Extrae y estructura la información en este JSON exacto:
 {
   "fecha_incidente": "YYYY-MM-DD o null",
-  "tematica": "texto descriptivo o null",
+  "asunto": "texto descriptivo o null",
   "antecedentes": "texto descriptivo o null",
   "acuerdos": "texto descriptivo o null",
   "id_tipo_falta": "id_tipo_falta del catálogo o null",

@@ -56,7 +56,7 @@ const reducirSiConfidencial = (req, registro) => {
       : {}),
     // Bandera explícita para el front: "esto viene recortado, no lo abras".
     // Deducirlo de los campos que faltan obliga a cada pantalla a inventar su
-    // propio chequeo (una mira tematica, otra alumno_nombre) y se rompe apenas
+    // propio chequeo (una mira el asunto, otra alumno_nombre) y se rompe apenas
     // una consulta devuelve columnas distintas.
     contenido_oculto: true,
   };
