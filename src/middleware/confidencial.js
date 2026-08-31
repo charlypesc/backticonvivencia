@@ -22,7 +22,10 @@ const bloquearEscrituraConfidencial = async (req, res, next) => {
       [id]
     );
 
-    if (!registro)
+    // Un registro de otro colegio se responde como inexistente, igual que en
+    // la lectura por id. Va acá porque este middleware es el paso común de
+    // todas las escrituras de registros (editar, validar, eliminar, confirmar).
+    if (!registro || registro.id_establecimiento !== req.id_establecimiento)
       return res.status(404).json({ message: 'Registro no encontrado' });
 
     if (registro.es_confidencial && !puedeVerConfidencial(req, registro))

@@ -1,5 +1,6 @@
 const pool = require('../db/connection');
 const { reducirSiConfidencial } = require('../utils/confidencial');
+const { COLUMNAS_ESTADO_PROTOCOLO } = require('../utils/sqlProtocolos');
 
 const getAll = async (req, res) => {
   try {
@@ -146,16 +147,20 @@ const consultarRut = async (req, res) => {
     const estudiante = estudiantes[0];
 
     const [registros] = await pool.query(
+      // Las columnas de protocolo son las mismas que muestra la lista de
+      // registros: desde la ficha del estudiante también se necesita ver si el
+      // caso tiene un protocolo andando y poder entrar a seguirlo.
       `SELECT r.*, tf.nombre AS tipo_falta_nombre, tf.gravedad, re.rol_en_incidente,
-              u.correo AS autor_correo, um.correo AS editor_correo
+              u.correo AS autor_correo, um.correo AS editor_correo,
+              ${COLUMNAS_ESTADO_PROTOCOLO}
        FROM REGISTRO_CONVIVENCIA r
        JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro
        JOIN TIPO_FALTA tf ON r.id_tipo_falta = tf.id_tipo_falta
        JOIN USUARIO u ON r.id_usuario = u.id_usuario
        LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
-       WHERE re.id_estudiante = ?
+       WHERE re.id_estudiante = ? AND r.id_establecimiento = ?
        ORDER BY r.fecha_incidente DESC`,
-      [estudiante.id_estudiante]
+      [estudiante.id_estudiante, req.id_establecimiento]
     );
 
     res.json({ estudiante, registros: registros.map((r) => reducirSiConfidencial(req, r)) });

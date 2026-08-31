@@ -50,17 +50,22 @@ const create = async (req, res) => {
     return res.status(400).json({ message: 'id_protocolo es requerido' });
 
   try {
-    const [generico] = await pool.query(
-      `SELECT 1 FROM CATALOGO_PROTOCOLOS_GENERICOS WHERE id_protocolo = ?`,
+    const [[generico]] = await pool.query(
+      `SELECT ambito FROM CATALOGO_PROTOCOLOS_GENERICOS WHERE id_protocolo = ?`,
       [id_protocolo]
     );
-    if (generico.length === 0)
+    if (!generico)
       return res.status(404).json({ message: 'Protocolo genérico no encontrado' });
 
     const [result] = await pool.query(
-      `INSERT INTO PROTOCOLO_ESTABLECIMIENTO (id_establecimiento, id_protocolo, nombre, descripcion)
-       VALUES (?, ?, ?, ?)`,
-      [req.id_establecimiento, id_protocolo, nombre || null, descripcion || null]
+      // El ámbito se copia del genérico: decide contra qué techo legal se valida
+      // el protocolo (2 meses del art. 16 E letra g para estudiantes, o los
+      // plazos del Título V del Estatuto Administrativo para personal). Antes no
+      // se copiaba y quedaba NULL, con lo que un protocolo de personal se
+      // validaba como si fuera de estudiantes.
+      `INSERT INTO PROTOCOLO_ESTABLECIMIENTO (id_establecimiento, id_protocolo, nombre, descripcion, ambito)
+       VALUES (?, ?, ?, ?, ?)`,
+      [req.id_establecimiento, id_protocolo, nombre || null, descripcion || null, generico.ambito]
     );
     res.status(201).json({ id_protocolo_establecimiento: result.insertId, message: 'Protocolo adoptado por el establecimiento' });
   } catch (err) {

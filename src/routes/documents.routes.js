@@ -11,8 +11,16 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
   fileFilter: (req, file, cb) => {
-    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
-    allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('Tipo de archivo no permitido'));
+    const allowed = [
+      'application/pdf', 'image/jpeg', 'image/png', 'image/webp',
+      'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+    ];
+    // Safari/Android a veces mandan las fotos HEIC sin mimetype útil
+    // (application/octet-stream o vacío), así que caemos a la extensión.
+    const esHeicPorExtension = /\.(heic|heif)$/i.test(file.originalname || '');
+    allowed.includes(file.mimetype) || esHeicPorExtension
+      ? cb(null, true)
+      : cb(new Error('Tipo de archivo no permitido'));
   },
 });
 

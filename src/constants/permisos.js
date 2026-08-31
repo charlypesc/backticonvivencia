@@ -145,6 +145,49 @@ const Permiso = Object.freeze({
   RolCrear         : 71,
   RolEditar        : 72,
   RolAsignarPermiso: 73,
+
+  // ── Ley 21.809 ────────────────────────────────────────────────────────────
+  // tipo_falta (vínculo con el protocolo que la falta obliga a activar)
+  TipoFaltaVincularProtocolo: 93,
+
+  // medida_proteccion (art. 16 E letra j: suspensión y demás medidas)
+  MedidaProteccionVer                 : 94,
+  MedidaProteccionCrear               : 95,
+  MedidaProteccionFinalizar           : 96,
+  MedidaProteccionRegistrarSeguimiento: 97,
+
+  // medida_disciplinaria (medidas previas y su resultado, insumo del informe)
+  MedidaDisciplinariaVer      : 98,
+  MedidaDisciplinariaRegistrar: 99,
+
+  // informe_expulsion (art. 2 N° 5 Ley 21.809: informe previo tasado)
+  InformeExpulsionVer     : 100,
+  InformeExpulsionElaborar: 101,
+  InformeExpulsionDecidir : 102,
+
+  // expediente (acreditación ante la Superintendencia y retención 24 meses)
+  ExpedienteExportar      : 103,
+  ExpedienteExportarMasivo: 104,
+
+  // feriado (calendario que define los días hábiles de los plazos legales)
+  FeriadoAdministrar: 105,
+
+  // documento_institucional (RICE y Plan de Gestión, art. 16 G)
+  DocumentoInstitucionalVer      : 106,
+  DocumentoInstitucionalGestionar: 107,
+
+  // constancia (recepción del RICE por el apoderado)
+  ConstanciaVer      : 108,
+  ConstanciaRegistrar: 109,
+
+  // suspension_cautelar (art. 6 letra d del DFL 2/1998: la cautelar mientras
+  // dura el procedimiento sancionatorio, distinta de la del art. 16 E letra j).
+  // Crear y resolver son facultad del director, no una decisión de producto:
+  // "El director tendrá la facultad de suspender, como medida cautelar".
+  SuspensionCautelarVer                    : 110,
+  SuspensionCautelarCrear                  : 111,
+  SuspensionCautelarRegistrarReconsideracion: 112,
+  SuspensionCautelarResolver               : 113,
 });
 
 // Traducción inversa, para mensajes de error legibles y para el chequeo de
@@ -242,6 +285,27 @@ const CODIGO_POR_ID = Object.freeze({
   90: 'protocolo_activado.cerrar',
   91: 'protocolo_activado.anular',
   92: 'protocolo_activado.ver_bitacora',
+  93: 'tipo_falta.vincular_protocolo',
+  94: 'medida_proteccion.ver',
+  95: 'medida_proteccion.crear',
+  96: 'medida_proteccion.finalizar',
+  97: 'medida_proteccion.registrar_seguimiento',
+  98: 'medida_disciplinaria.ver',
+  99: 'medida_disciplinaria.registrar',
+ 100: 'informe_expulsion.ver',
+ 101: 'informe_expulsion.elaborar',
+ 102: 'informe_expulsion.decidir',
+ 103: 'expediente.exportar',
+ 104: 'expediente.exportar_masivo',
+ 105: 'feriado.administrar',
+ 106: 'documento_institucional.ver',
+ 107: 'documento_institucional.gestionar',
+ 108: 'constancia.ver',
+ 109: 'constancia.registrar',
+ 110: 'suspension_cautelar.ver',
+ 111: 'suspension_cautelar.crear',
+ 112: 'suspension_cautelar.registrar_reconsideracion',
+ 113: 'suspension_cautelar.resolver',
 });
 
 const codigoDe = (id) => CODIGO_POR_ID[id] ?? `desconocido(${id})`;

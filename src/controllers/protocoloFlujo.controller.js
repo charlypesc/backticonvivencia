@@ -3,11 +3,14 @@ const {
   TIPOS_PARTICIPACION,
   camposDelPaso,
   validarCondicion,
+  validarDependencia,
+  parsearCondicion,
   validarGrafo,
   validarPlazo,
   validarPaso,
   validarCampo,
   normalizarOpciones,
+  validarTechoLegal,
 } = require('../utils/flujoProtocolo');
 
 // CRUD del grafo de un protocolo del catálogo global: pasos, transiciones,
@@ -106,6 +109,7 @@ const crearPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+    por_involucrado_rol, requiere_acuse,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -133,13 +137,15 @@ const crearPaso = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO CATALOGO_PROTOCOLO_PASO
          (id_protocolo, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
-          accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+          por_involucrado_rol, requiere_acuse)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_protocolo, nombre.trim(), descripcion?.trim() || null,
         tipo_paso || 'informativo', plazo.valor, plazo.unidad,
         accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
+        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
       ]
     );
     await volverABorrador(id_protocolo);
@@ -155,6 +161,7 @@ const actualizarPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+    por_involucrado_rol, requiere_acuse,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -180,12 +187,14 @@ const actualizarPaso = async (req, res) => {
     await pool.query(
       `UPDATE CATALOGO_PROTOCOLO_PASO
        SET nombre = ?, descripcion = ?, tipo_paso = ?, plazo_valor = ?, plazo_unidad = ?,
-           accion_al_vencer = ?, es_paso_inicial = ?, es_paso_final = ?, orden_visual = ?
+           accion_al_vencer = ?, es_paso_inicial = ?, es_paso_final = ?, orden_visual = ?,
+           por_involucrado_rol = ?, requiere_acuse = ?
        WHERE id_paso = ? AND id_protocolo = ?`,
       [
         nombre.trim(), descripcion?.trim() || null, tipo_paso || paso.tipo_paso,
         plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
+        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
         id_paso, id_protocolo,
       ]
     );
@@ -453,7 +462,7 @@ const reemplazarRoles = async (req, res) => {
 
 const crearCampo = async (req, res) => {
   const { id_protocolo, id_paso } = req.params;
-  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden } = req.body;
+  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden } = req.body;
 
   const problema = validarCampo(req.body);
   if (problema) return res.status(400).json({ message: problema });
@@ -462,14 +471,22 @@ const crearCampo = async (req, res) => {
     const paso = await buscarPaso(id_paso, id_protocolo);
     if (!paso) return res.status(404).json({ message: 'Paso no encontrado en este protocolo' });
 
+    // La dependencia se valida contra los campos que ya tiene el paso: apunta a
+    // uno de ellos, y sin eso el campo quedaría escondido para siempre.
+    const [hermanos] = await pool.query(
+      'SELECT * FROM CATALOGO_PROTOCOLO_PASO_CAMPO WHERE id_paso = ?', [id_paso]
+    );
+    const malaDependencia = validarDependencia(depende_de, codigo.trim(), hermanos);
+    if (malaDependencia) return res.status(400).json({ message: malaDependencia });
+
     const [result] = await pool.query(
       `INSERT INTO CATALOGO_PROTOCOLO_PASO_CAMPO
-         (id_paso, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (id_paso, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_paso, codigo.trim(), etiqueta.trim(), tipo_campo,
         tipo_campo === 'seleccion' ? JSON.stringify(normalizarOpciones(opciones)) : null,
-        es_obligatorio ? 1 : 0, orden ?? 0,
+        es_obligatorio ? 1 : 0, depende_de?.trim() || null, orden ?? 0,
       ]
     );
     await volverABorrador(id_protocolo);
@@ -484,7 +501,7 @@ const crearCampo = async (req, res) => {
 
 const actualizarCampo = async (req, res) => {
   const { id_protocolo, id_paso, id_campo } = req.params;
-  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden } = req.body;
+  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden } = req.body;
 
   const problema = validarCampo(req.body);
   if (problema) return res.status(400).json({ message: problema });
@@ -503,15 +520,31 @@ const actualizarCampo = async (req, res) => {
     // las condiciones que lo usan. Se revalidan todas contra cómo quedaría el
     // campo: si alguna deja de ser válida, se rechaza el cambio en vez de
     // romper el grafo por un lado que el ADMIN no está mirando.
+    const [otros] = await pool.query(
+      'SELECT * FROM CATALOGO_PROTOCOLO_PASO_CAMPO WHERE id_paso = ? AND id_campo <> ?',
+      [id_paso, id_campo]
+    );
+    const malaDependencia = validarDependencia(depende_de, codigo.trim(), otros);
+    if (malaDependencia) return res.status(400).json({ message: malaDependencia });
+
+    // Renombrar este campo también puede dejar colgada la dependencia de otro
+    // que lo apunta: se revisa antes de tocarlo, igual que con las transiciones.
+    const rotos = otros.filter(
+      (c) => c.depende_de && validarDependencia(c.depende_de, c.codigo, [
+        ...otros.filter((o) => o.codigo !== c.codigo),
+        { codigo: codigo.trim(), tipo_campo, opciones: normalizarOpciones(opciones) },
+      ])
+    );
+    if (rotos.length > 0)
+      return res.status(409).json({
+        message: `El cambio rompe la dependencia de '${rotos[0].etiqueta}' ('${rotos[0].depende_de}').`,
+      });
+
     const [salientes] = await pool.query(
       'SELECT id_transicion, condicion FROM CATALOGO_PROTOCOLO_TRANSICION WHERE id_paso_origen = ? AND condicion IS NOT NULL',
       [id_paso]
     );
     if (salientes.length > 0) {
-      const [otros] = await pool.query(
-        'SELECT * FROM CATALOGO_PROTOCOLO_PASO_CAMPO WHERE id_paso = ? AND id_campo <> ?',
-        [id_paso, id_campo]
-      );
       const propuesto = [
         ...otros,
         { codigo: codigo.trim(), tipo_campo, opciones: normalizarOpciones(opciones) },
@@ -527,12 +560,13 @@ const actualizarCampo = async (req, res) => {
 
     await pool.query(
       `UPDATE CATALOGO_PROTOCOLO_PASO_CAMPO
-       SET codigo = ?, etiqueta = ?, tipo_campo = ?, opciones = ?, es_obligatorio = ?, orden = ?
+       SET codigo = ?, etiqueta = ?, tipo_campo = ?, opciones = ?, es_obligatorio = ?,
+           depende_de = ?, orden = ?
        WHERE id_campo = ? AND id_paso = ?`,
       [
         codigo.trim(), etiqueta.trim(), tipo_campo,
         tipo_campo === 'seleccion' ? JSON.stringify(normalizarOpciones(opciones)) : null,
-        es_obligatorio ? 1 : 0, orden ?? 0, id_campo, id_paso,
+        es_obligatorio ? 1 : 0, depende_de?.trim() || null, orden ?? 0, id_campo, id_paso,
       ]
     );
     await volverABorrador(id_protocolo);
@@ -570,6 +604,21 @@ const eliminarCampo = async (req, res) => {
         message: `El campo '${campo[0].codigo}' se usa en ${enUso.length} transición(es) (${enUso.map((t) => t.condicion).join(', ')}). Elimínalas primero.`,
       });
 
+    // Mismo problema con los campos que dependen de este: la dependencia
+    // también guarda el código como texto. Si se borra, el dependiente deja de
+    // mostrarse para siempre y sin ningún aviso.
+    const [dependientes] = await pool.query(
+      `SELECT etiqueta, depende_de FROM CATALOGO_PROTOCOLO_PASO_CAMPO
+        WHERE id_paso = ? AND id_campo <> ? AND depende_de IS NOT NULL`,
+      [id_paso, id_campo]
+    );
+    const colgados = dependientes.filter((c) => parsearCondicion(c.depende_de)?.campo === campo[0].codigo);
+    if (colgados.length > 0)
+      return res.status(409).json({
+        message: `'${colgados[0].etiqueta}' solo se pregunta si se cumple '${colgados[0].depende_de}'. ` +
+                 `Quita esa dependencia antes de eliminar el campo.`,
+      });
+
     await pool.query('DELETE FROM CATALOGO_PROTOCOLO_PASO_CAMPO WHERE id_campo = ? AND id_paso = ?', [
       id_campo, id_paso,
     ]);
@@ -603,7 +652,14 @@ const revisarProtocolo = async (id_protocolo) => {
     [id_protocolo]
   );
 
-  const problemas = validarGrafo(pasos, transiciones);
+  const problemas = validarGrafo(pasos, transiciones, campos);
+
+  // El techo de 2 meses del art. 16 E letra g se comprueba acá, junto al resto
+  // de la coherencia del grafo: un protocolo que no cabe en el plazo legal no
+  // debería poder publicarse ni, por lo tanto, activarse en un caso real.
+  const [[protocolo]] = await pool.query(
+    'SELECT ambito FROM CATALOGO_PROTOCOLOS_GENERICOS WHERE id_protocolo = ?', [id_protocolo]);
+  problemas.push(...validarTechoLegal(pasos, transiciones, protocolo?.ambito));
 
   for (const t of transiciones.filter((t) => t.condicion)) {
     const paso = pasos.find((p) => p.id_paso === t.id_paso_origen);
@@ -651,12 +707,21 @@ const publicar = async (req, res) => {
     if (problemas.length > 0)
       return res.status(409).json({ message: 'El flujo tiene problemas de coherencia', problemas });
 
+    // La versión sube en cada publicación, no en cada edición: entre dos
+    // publicaciones el grafo es borrador y nadie lo ejecuta, así que numerar
+    // los borradores solo produciría versiones que ningún caso usó nunca.
+    // Es el número que después se cita en el expediente ("Protocolo X v3").
     await pool.query(
       `UPDATE CATALOGO_PROTOCOLOS_GENERICOS
-       SET estado_flujo = 'publicado', fecha_publicacion = NOW() WHERE id_protocolo = ?`,
+       SET estado_flujo = 'publicado', fecha_publicacion = NOW(), version = version + 1
+       WHERE id_protocolo = ?`,
       [id_protocolo]
     );
-    res.json({ message: 'Protocolo publicado' });
+    const [[fila]] = await pool.query(
+      'SELECT version FROM CATALOGO_PROTOCOLOS_GENERICOS WHERE id_protocolo = ?',
+      [id_protocolo]
+    );
+    res.json({ message: `Protocolo publicado (versión ${fila.version})`, version: fila.version });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al publicar el protocolo' });

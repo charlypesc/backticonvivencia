@@ -17,12 +17,15 @@ const notificaciones = require('./notificaciones.service');
 
 const LOTE = 200;
 
-// Las tres acciones avisan por la campana; lo que cambia es el texto. 'escalar'
-// todavía no sube a nadie por jerarquía y 'marcar_alerta' no pinta el caso en
-// el dashboard: eso viene cuando haya a quién escalar configurado.
+// Las tres acciones avisan por la campana; lo que cambia es el texto y a quién
+// más le llega. 'escalar' suma al coordinador de convivencia educativa, que es
+// el responsable del Plan de Gestión según el art. 15: si el paso venció, el
+// aviso tiene que salir del círculo de quien no lo hizo.
+//
+// 'marcar_alerta' ya se refleja en el dashboard (tarjeta de pasos vencidos).
 const DESCRIPCION = {
   notificar: 'Plazo vencido',
-  escalar: 'Plazo vencido — corresponde escalar',
+  escalar: 'Plazo vencido — escalado al coordinador de convivencia',
   marcar_alerta: 'Plazo vencido — marcado en alerta',
 };
 
@@ -78,10 +81,30 @@ async function procesarVencidos(lote = LOTE) {
   // Fuera de la transacción a propósito: el vencimiento ya está registrado y no
   // se va a deshacer porque falle un aviso. Cada paso se avisa por separado
   // porque los destinatarios dependen de los roles de ese paso.
+  // El coordinador se resuelve una vez por establecimiento y no una por paso:
+  // en una corrida con muchos vencidos del mismo colegio sería la misma
+  // consulta repetida.
+  const coordinadoresPorEstab = new Map();
+  const coordinadoresDe = async (id_establecimiento) => {
+    if (!coordinadoresPorEstab.has(id_establecimiento))
+      coordinadoresPorEstab.set(
+        id_establecimiento,
+        await notificaciones.coordinadoresDeConvivencia(pool, id_establecimiento)
+      );
+    return coordinadoresPorEstab.get(id_establecimiento);
+  };
+
   for (const p of pasos) {
     const usuarios = await notificaciones.destinatariosDePaso(pool, p.id_activado_paso, [
       'ejecutor', 'aprobador', 'notificado',
     ]);
+
+    // Escalar es avisarle a alguien por encima del paso. Va en la misma
+    // notificación y no en una aparte para que el coordinador vea el caso, no
+    // un aviso suelto sin contexto; crear() ya deduplica si además tenía un rol
+    // en el paso.
+    if (p.accion_al_vencer === 'escalar') usuarios.push(...(await coordinadoresDe(p.id_establecimiento)));
+
     await notificaciones.crear(pool, {
       usuarios,
       id_establecimiento: p.id_establecimiento,
@@ -96,6 +119,70 @@ async function procesarVencidos(lote = LOTE) {
   const porAccion = {};
   for (const p of pasos) porAccion[p.accion_al_vencer] = (porAccion[p.accion_al_vencer] ?? 0) + 1;
   return { procesados: pasos.length, porAccion };
+}
+
+/**
+ * Marca como vencidas las medidas de protección cuyo término ya pasó.
+ *
+ * Una suspensión vencida es más grave que un paso vencido: el art. 16 E letra j
+ * obliga a adoptar otra medida de protección, y mientras eso no ocurra la
+ * persona afectada quedó sin resguardo. Por eso el aviso lo dice explícitamente
+ * en vez de tratarlo como un vencimiento más.
+ *
+ * La medida NO se cierra sola: cerrarla exige registrar la sustituta, y eso es
+ * una decisión del establecimiento, no del job.
+ */
+async function procesarMedidasVencidas(lote = LOTE) {
+  const [medidas] = await pool.query(
+    `SELECT mp.id_medida_proteccion, mp.id_protocolo_activado, mp.id_establecimiento,
+            mp.tipo, mp.fecha_termino
+     FROM MEDIDA_PROTECCION mp
+     JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = mp.id_protocolo_activado
+     WHERE mp.estado = 'vigente' AND mp.fecha_termino IS NOT NULL AND mp.fecha_termino < CURDATE()
+       AND pa.estado = 'activo'
+     ORDER BY mp.fecha_termino
+     LIMIT ?`,
+    [lote]
+  );
+  if (medidas.length === 0) return { procesados: 0 };
+
+  await pool.query(
+    `UPDATE MEDIDA_PROTECCION SET estado = 'vencida' WHERE id_medida_proteccion IN (?)`,
+    [medidas.map((m) => m.id_medida_proteccion)]
+  );
+
+  await pool.query(
+    `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+       (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+     VALUES ?`,
+    [medidas.map((m) => [
+      m.id_protocolo_activado, m.id_establecimiento, 'medida_proteccion_vencida',
+      m.tipo === 'suspension'
+        ? `Venció la suspensión (${m.fecha_termino}). Corresponde adoptar otra medida de protección.`
+        : `Venció la medida de protección '${m.tipo}' (${m.fecha_termino}).`,
+      null, new Date(),
+    ])]
+  );
+
+  for (const m of medidas) {
+    const usuarios = await notificaciones.destinatariosDeCaso(pool, m.id_protocolo_activado);
+    // Una medida de protección vencida siempre escala, sin depender de cómo
+    // esté configurado el paso: mientras no se adopte la medida sustituta hay
+    // alguien sin resguardo, y esa es responsabilidad del coordinador.
+    usuarios.push(...(await notificaciones.coordinadoresDeConvivencia(pool, m.id_establecimiento)));
+    await notificaciones.crear(pool, {
+      usuarios,
+      id_establecimiento: m.id_establecimiento,
+      tipo: 'medida_proteccion_vencida',
+      titulo: m.tipo === 'suspension' ? 'Venció la suspensión' : 'Venció una medida de protección',
+      mensaje: m.tipo === 'suspension'
+        ? 'El procedimiento sigue abierto: hay que adoptar otra medida de protección, no se puede extender la suspensión.'
+        : 'Revisá si corresponde adoptar otra medida.',
+      id_protocolo_activado: m.id_protocolo_activado,
+    });
+  }
+
+  return { procesados: medidas.length };
 }
 
 // Arranca el job periódico. Devuelve el timer para poder detenerlo (los tests
@@ -113,6 +200,9 @@ function iniciarJob() {
       const r = await procesarVencidos();
       if (r.procesados > 0)
         console.log(`[vencimientos] ${r.procesados} paso(s) vencidos`, r.porAccion);
+      const m = await procesarMedidasVencidas();
+      if (m.procesados > 0)
+        console.log(`[vencimientos] ${m.procesados} medida(s) de protección vencidas`);
     } catch (err) {
       // Un fallo del job no puede tumbar el proceso: se reintenta solo en la
       // próxima corrida.
@@ -126,4 +216,4 @@ function iniciarJob() {
   return timer;
 }
 
-module.exports = { procesarVencidos, iniciarJob };
+module.exports = { procesarVencidos, procesarMedidasVencidas, iniciarJob };

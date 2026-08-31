@@ -3,10 +3,13 @@ const {
   TIPOS_PARTICIPACION,
   camposDelPaso,
   validarCondicion,
+  validarDependencia,
+  parsearCondicion,
   validarGrafo,
   validarPlazo,
   validarPaso,
   validarCampo,
+  validarTechoLegal,
   normalizarOpciones,
 } = require('../utils/flujoProtocolo');
 
@@ -35,6 +38,13 @@ const buscarProtocoloEstablecimiento = async (id_protocolo_establecimiento, id_e
   const [rows] = await pool.query(
     `SELECT pe.id_protocolo_establecimiento, pe.id_protocolo, pe.id_establecimiento,
             COALESCE(pe.nombre, cp.nombre) AS nombre,
+            -- El ámbito decide contra qué techo legal se valida el protocolo.
+            -- Se hereda del catálogo cuando la copia local no lo tiene: al
+            -- adoptar no se estaba copiando, así que sin este COALESCE los
+            -- protocolos de personal se validarían con el techo del estudiante.
+            -- Si queda NULL (protocolo propio, sin genérico detrás) se aplica
+            -- el techo del estudiante, que es el más estricto de los dos.
+            COALESCE(pe.ambito, cp.ambito) AS ambito,
             cp.estado_flujo
      FROM PROTOCOLO_ESTABLECIMIENTO pe
      LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON pe.id_protocolo = cp.id_protocolo
@@ -237,12 +247,14 @@ const personalizar = async (req, res) => {
         const [r] = await conn.query(
           `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO
              (id_protocolo_establecimiento, id_paso_origen_catalogo, nombre, descripcion, tipo_paso,
-              plazo_valor, plazo_unidad, accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              plazo_valor, plazo_unidad, accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+              por_involucrado_rol, requiere_acuse)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_protocolo_establecimiento, p.id_paso, p.nombre, p.descripcion, p.tipo_paso,
             p.plazo_valor, p.plazo_unidad, p.accion_al_vencer,
             p.es_paso_inicial, p.es_paso_final, p.orden_visual,
+            p.por_involucrado_rol, p.requiere_acuse,
           ]
         );
         mapa.set(p.id_paso, r.insertId);
@@ -268,11 +280,12 @@ const personalizar = async (req, res) => {
       if (campos.length > 0)
         await conn.query(
           `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO
-             (id_paso_estab, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden) VALUES ?`,
+             (id_paso_estab, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden)
+           VALUES ?`,
           [campos.map((c) => [
             mapa.get(c.id_paso), c.codigo, c.etiqueta, c.tipo_campo,
             c.opciones === null ? null : JSON.stringify(normalizarOpciones(c.opciones)),
-            c.es_obligatorio, c.orden,
+            c.es_obligatorio, c.depende_de ?? null, c.orden,
           ])]
         );
 
@@ -334,6 +347,7 @@ const crearPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+    por_involucrado_rol, requiere_acuse,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -360,12 +374,14 @@ const crearPaso = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO
          (id_protocolo_establecimiento, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
-          accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+          por_involucrado_rol, requiere_acuse)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_protocolo_establecimiento, nombre.trim(), descripcion?.trim() || null,
         tipo_paso || 'informativo', plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
+        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
       ]
     );
     res.status(201).json({ id_paso_estab: result.insertId, message: 'Paso creado' });
@@ -380,6 +396,7 @@ const actualizarPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+    por_involucrado_rol, requiere_acuse,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -419,12 +436,14 @@ const actualizarPaso = async (req, res) => {
     await pool.query(
       `UPDATE PROTOCOLO_ESTABLECIMIENTO_PASO
        SET nombre = ?, descripcion = ?, tipo_paso = ?, plazo_valor = ?, plazo_unidad = ?,
-           accion_al_vencer = ?, es_paso_inicial = ?, es_paso_final = ?, orden_visual = ?
+           accion_al_vencer = ?, es_paso_inicial = ?, es_paso_final = ?, orden_visual = ?,
+           por_involucrado_rol = ?, requiere_acuse = ?
        WHERE id_paso_estab = ? AND id_protocolo_establecimiento = ?`,
       [
         nombre.trim(), descripcion?.trim() || null, tipo_paso || paso.tipo_paso,
         plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
+        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
         id_paso, id_protocolo_establecimiento,
       ]
     );
@@ -688,7 +707,7 @@ const reemplazarRoles = async (req, res) => {
 
 const crearCampo = async (req, res) => {
   const { id_protocolo_establecimiento, id_paso } = req.params;
-  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden } = req.body;
+  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden } = req.body;
 
   const problema = validarCampo(req.body);
   if (problema) return res.status(400).json({ message: problema });
@@ -700,14 +719,22 @@ const crearCampo = async (req, res) => {
     const paso = await buscarPaso(id_paso, id_protocolo_establecimiento);
     if (!paso) return res.status(404).json({ message: 'Paso no encontrado en este protocolo' });
 
+    // La dependencia se valida contra los campos que ya tiene el paso: apunta a
+    // uno de ellos, y sin eso el campo quedaría escondido para siempre.
+    const [hermanos] = await pool.query(
+      'SELECT * FROM PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO WHERE id_paso_estab = ?', [id_paso]
+    );
+    const malaDependencia = validarDependencia(depende_de, codigo.trim(), hermanos);
+    if (malaDependencia) return res.status(400).json({ message: malaDependencia });
+
     const [result] = await pool.query(
       `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO
-         (id_paso_estab, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (id_paso_estab, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_paso, codigo.trim(), etiqueta.trim(), tipo_campo,
         tipo_campo === 'seleccion' ? JSON.stringify(normalizarOpciones(opciones)) : null,
-        es_obligatorio ? 1 : 0, orden ?? 0,
+        es_obligatorio ? 1 : 0, depende_de?.trim() || null, orden ?? 0,
       ]
     );
     res.status(201).json({ id_campo_estab: result.insertId, message: 'Campo creado' });
@@ -721,7 +748,7 @@ const crearCampo = async (req, res) => {
 
 const actualizarCampo = async (req, res) => {
   const { id_protocolo_establecimiento, id_paso, id_campo } = req.params;
-  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden } = req.body;
+  const { codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden } = req.body;
 
   const problema = validarCampo(req.body);
   if (problema) return res.status(400).json({ message: problema });
@@ -739,16 +766,32 @@ const actualizarCampo = async (req, res) => {
     );
     if (actual.length === 0) return res.status(404).json({ message: 'Campo no encontrado en este paso' });
 
+    const [otros] = await pool.query(
+      'SELECT * FROM PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO WHERE id_paso_estab = ? AND id_campo_estab <> ?',
+      [id_paso, id_campo]
+    );
+    const malaDependencia = validarDependencia(depende_de, codigo.trim(), otros);
+    if (malaDependencia) return res.status(400).json({ message: malaDependencia });
+
+    // Renombrar este campo también puede dejar colgada la dependencia de otro
+    // que lo apunta: se revisa antes de tocarlo, igual que con las transiciones.
+    const rotos = otros.filter(
+      (c) => c.depende_de && validarDependencia(c.depende_de, c.codigo, [
+        ...otros.filter((o) => o.codigo !== c.codigo),
+        { codigo: codigo.trim(), tipo_campo, opciones: normalizarOpciones(opciones) },
+      ])
+    );
+    if (rotos.length > 0)
+      return res.status(409).json({
+        message: `El cambio rompe la dependencia de '${rotos[0].etiqueta}' ('${rotos[0].depende_de}').`,
+      });
+
     const [salientes] = await pool.query(
       `SELECT id_transicion_estab, condicion FROM PROTOCOLO_ESTABLECIMIENTO_TRANSICION
        WHERE id_paso_origen = ? AND condicion IS NOT NULL`,
       [id_paso]
     );
     if (salientes.length > 0) {
-      const [otros] = await pool.query(
-        'SELECT * FROM PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO WHERE id_paso_estab = ? AND id_campo_estab <> ?',
-        [id_paso, id_campo]
-      );
       const propuesto = [
         ...otros,
         { codigo: codigo.trim(), tipo_campo, opciones: normalizarOpciones(opciones) },
@@ -764,12 +807,13 @@ const actualizarCampo = async (req, res) => {
 
     await pool.query(
       `UPDATE PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO
-       SET codigo = ?, etiqueta = ?, tipo_campo = ?, opciones = ?, es_obligatorio = ?, orden = ?
+       SET codigo = ?, etiqueta = ?, tipo_campo = ?, opciones = ?, es_obligatorio = ?,
+           depende_de = ?, orden = ?
        WHERE id_campo_estab = ? AND id_paso_estab = ?`,
       [
         codigo.trim(), etiqueta.trim(), tipo_campo,
         tipo_campo === 'seleccion' ? JSON.stringify(normalizarOpciones(opciones)) : null,
-        es_obligatorio ? 1 : 0, orden ?? 0, id_campo, id_paso,
+        es_obligatorio ? 1 : 0, depende_de?.trim() || null, orden ?? 0, id_campo, id_paso,
       ]
     );
     res.json({ message: 'Campo actualizado' });
@@ -807,6 +851,21 @@ const eliminarCampo = async (req, res) => {
     if (enUso.length > 0)
       return res.status(409).json({
         message: `El campo '${campo[0].codigo}' se usa en ${enUso.length} transición(es) (${enUso.map((t) => t.condicion).join(', ')}). Elimínalas primero.`,
+      });
+
+    // Mismo problema con los campos que dependen de este: la dependencia
+    // también guarda el código como texto. Si se borra, el dependiente deja de
+    // mostrarse para siempre y sin ningún aviso.
+    const [dependientes] = await pool.query(
+      `SELECT etiqueta, depende_de FROM PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO
+        WHERE id_paso_estab = ? AND id_campo_estab <> ? AND depende_de IS NOT NULL`,
+      [id_paso, id_campo]
+    );
+    const colgados = dependientes.filter((c) => parsearCondicion(c.depende_de)?.campo === campo[0].codigo);
+    if (colgados.length > 0)
+      return res.status(409).json({
+        message: `'${colgados[0].etiqueta}' solo se pregunta si se cumple '${colgados[0].depende_de}'. ` +
+                 `Quita esa dependencia antes de eliminar el campo.`,
       });
 
     await pool.query(
@@ -860,7 +919,15 @@ const validar = async (req, res) => {
       [id_protocolo_establecimiento]
     );
 
-    const problemas = validarGrafo(pasos, transiciones);
+    const problemas = validarGrafo(pasos, transiciones, campos);
+
+    // El techo legal también se comprueba acá, no solo sobre el catálogo.
+    // Faltaba: un establecimiento podía personalizar los plazos de un protocolo
+    // hasta pasarse de los 2 meses del art. 16 E letra g y activarlo igual,
+    // porque la única validación del techo vivía en protocoloFlujo.controller
+    // (el catálogo genérico), que es justamente el grafo que el colegio deja de
+    // usar en cuanto lo personaliza.
+    problemas.push(...validarTechoLegal(pasos, transiciones, pe.ambito));
 
     for (const t of transiciones.filter((t) => t.condicion)) {
       const paso = pasos.find((p) => p.id_paso === t.id_paso_origen);

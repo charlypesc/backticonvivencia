@@ -3,11 +3,17 @@ const {
   camposDelPaso,
   validarCondicion,
   validarGrafo,
+  pasosDescartados,
   elegirTransicion,
   calcularFechaLimite,
   validarDatosSalida,
+  involucradosDelPaso,
 } = require('../utils/flujoProtocolo');
 const notificaciones = require('../services/notificaciones.service');
+const { cargarFeriados } = require('../services/feriados.service');
+const { reducirSiConfidencial } = require('../utils/confidencial');
+const { tienePermiso } = require('../middleware/auth');
+const { Permiso } = require('../constants/permisos');
 
 // Motor de ejecución de protocolos.
 //
@@ -64,12 +70,25 @@ const registrarEvento = (conn, { activado, paso = null, tipo, descripcion, id_us
     [activado.id_protocolo_activado, activado.id_establecimiento, paso, tipo, descripcion, id_usuario]
   );
 
-// Quién puede actuar sobre un paso: quien tenga el rol correspondiente en el
-// grafo congelado, o el responsable asignado. El ADMIN pasa igual que en el
-// resto del sistema.
+// Quién puede actuar sobre un paso, y a qué título. Devuelve:
+//   'propio'      → tiene el rol del paso, o es el responsable asignado
+//   'en_lugar_de' → no le toca, pero puede tomarlo igual (ver abajo)
+//   null          → no puede
+//
+// Lo de 'en_lugar_de' no abre nada nuevo: quien tiene reasignar_paso ya podía
+// hacer cualquier paso dando un rodeo —se lo reasignaba a sí mismo y quedaba
+// como responsable—, y ese rodeo deja PEOR registro, porque sobrescribe al
+// responsable original y el expediente termina diciendo que el paso siempre fue
+// suyo. Acá se hace derecho y el paso conserva a su responsable, que es el dato
+// que una fiscalización va a preguntar.
+//
+// El gate es reasignar_paso y no completar_paso a propósito: completar_paso lo
+// tienen 13 roles (Funcionario, Docente, Profesor jefe...) y usarlo como gate le
+// abriría los pasos del Director a todos ellos. reasignar_paso lo tienen solo
+// los que gestionan el caso, que son justamente los que ya podían dar el rodeo.
 const puedeActuar = async (req, paso, tipo_participacion) => {
-  if ((req.user.roles ?? []).includes('ADMIN')) return true;
-  if (paso.id_usuario_responsable === req.user.id) return true;
+  if ((req.user.roles ?? []).includes('ADMIN')) return 'propio';
+  if (paso.id_usuario_responsable === req.user.id) return 'propio';
 
   const [rows] = await pool.query(
     `SELECT 1 FROM PROTOCOLO_ACTIVADO_PASO_ROL pr
@@ -79,7 +98,25 @@ const puedeActuar = async (req, paso, tipo_participacion) => {
      LIMIT 1`,
     [paso.id_activado_paso, tipo_participacion, req.user.id]
   );
-  return rows.length > 0;
+  if (rows.length > 0) return 'propio';
+
+  return tienePermiso(req, Permiso.ProtocoloActivadoReasignarPaso) ? 'en_lugar_de' : null;
+};
+
+/**
+ * Los roles a los que sí les tocaba el paso, para nombrarlos en el aviso y en
+ * la bitácora. Sin esto el mensaje sería "este paso no es tuyo" a secas, que no
+ * le dice a nadie de quién era.
+ */
+const rolesDelPaso = async (id_activado_paso, tipo_participacion) => {
+  const [rows] = await pool.query(
+    `SELECT r.nombre FROM PROTOCOLO_ACTIVADO_PASO_ROL pr
+     JOIN ROLES r ON r.rol_id = pr.rol_id
+     WHERE pr.id_activado_paso = ? AND pr.tipo_participacion = ?
+     ORDER BY r.nombre`,
+    [id_activado_paso, tipo_participacion]
+  );
+  return rows.map((r) => r.nombre).join(', ');
 };
 
 // Arranca un paso: lo pone en curso y le calcula el vencimiento. La fecha
@@ -87,7 +124,10 @@ const puedeActuar = async (req, paso, tipo_participacion) => {
 // tres semanas en 'pendiente' no debería nacer ya vencido.
 const iniciarPaso = async (conn, paso) => {
   const ahora = new Date();
-  const limite = calcularFechaLimite(ahora, paso.plazo_valor, paso.plazo_unidad);
+  // Los feriados dependen de la región del establecimiento (hay feriados
+  // regionales), así que se piden por caso y no una vez para todo el sistema.
+  const feriados = await cargarFeriados(paso.id_establecimiento);
+  const limite = calcularFechaLimite(ahora, paso.plazo_valor, paso.plazo_unidad, feriados);
   await conn.query(
     `UPDATE PROTOCOLO_ACTIVADO_PASO
      SET estado = 'en_curso', fecha_inicio = ?, fecha_limite = ?
@@ -172,14 +212,98 @@ const getDetalle = async (req, res) => {
       [req.params.id]
     );
 
+    const [involucrados] = await pool.query(
+      `SELECT * FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+       WHERE id_protocolo_activado = ? ORDER BY FIELD(rol, 'afectado','senalado','denunciante','testigo'), nombre`,
+      [req.params.id]
+    );
+
+    // El hecho que se está tramitando. El caso solo guarda el id del registro,
+    // y quien abre el protocolo tiene que poder leer de qué se trata sin salir
+    // a buscarlo: los pasos se resuelven contra los antecedentes, no contra el
+    // número. Pasa por reducirSiConfidencial como cualquier otra pantalla que
+    // devuelva filas del registro.
+    const [[registro]] = await pool.query(
+      `SELECT r.id_registro, r.asunto, r.fecha_incidente, r.antecedentes, r.acuerdos,
+              r.estado_validacion, r.es_confidencial, r.nota_confidencial, r.id_usuario,
+              r.fecha_creacion, tf.nombre AS tipo_falta_nombre, tf.gravedad,
+              u.correo AS autor_correo
+         FROM REGISTRO_CONVIVENCIA r
+         JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
+         JOIN USUARIO    u  ON u.id_usuario     = r.id_usuario
+        WHERE r.id_registro = ? AND r.id_establecimiento = ?`,
+      [activado.id_registro, req.id_establecimiento]
+    );
+    // El cumplimiento por persona de los pasos que alcanzan a varios. Trae el
+    // nombre del involucrado para que la pantalla no tenga que cruzarlo.
+    const [porPersona] = await pool.query(
+      `SELECT pi.*, i.nombre AS involucrado_nombre, i.rol AS involucrado_rol
+       FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
+       JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
+       WHERE p.id_protocolo_activado = ?
+       ORDER BY FIELD(i.rol, 'afectado','senalado','denunciante','testigo'), i.nombre`,
+      [req.params.id]
+    );
+
+    // La rama que el caso no tomó se marca acá y no se guarda: la pantalla la
+    // esconde para que la línea de tiempo muestre el recorrido real.
+    const descartados = pasosDescartados(pasos, transiciones);
+
+    // A qué título puede actuar quien está mirando, paso por paso. Se calcula
+    // acá con lo que ya se leyó (los roles del grafo y los del token) en vez de
+    // consultar por paso: es la misma regla de puedeActuar, sin viajes extra.
+    //
+    // Va en el detalle y no lo deduce la pantalla porque el frontend no tiene
+    // por qué conocer la regla: si mañana cambia, cambia en un solo lado.
+    const misRoles = req.user.roles ?? [];
+    const esAdministrador = misRoles.includes('ADMIN');
+    const puedeTomarAjenos = tienePermiso(req, Permiso.ProtocoloActivadoReasignarPaso);
+
+    const tituloSobre = (paso, tipo_participacion) => {
+      const delPaso = roles.filter(
+        (r) => r.id_activado_paso === paso.id_activado_paso && r.tipo_participacion === tipo_participacion
+      );
+      // Un paso sin rol de ese tipo (una aprobación que nadie aprueba) no es de
+      // nadie: no se puede "tomar en lugar de" un titular que no existe.
+      if (delPaso.length === 0) return null;
+      if (esAdministrador || paso.id_usuario_responsable === req.user.id) return 'propio';
+      if (delPaso.some((r) => misRoles.includes(r.rol_codigo))) return 'propio';
+      return puedeTomarAjenos ? 'en_lugar_de' : null;
+    };
+
     res.json({
       ...activado,
-      pasos: pasos.map((p) => ({
-        ...p,
-        roles: roles.filter((r) => r.id_activado_paso === p.id_activado_paso),
-        campos: camposDelPaso(p, campos.filter((c) => c.id_activado_paso === p.id_activado_paso)),
-        vencido: p.estado === 'en_curso' && p.fecha_limite !== null && p.fecha_limite < new Date(),
-      })),
+      registro: registro ? reducirSiConfidencial(req, registro) : null,
+      involucrados,
+      pasos: pasos.map((p) => {
+        const suyos = porPersona.filter((x) => x.id_activado_paso === p.id_activado_paso);
+        const delPaso = roles.filter((r) => r.id_activado_paso === p.id_activado_paso);
+        const nombresDe = (tipo) =>
+          delPaso.filter((r) => r.tipo_participacion === tipo).map((r) => r.rol_nombre).join(', ');
+        return {
+          ...p,
+          roles: delPaso,
+          // 'propio' | 'en_lugar_de' | null. La pantalla lo usa para decidir si
+          // muestra el botón y si antes pide confirmación.
+          puede_ejecutar: tituloSobre(p, 'ejecutor'),
+          puede_aprobar: tituloSobre(p, 'aprobador'),
+          // De quién es el paso, ya armado para el mensaje del aviso.
+          rol_ejecutor_nombre: nombresDe('ejecutor'),
+          rol_aprobador_nombre: nombresDe('aprobador'),
+          campos: camposDelPaso(p, campos.filter((c) => c.id_activado_paso === p.id_activado_paso)),
+          vencido: p.estado === 'en_curso' && p.fecha_limite !== null && p.fecha_limite < new Date(),
+          // Quedó colgado de una rama que no se tomó: no es un paso olvidado.
+          descartado: descartados.has(p.id_activado_paso),
+          involucrados: suyos,
+          // Lo que la pantalla pinta en rojo: el paso se dio por hecho pero
+          // alguien todavía no firma. No bloquea nada (decisión de la fase
+          // 12.3); se avisa y se exige motivo recién al cerrar el caso.
+          acuses_pendientes: p.requiere_acuse
+            ? suyos.filter((x) => x.estado !== 'no_aplica' && x.fecha_acuse === null).length
+            : 0,
+        };
+      }),
       transiciones,
     });
   } catch (err) {
@@ -219,7 +343,8 @@ const getBitacora = async (req, res) => {
 const cargarGrafoFuente = async (pe) => {
   const [espejo] = await pool.query(
     `SELECT id_paso_estab AS id_paso, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
-            accion_al_vencer, es_paso_inicial, es_paso_final, id_paso_origen_catalogo
+            accion_al_vencer, es_paso_inicial, es_paso_final, id_paso_origen_catalogo,
+            por_involucrado_rol, requiere_acuse
      FROM PROTOCOLO_ESTABLECIMIENTO_PASO WHERE id_protocolo_establecimiento = ?`,
     [pe.id_protocolo_establecimiento]
   );
@@ -239,7 +364,7 @@ const cargarGrafoFuente = async (pe) => {
     );
     const [campos] = await pool.query(
       `SELECT c.id_paso_estab AS id_paso, c.codigo, c.etiqueta, c.tipo_campo, c.opciones,
-              c.es_obligatorio, c.orden
+              c.es_obligatorio, c.depende_de, c.orden
        FROM PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO c
        JOIN PROTOCOLO_ESTABLECIMIENTO_PASO p ON p.id_paso_estab = c.id_paso_estab
        WHERE p.id_protocolo_establecimiento = ?`,
@@ -267,7 +392,8 @@ const cargarGrafoFuente = async (pe) => {
     [pe.id_protocolo]
   );
   const [campos] = await pool.query(
-    `SELECT c.id_paso AS id_paso, c.codigo, c.etiqueta, c.tipo_campo, c.opciones, c.es_obligatorio, c.orden
+    `SELECT c.id_paso AS id_paso, c.codigo, c.etiqueta, c.tipo_campo, c.opciones, c.es_obligatorio,
+            c.depende_de, c.orden
      FROM CATALOGO_PROTOCOLO_PASO_CAMPO c
      JOIN CATALOGO_PROTOCOLO_PASO p ON p.id_paso = c.id_paso WHERE p.id_protocolo = ?`,
     [pe.id_protocolo]
@@ -284,7 +410,10 @@ const activar = async (req, res) => {
   try {
     const [pes] = await pool.query(
       `SELECT pe.id_protocolo_establecimiento, pe.id_protocolo, pe.id_establecimiento, cp.estado_flujo,
-              COALESCE(pe.nombre, cp.nombre) AS nombre
+              COALESCE(pe.nombre, cp.nombre) AS nombre,
+              pe.version,
+              COALESCE(pe.ambito, cp.ambito, 'estudiante') AS ambito,
+              COALESCE(cp.categoria_ley, 'otra')           AS categoria_ley
        FROM PROTOCOLO_ESTABLECIMIENTO pe
        LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON pe.id_protocolo = cp.id_protocolo
        WHERE pe.id_protocolo_establecimiento = ? AND pe.id_establecimiento = ?`,
@@ -294,14 +423,12 @@ const activar = async (req, res) => {
       return res.status(404).json({ message: 'Protocolo de establecimiento no encontrado' });
     const pe = pes[0];
 
-    // El registro tiene que ser del mismo colegio. REGISTRO_CONVIVENCIA no
-    // guarda el tenant, así que se deriva por el autor; es el único lugar del
-    // motor donde queda un join en cadena, y por eso el resultado se copia a
-    // la columna denormalizada de la activación.
+    // El registro tiene que ser del mismo colegio: se compara contra su propia
+    // columna de tenant (antes se derivaba del autor, y eso dejaba fuera todo
+    // lo creado por un ADMIN, que es global).
     const [reg] = await pool.query(
       `SELECT r.id_registro FROM REGISTRO_CONVIVENCIA r
-       JOIN USUARIO u ON u.id_usuario = r.id_usuario
-       WHERE r.id_registro = ? AND u.id_establecimiento = ?`,
+       WHERE r.id_registro = ? AND r.id_establecimiento = ?`,
       [id_registro, req.id_establecimiento]
     );
     if (reg.length === 0)
@@ -313,7 +440,7 @@ const activar = async (req, res) => {
     // Se valida ANTES de materializar: un grafo roto copiado a un caso es un
     // caso que se atasca a mitad de camino y ya no se puede arreglar editando
     // la plantilla, porque el caso dejó de leerla.
-    const problemas = validarGrafo(fuente.pasos, fuente.transiciones);
+    const problemas = validarGrafo(fuente.pasos, fuente.transiciones, fuente.campos);
     for (const t of fuente.transiciones.filter((t) => t.condicion)) {
       const paso = fuente.pasos.find((p) => p.id_paso === t.id_paso_origen);
       const err = validarCondicion(
@@ -329,12 +456,29 @@ const activar = async (req, res) => {
     try {
       await conn.beginTransaction();
 
+      // El nombre y la versión se congelan junto con el grafo. Hasta ahora el
+      // nombre se heredaba en vivo por COALESCE desde el genérico: si el ADMIN
+      // lo corregía después, un expediente de marzo terminaba mostrando un
+      // nombre que no era el vigente el día en que el caso se activó.
+      //
+      // fecha_limite_investigacion materializa el techo del art. 16 E letra g:
+      // 2 meses cuando el involucrado es estudiante. Para protocolos de
+      // personal no aplica — esos van por el Título V de la Ley 18.834 o la
+      // Ley 18.883, con sus propios plazos.
+      const limiteInvestigacion = pe.ambito === 'personal' ? null : (() => {
+        const f = new Date();
+        f.setUTCMonth(f.getUTCMonth() + 2);
+        return f.toISOString().slice(0, 10);
+      })();
+
       const [cab] = await conn.query(
         `INSERT INTO PROTOCOLO_ACTIVADO
            (id_protocolo_establecimiento, id_registro, id_establecimiento, estado,
-            id_usuario_activo, fecha_activacion)
-         VALUES (?, ?, ?, 'activo', ?, NOW())`,
-        [id_protocolo_establecimiento, id_registro, req.id_establecimiento, req.user.id]
+            nombre_protocolo, version_protocolo, categoria_ley,
+            id_usuario_activo, fecha_activacion, fecha_limite_investigacion)
+         VALUES (?, ?, ?, 'activo', ?, ?, ?, ?, NOW(), ?)`,
+        [id_protocolo_establecimiento, id_registro, req.id_establecimiento,
+         pe.nombre, pe.version, pe.categoria_ley, req.user.id, limiteInvestigacion]
       );
       const id_protocolo_activado = cab.insertId;
 
@@ -346,14 +490,15 @@ const activar = async (req, res) => {
           `INSERT INTO PROTOCOLO_ACTIVADO_PASO
              (id_protocolo_activado, id_establecimiento, id_paso_origen_catalogo, id_paso_origen_estab,
               nombre, descripcion, tipo_paso, estado, es_paso_inicial, es_paso_final,
-              plazo_valor, plazo_unidad, accion_al_vencer)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?)`,
+              plazo_valor, plazo_unidad, accion_al_vencer, por_involucrado_rol, requiere_acuse)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_protocolo_activado, req.id_establecimiento,
             fuente.esEspejo ? p.id_paso_origen_catalogo : p.id_paso,
             fuente.esEspejo ? p.id_paso : null,
             p.nombre, p.descripcion, p.tipo_paso, p.es_paso_inicial, p.es_paso_final,
             p.plazo_valor, p.plazo_unidad, p.accion_al_vencer,
+            p.por_involucrado_rol ?? null, p.requiere_acuse ?? 0,
           ]
         );
         mapa.set(p.id_paso, r.insertId);
@@ -379,18 +524,63 @@ const activar = async (req, res) => {
       if (fuente.campos.length > 0)
         await conn.query(
           `INSERT INTO PROTOCOLO_ACTIVADO_PASO_CAMPO
-             (id_activado_paso, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, orden) VALUES ?`,
+             (id_activado_paso, codigo, etiqueta, tipo_campo, opciones, es_obligatorio, depende_de, orden)
+           VALUES ?`,
           [fuente.campos.map((c) => [
             mapa.get(c.id_paso), c.codigo, c.etiqueta, c.tipo_campo,
             c.opciones === null ? null : JSON.stringify(c.opciones),
-            c.es_obligatorio, c.orden,
+            c.es_obligatorio, c.depende_de ?? null, c.orden,
           ])]
+        );
+
+      // Los involucrados se copian del registro y se congelan con su nombre:
+      // el expediente se conserva 24 meses y el estudiante puede egresar. Un
+      // caso se instruye CONTRA alguien, así que sin esto el expediente no
+      // puede decir contra quién.
+      const [delRegistro] = await conn.query(
+        `SELECT re.id_estudiante, re.rol_en_incidente,
+                CONCAT(e.nombre, ' ', e.apellido) AS nombre,
+                CONCAT(e.run, '-', e.dv) AS rut, c.nombre AS curso
+         FROM REGISTRO_ESTUDIANTE re
+         JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+         LEFT JOIN CURSO c ON c.id_curso = e.id_curso
+         WHERE re.id_registro = ?`,
+        [id_registro]
+      );
+      const involucrados = [];
+      for (const i of delRegistro) {
+        const [r] = await conn.query(
+          `INSERT INTO PROTOCOLO_ACTIVADO_INVOLUCRADO
+             (id_protocolo_activado, id_establecimiento, tipo_persona, id_estudiante,
+              nombre, rut, curso, rol, id_usuario_registro)
+           VALUES (?, ?, 'estudiante', ?, ?, ?, ?, ?, ?)`,
+          [id_protocolo_activado, req.id_establecimiento, i.id_estudiante,
+           i.nombre, i.rut, i.curso, i.rol_en_incidente, req.user.id]
+        );
+        involucrados.push({ id_involucrado: r.insertId, rol: i.rol_en_incidente, nombre: i.nombre });
+      }
+
+      // Los pasos que se cumplen una vez por persona reciben acá su fila por
+      // cada involucrado que corresponda. El paso sigue siendo un solo nodo
+      // del grafo: lo que se multiplica es el registro de cumplimiento.
+      const filasPorPersona = [];
+      for (const p of fuente.pasos)
+        for (const i of involucradosDelPaso(p, involucrados))
+          filasPorPersona.push([mapa.get(p.id_paso), i.id_involucrado]);
+      if (filasPorPersona.length > 0)
+        await conn.query(
+          'INSERT INTO PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO (id_activado_paso, id_involucrado) VALUES ?',
+          [filasPorPersona]
         );
 
       const activado = { id_protocolo_activado, id_establecimiento: req.id_establecimiento };
       await registrarEvento(conn, {
         activado, tipo: 'activacion', id_usuario: req.user.id,
-        descripcion: `Protocolo activado sobre el registro ${id_registro} (flujo ${fuente.origen})`,
+        descripcion:
+          `Protocolo activado sobre el registro ${id_registro} (flujo ${fuente.origen})` +
+          (involucrados.length
+            ? ` — involucrados: ${involucrados.map((i) => `${i.nombre} (${i.rol})`).join(', ')}`
+            : ' — sin involucrados registrados'),
       });
 
       // El paso inicial arranca en curso: un protocolo recién activado con
@@ -526,20 +716,33 @@ const prepararAccion = async (req, res, tipo_participacion) => {
     });
     return null;
   }
-  if (!(await puedeActuar(req, paso, tipo_participacion))) {
+  const titulo = await puedeActuar(req, paso, tipo_participacion);
+  if (!titulo) {
     res.status(403).json({
       message: `No tienes el rol de ${tipo_participacion} para este paso.`,
     });
     return null;
   }
-  return { activado, paso };
+
+  // Quién debía hacerlo, cuando no es quien lo está haciendo. Se resuelve acá
+  // —una sola vez, y solo en ese caso— para que las tres acciones de avance lo
+  // dejen escrito igual en la bitácora sin repetir la consulta.
+  const enLugarDe = titulo === 'en_lugar_de'
+    ? (await rolesDelPaso(paso.id_activado_paso, tipo_participacion)) || null
+    : null;
+
+  return { activado, paso, enLugarDe };
 };
+
+/** Sufijo para la bitácora: deja constancia de que el acto no lo hizo su titular. */
+const sufijoEnLugarDe = (enLugarDe) =>
+  enLugarDe ? ` (en lugar del rol ${enLugarDe})` : '';
 
 const completarPaso = async (req, res) => {
   try {
     const ctx = await prepararAccion(req, res, 'ejecutor');
     if (!ctx) return;
-    const { activado, paso } = ctx;
+    const { activado, paso, enLugarDe } = ctx;
 
     if (paso.tipo_paso === 'aprobacion')
       return res.status(409).json({ message: 'Este es un paso de aprobación: usa la acción de aprobar.' });
@@ -556,7 +759,8 @@ const completarPaso = async (req, res) => {
       await conn.beginTransaction();
       const r = await avanzar(conn, {
         req, activado, paso, estadoFinal: 'completado', datos: validados.datos,
-        evento: 'completado_paso', descripcion: `Completa '${paso.nombre}'`,
+        evento: 'completado_paso',
+        descripcion: `Completa '${paso.nombre}'${sufijoEnLugarDe(enLugarDe)}`,
       });
       if (r.error) {
         await conn.rollback();
@@ -586,7 +790,7 @@ const aprobarPaso = async (req, res) => {
   try {
     const ctx = await prepararAccion(req, res, 'aprobador');
     if (!ctx) return;
-    const { activado, paso } = ctx;
+    const { activado, paso, enLugarDe } = ctx;
 
     if (paso.tipo_paso !== 'aprobacion')
       return res.status(409).json({ message: 'Este paso no es de tipo aprobación.' });
@@ -609,6 +813,7 @@ const aprobarPaso = async (req, res) => {
         datos: { ...validados.datos, aprobado: aprobado ? 'si' : 'no' },
         evento: 'completado_paso',
         descripcion: `${aprobado ? 'Aprueba' : 'Rechaza'} '${paso.nombre}'` +
+          sufijoEnLugarDe(enLugarDe) +
           (comentario?.trim() ? `: ${comentario.trim()}` : ''),
       });
       if (r.error) {
@@ -640,14 +845,15 @@ const omitirPaso = async (req, res) => {
   try {
     const ctx = await prepararAccion(req, res, 'ejecutor');
     if (!ctx) return;
-    const { activado, paso } = ctx;
+    const { activado, paso, enLugarDe } = ctx;
 
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
       const r = await avanzar(conn, {
         req, activado, paso, estadoFinal: 'omitido', datos: null,
-        evento: 'omitido_paso', descripcion: `Omite '${paso.nombre}': ${motivo}`,
+        evento: 'omitido_paso',
+        descripcion: `Omite '${paso.nombre}'${sufijoEnLugarDe(enLugarDe)}: ${motivo}`,
       });
       if (r.error) {
         await conn.rollback();
@@ -744,14 +950,40 @@ const cerrar = async (req, res) => {
     if (activado.estado !== 'activo')
       return res.status(409).json({ message: `El protocolo ya está ${activado.estado}.` });
 
-    const [pendientes] = await pool.query(
-      `SELECT COUNT(*) c FROM PROTOCOLO_ACTIVADO_PASO
-       WHERE id_protocolo_activado = ? AND estado IN ('pendiente','en_curso')`,
+    // Los pasos de una rama que el caso no tomó están pendientes y van a
+    // quedarlo siempre: exigir un motivo por ellos sería pedir que se
+    // justifique no haber hecho algo que nunca correspondía hacer.
+    const [pasosDelCaso] = await pool.query(
+      'SELECT id_activado_paso, estado, datos_salida FROM PROTOCOLO_ACTIVADO_PASO WHERE id_protocolo_activado = ?',
       [req.params.id]
     );
-    if (pendientes[0].c > 0 && !motivo)
+    const [transicionesDelCaso] = await pool.query(
+      'SELECT * FROM PROTOCOLO_ACTIVADO_TRANSICION WHERE id_protocolo_activado = ?',
+      [req.params.id]
+    );
+    const descartados = pasosDescartados(pasosDelCaso, transicionesDelCaso);
+    const pendientes = pasosDelCaso.filter(
+      (p) => ['pendiente', 'en_curso'].includes(p.estado) && !descartados.has(p.id_activado_paso)
+    ).length;
+    if (pendientes > 0 && !motivo)
       return res.status(400).json({
-        message: `Quedan ${pendientes[0].c} paso(s) sin completar. Para cerrar igual, indica un motivo.`,
+        message: `Quedan ${pendientes} paso(s) sin completar. Para cerrar igual, indica un motivo.`,
+      });
+
+    // Una firma pendiente no detiene el protocolo mientras corre (fase 12.3),
+    // pero el cierre es la última oportunidad de dejar dicho por qué se cerró
+    // sin ella. Mismo mecanismo que los pasos sin completar: no se prohíbe, se
+    // exige explicación, que es lo que la fiscalización va a leer.
+    const [sinAcuse] = await pool.query(
+      `SELECT COUNT(*) c FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
+       WHERE p.id_protocolo_activado = ? AND p.requiere_acuse = 1
+         AND pi.estado <> 'no_aplica' AND pi.fecha_acuse IS NULL`,
+      [req.params.id]
+    );
+    if (sinAcuse[0].c > 0 && !motivo)
+      return res.status(400).json({
+        message: `Hay ${sinAcuse[0].c} notificación(es) sin firma de recepción. Para cerrar igual, indica un motivo.`,
       });
 
     const conn = await pool.getConnection();
