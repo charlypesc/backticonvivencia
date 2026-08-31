@@ -1,6 +1,12 @@
 const db = require('../db/connection');
 const { procesarDocumento } = require('../services/documentai.service');
 const { estructurarTextoOCR } = require('../services/gemini.service');
+const { normalizarImagen } = require('../utils/imagen');
+const { comprimirArchivo } = require('../utils/comprimirArchivo');
+
+// Tope de la API de Document AI para procesamiento sincrónico. No es una regla
+// nuestra: es el límite del servicio al que le mandamos el archivo.
+const LIMITE_DOCUMENT_AI = 20 * 1024 * 1024;
 
 const subirDocumento = async (req, res) => {
   if (!req.file) return res.status(400).json({ mensaje: 'No se recibió archivo' });
@@ -24,6 +30,11 @@ console.log('llegando al EP')
     // console.log(tiposFalta)
 
     if (tiposFalta.length === 0) {
+      // Salir sin liberar la conexión la deja tomada para siempre: con el pool
+      // en 10, diez subidas de un colegio sin tipos de falta configurados
+      // cuelgan todo el servidor, no solo esta pantalla.
+      await conn.rollback();
+      conn.release();
       return res.status(400).json({ mensaje: 'El establecimiento no tiene tipos de falta configurados' });
     }
 
@@ -33,8 +44,36 @@ console.log('llegando al EP')
     );
 // console.log([estudiantes])
 // console.log('pase estudiante')
-    // 2. Document AI → texto crudo
-    const { texto, nivelConfianza } = await procesarDocumento(req.file.buffer, req.file.mimetype);
+    // 2. Document AI → texto crudo (HEIC de iPhone se convierte a JPEG antes)
+    let { buffer: bufferOCR, mimetype: mimetypeOCR } = await normalizarImagen(
+      req.file.buffer, req.file.mimetype, req.file.originalname
+    );
+
+    // El acta NO se comprime salvo que haga falta, al revés que el resto de los
+    // adjuntos. Acá el archivo no se guarda —de él solo queda el texto que
+    // devuelve el OCR—, así que comprimir no ahorra nada y sí puede costar
+    // precisión al leer una letra manuscrita. La compresión entra solo para
+    // rescatar un archivo que Document AI rechazaría por tamaño: entre perder
+    // algo de nitidez y no poder digitalizar el acta, conviene lo primero.
+    if (bufferOCR.length > LIMITE_DOCUMENT_AI) {
+      const comprimido = await comprimirArchivo({
+        buffer: bufferOCR, mimetype: mimetypeOCR, originalname: req.file.originalname,
+      });
+      bufferOCR = comprimido.buffer;
+      mimetypeOCR = comprimido.mimetype;
+
+      if (bufferOCR.length > LIMITE_DOCUMENT_AI) {
+        await conn.rollback();
+        conn.release();
+        return res.status(400).json({
+          mensaje:
+            'El archivo es demasiado grande para procesarlo aunque se comprimió. ' +
+            'Probá subiendo las páginas por separado o una foto en vez del PDF completo.',
+        });
+      }
+    }
+
+    const { texto, nivelConfianza } = await procesarDocumento(bufferOCR, mimetypeOCR);
 
     // 3. LLM → estructura JSON con IDs ya resueltos contra los catálogos
     const datosEstructurados = await estructurarTextoOCR(texto, tiposFalta, estudiantes);
@@ -44,9 +83,9 @@ console.log('llegando al EP')
       // 4. Crear el registro de convivencia con datos mínimos (placeholder, se completa abajo)
       const [registroResult] = await conn.query(
         `INSERT INTO REGISTRO_CONVIVENCIA
-          (fecha_incidente, asunto, antecedentes, id_tipo_falta, id_usuario)
-         VALUES (CURDATE(), 'Pendiente de revisión', 'Generado automáticamente desde documento digitalizado', ?, ?)`,
-        [tiposFalta[0].id_tipo_falta, req.user.id]
+          (fecha_incidente, asunto, antecedentes, id_tipo_falta, id_usuario, id_establecimiento)
+         VALUES (CURDATE(), 'Pendiente de revisión', 'Generado automáticamente desde documento digitalizado', ?, ?, ?)`,
+        [tiposFalta[0].id_tipo_falta, req.user.id, req.id_establecimiento]
       );
       const id_registro = registroResult.insertId;
 
@@ -55,7 +94,7 @@ console.log('llegando al EP')
         `INSERT INTO DOCUMENTO_DIGITALIZADO
           (url_archivo, tipo_archivo, fecha_subida, nivel_confianza, id_registro)
          VALUES (?, ?, NOW(), ?, ?)`,
-        [texto, req.file.mimetype, nivelConfianza, id_registro]
+        [texto, mimetypeOCR, nivelConfianza, id_registro]
       );
 
       // 6. Actualizar el registro con los datos estructurados por el LLM

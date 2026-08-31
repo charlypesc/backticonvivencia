@@ -3,6 +3,7 @@ const pool   = require('../db/connection');
 const { rolesDe } = require('../middleware/auth');
 const { resolverEstablecimiento, establecimientoRequerido } = require('../middleware/scope');
 const { generarPassword } = require('../utils/password');
+const { sembrarTiposFalta } = require('../utils/sembrarTiposFalta');
 
 // Solo un ADMIN puede otorgar o quitar el rol ADMIN. Se valida en el servidor:
 // esconder la opción en el frontend no es un control de acceso.
@@ -115,12 +116,19 @@ const create = async (req, res) => {
     //
     // Desde la pantalla de Usuarios es un no-op: ahí el establecimiento ya es
     // tenant. El `AND es_tenant = FALSE` evita escribir de más.
-    if (!esAdminGlobal)
+    if (!esAdminGlobal) {
       await conn.query(
         `UPDATE ESTABLECIMIENTO SET es_tenant = TRUE
           WHERE id_establecimiento = ? AND es_tenant = FALSE`,
         [id_est]
       );
+
+      // Igual que en el alta desde Establecimientos: sin catálogo de faltas el
+      // colegio no puede registrar nada. La función es idempotente, así que
+      // desde la pantalla de Usuarios (donde el colegio ya opera y tiene su
+      // catálogo editado) es un no-op.
+      await sembrarTiposFalta(conn, id_est);
+    }
 
     await conn.commit();
     // El correo y la clave vuelven en la respuesta porque el frontend arma con

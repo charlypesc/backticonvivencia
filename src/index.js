@@ -38,6 +38,21 @@ app.get('/health', (_, res) => res.json({ status: 'ok' }));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/notificaciones', require('./routes/notificaciones.routes'));
 
+// ── Ley 21.809 ──────────────────────────────────────────────────────────────
+// El calendario que define los días hábiles de los plazos legales.
+app.use('/api/feriados', require('./routes/feriados.routes'));
+// Acciones sobre una medida ya registrada; el alta cuelga del caso.
+app.use('/api/medidas-proteccion', require('./routes/medidasProteccion.routes'));
+app.use('/api/medidas-disciplinarias', require('./routes/medidasDisciplinarias.routes'));
+app.use('/api/suspensiones-cautelares', require('./routes/suspensionesCautelares.routes'));
+// Informe previo de expulsión: se crea desde el caso y se tramita acá.
+app.use('/api/informes-expulsion', require('./routes/informesExpulsion.routes'));
+// Exportación masiva redactada (retención de 24 meses).
+app.use('/api/expedientes', require('./routes/expedientes.routes'));
+// RICE y Plan de Gestión, y la constancia de que se entregaron (art. 16 G).
+app.use('/api/documentos-institucionales', require('./routes/documentosInstitucionales.routes'));
+app.use('/api/constancias', require('./routes/constancias.routes'));
+
 // Document IA
 app.use('/api/documents', documentosRoutes);
 

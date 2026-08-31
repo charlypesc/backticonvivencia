@@ -8,8 +8,7 @@ const getResumen = async (req, res) => {
     const [[{ registros_mes }]] = await pool.query(
       `SELECT COUNT(*) AS registros_mes
        FROM REGISTRO_CONVIVENCIA r
-       JOIN USUARIO u ON r.id_usuario = u.id_usuario
-       WHERE u.id_establecimiento = ?
+       WHERE r.id_establecimiento = ?
          AND MONTH(r.fecha_creacion) = MONTH(CURDATE())
          AND YEAR(r.fecha_creacion)  = YEAR(CURDATE())`,
       [id_est]
@@ -18,8 +17,7 @@ const getResumen = async (req, res) => {
     const [[{ pendientes }]] = await pool.query(
       `SELECT COUNT(*) AS pendientes
        FROM REGISTRO_CONVIVENCIA r
-       JOIN USUARIO u ON r.id_usuario = u.id_usuario
-       WHERE u.id_establecimiento = ?
+       WHERE r.id_establecimiento = ?
          AND r.estado_validacion = 'pendiente'`,
       [id_est]
     );
@@ -47,7 +45,7 @@ const getResumen = async (req, res) => {
        LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
        LEFT JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro
        LEFT JOIN ESTUDIANTE e ON re.id_estudiante = e.id_estudiante
-       WHERE u.id_establecimiento = ?
+       WHERE r.id_establecimiento = ?
        GROUP BY r.id_registro
        ORDER BY r.fecha_creacion DESC
        LIMIT 5`,
@@ -71,7 +69,103 @@ const getResumen = async (req, res) => {
       };
     });
 
-    res.json({ registros_mes, pendientes, estudiantes_activos, ultimos: ultimosFiltrados });
+    // ── Cumplimiento (Ley 21.809) ───────────────────────────────────────────
+    // El dashboard medía actividad (cuántos registros, cuántos estudiantes).
+    // Lo que la ley obliga a poder mostrar es otra cosa: si los procedimientos
+    // se están ejecutando dentro de plazo. Un caso vencido no aparecía en
+    // ninguna pantalla, así que solo se enteraba quien abría el caso.
+    const [[cumplimiento]] = await pool.query(
+      `SELECT
+         (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO
+           WHERE id_establecimiento = ? AND estado = 'activo') AS casos_activos,
+
+         (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO_PASO p
+            JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = p.id_protocolo_activado
+           WHERE p.id_establecimiento = ? AND pa.estado = 'activo'
+             AND p.estado IN ('en_curso','vencido')
+             AND p.fecha_limite IS NOT NULL AND p.fecha_limite < NOW()) AS pasos_vencidos,
+
+         (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO_PASO p
+            JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = p.id_protocolo_activado
+           WHERE p.id_establecimiento = ? AND pa.estado = 'activo' AND p.estado = 'en_curso'
+             AND p.fecha_limite BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 48 HOUR)) AS pasos_por_vencer,
+
+         -- Medidas de protección vigentes cuyo término ya pasó: son las que
+         -- obligan a adoptar otra medida y dejan a alguien sin resguardo.
+         (SELECT COUNT(*) FROM MEDIDA_PROTECCION
+           WHERE id_establecimiento = ? AND estado IN ('vigente','vencida')
+             AND fecha_termino IS NOT NULL AND fecha_termino < CURDATE()) AS medidas_vencidas,
+
+         -- Investigaciones que se pasaron del techo legal (2 meses, o el
+         -- término de una segunda suspensión).
+         (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO
+           WHERE id_establecimiento = ? AND estado = 'activo'
+             AND fecha_limite_investigacion IS NOT NULL
+             AND fecha_limite_investigacion < CURDATE()) AS investigaciones_fuera_de_plazo,
+
+         -- Registros cuyo tipo de falta obliga a un protocolo que nadie activó.
+         -- Es la métrica que mide si el colegio está cumpliendo la lógica de
+         -- protocolo, no solo la de registro.
+         (SELECT COUNT(DISTINCT r.id_registro)
+            FROM REGISTRO_CONVIVENCIA r
+            JOIN TIPO_FALTA_PROTOCOLO tfp
+              ON tfp.id_tipo_falta = r.id_tipo_falta AND tfp.obligatorio = 1
+            LEFT JOIN PROTOCOLO_ACTIVADO pa
+              ON pa.id_registro = r.id_registro
+             AND pa.id_protocolo_establecimiento = tfp.id_protocolo_establecimiento
+             AND pa.estado <> 'anulado'
+           WHERE r.id_establecimiento = ? AND pa.id_protocolo_activado IS NULL)
+           AS registros_sin_protocolo,
+
+         -- Suspensiones cautelares cuyo plazo de diez días hábiles para
+         -- resolver ya venció (art. 6 letra d). Es la infracción más cara de
+         -- las que el sistema puede detectar: hay un estudiante suspendido y
+         -- un procedimiento que debió cerrarse y no se cerró.
+         --
+         -- Las que están 'ampliada_por_reconsideracion' quedan fuera a
+         -- propósito: interponer la reconsideración amplía la suspensión hasta
+         -- culminar su tramitación, así que ahí no hay infracción.
+         (SELECT COUNT(*) FROM SUSPENSION_CAUTELAR
+           WHERE id_establecimiento = ? AND estado = 'vigente'
+             AND fecha_resolucion IS NULL
+             AND fecha_limite_resolucion < CURDATE()) AS cautelares_sin_resolver,
+
+         -- Notificaciones entregadas sin firma de recepción. La firma no
+         -- detiene el protocolo (fase 12.3), así que sin esta métrica una
+         -- notificación sin acuse solo se ve abriendo el caso — y es lo primero
+         -- que se pregunta en una fiscalización: a quién se le avisó y cómo
+         -- consta.
+         (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+            JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
+            JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = p.id_protocolo_activado
+           WHERE p.id_establecimiento = ? AND pa.estado = 'activo'
+             AND p.requiere_acuse = 1 AND pi.estado <> 'no_aplica'
+             AND pi.fecha_acuse IS NULL) AS notificaciones_sin_acuse`,
+      [id_est, id_est, id_est, id_est, id_est, id_est, id_est, id_est]
+    );
+
+    // Porcentaje de pasos cerrados dentro de plazo. Es el número que resume si
+    // los procedimientos se ejecutan a tiempo; NULL cuando todavía no hay
+    // ningún paso terminado con plazo, para no mostrar un 0% engañoso.
+    const [[plazos]] = await pool.query(
+      `SELECT COUNT(*) AS terminados,
+              SUM(fecha_completado <= fecha_limite) AS en_plazo
+       FROM PROTOCOLO_ACTIVADO_PASO
+       WHERE id_establecimiento = ? AND fecha_completado IS NOT NULL AND fecha_limite IS NOT NULL`,
+      [id_est]
+    );
+
+    res.json({
+      registros_mes, pendientes, estudiantes_activos,
+      ultimos: ultimosFiltrados,
+      cumplimiento: {
+        ...cumplimiento,
+        pasos_terminados: plazos.terminados,
+        porcentaje_en_plazo: plazos.terminados > 0
+          ? Math.round((plazos.en_plazo / plazos.terminados) * 100)
+          : null,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener resumen' });

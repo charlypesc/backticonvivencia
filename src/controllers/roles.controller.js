@@ -16,10 +16,29 @@ const { esAdmin } = require('../middleware/auth');
 const getAll = async (req, res) => {
   try {
     const est = req.id_establecimiento;
+    // `cantidad_usuarios` cuenta a quiénes tiene ese rol dentro del
+    // establecimiento en el que se está parado (o en todo el sistema si no hay
+    // ninguno). Sirve para no ofrecer como responsable de un paso un rol que en
+    // ese colegio no tiene a nadie detrás: el paso quedaría sin quién hacerlo.
+    // Va como subconsulta y no como JOIN porque un segundo LEFT JOIN uno-a-
+    // muchos multiplicaría las filas y rompería el COUNT de permisos.
+    const filtroEst = est == null ? '' : 'AND u.id_establecimiento = ?';
     const [rows] = await pool.query(
       `SELECT r.rol_id, r.codigo, r.nombre, r.descripcion, r.es_sistema,
               r.id_establecimiento, e.nombre AS nombre_establecimiento,
-              COUNT(rp.permiso_id) AS cantidad_permisos
+              COUNT(rp.permiso_id) AS cantidad_permisos,
+              (SELECT COUNT(*)
+                 FROM USUARIO u
+                WHERE u.activo = TRUE ${filtroEst}
+                  AND (EXISTS (SELECT 1 FROM USUARIO_ROLES ur
+                                WHERE ur.id_usuario = u.id_usuario AND ur.rol_id = r.rol_id
+                                  AND (ur.expira_at IS NULL OR ur.expira_at > NOW()))
+                       -- Usuario sin migrar a USUARIO_ROLES: vale su columna
+                       -- legacy, igual que en el login.
+                       OR (u.rol = r.codigo
+                           AND NOT EXISTS (SELECT 1 FROM USUARIO_ROLES ur2
+                                            WHERE ur2.id_usuario = u.id_usuario)))
+              ) AS cantidad_usuarios
        FROM ROLES r
        LEFT JOIN ROL_PERMISOS rp ON rp.rol_id = r.rol_id
        LEFT JOIN ESTABLECIMIENTO e ON e.id_establecimiento = r.id_establecimiento
@@ -28,7 +47,7 @@ const getAll = async (req, res) => {
          AND (r.id_establecimiento IS NULL ${est == null ? '' : 'OR r.id_establecimiento = ?'})
        GROUP BY r.rol_id
        ORDER BY r.id_establecimiento IS NULL DESC, r.nombre`,
-      est == null ? [] : [est]
+      est == null ? [] : [est, est]
     );
 
     // `editable` se calcula acá y no en el frontend: la regla de quién puede

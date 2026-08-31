@@ -27,6 +27,38 @@ const UNIDADES_PLAZO = ['horas', 'dias_habiles', 'dias_corridos'];
 const ACCIONES_VENCER = ['notificar', 'escalar', 'marcar_alerta'];
 const TIPOS_PARTICIPACION = ['ejecutor', 'aprobador', 'notificado'];
 
+// Roles de un involucrado en el caso. Deliberadamente 'afectado' y 'senalado'
+// en vez de 'víctima' y 'agresor': esas son calificaciones jurídicas que el
+// establecimiento no puede hacer antes de investigar, y el rol se asigna al
+// activar el protocolo, o sea antes de todo.
+const ROLES_INVOLUCRADO = ['afectado', 'senalado', 'testigo', 'denunciante'];
+
+// A qué involucrados les toca un paso. 'todos' es lo que corresponde cuando la
+// obligación alcanza a las dos partes (notificar la resolución), que no es lo
+// mismo que un paso del caso (por_involucrado_rol nulo), que se hace una vez.
+const ROLES_PASO_INVOLUCRADO = [...ROLES_INVOLUCRADO, 'todos'];
+
+const TIPOS_PERSONA = ['estudiante', 'funcionario', 'externo'];
+
+// Cómo se acreditó que la persona recibió la notificación.
+const MEDIOS_ACUSE = ['presencial', 'correo', 'telefono', 'plataforma', 'carta'];
+
+/**
+ * Involucrados del caso a los que les toca un paso.
+ *
+ * Un paso sin `por_involucrado_rol` es del caso y no devuelve ninguno: se hace
+ * una sola vez. El paso sigue siendo un nodo del grafo aunque alcance a tres
+ * personas — lo que se multiplica es el registro de cumplimiento, no el nodo,
+ * porque el motor es de un solo token y tres nodos en paralelo harían que el
+ * primero en completarse arrastrara el caso al paso siguiente.
+ */
+const involucradosDelPaso = (paso, involucrados) => {
+  const rol = paso?.por_involucrado_rol;
+  if (!rol) return [];
+  if (rol === 'todos') return involucrados.filter((i) => i.rol !== 'testigo');
+  return involucrados.filter((i) => i.rol === rol);
+};
+
 // Solo estos tipos pueden decidir una rama. Condicionar sobre un texto libre
 // es una condición que nunca se cumple salvo por coincidencia exacta, y sobre
 // una fecha o un número haría falta comparación por rango, que no existe.
@@ -77,6 +109,51 @@ const validarCondicion = (condicion, campos) => {
   return null;
 };
 
+/**
+ * Valida el `depende_de` de un campo contra los demás campos de su paso.
+ *
+ * Se comprueba al guardar y no al pintar el formulario: una dependencia sobre
+ * un código mal escrito no falla — simplemente esconde el campo para siempre,
+ * y eso se descubre cuando alguien nota que un dato del expediente nunca se
+ * llenó.
+ *
+ * @param {string|null} depende_de   'campo=valor' o 'campo!=valor'
+ * @param {string} codigoPropio      código del campo que se está guardando
+ * @param {Array} campos             los demás campos del mismo paso
+ * @returns {string|null} mensaje de error, o null si es válida
+ */
+const validarDependencia = (depende_de, codigoPropio, campos) => {
+  if (depende_de === undefined || depende_de === null || String(depende_de).trim() === '') return null;
+
+  const texto = String(depende_de).trim();
+  const cond = parsearCondicion(texto);
+  if (!cond)
+    return `Dependencia '${texto}' mal formada. Se espera 'campo=valor' o 'campo!=valor'.`;
+  if (cond.campo === codigoPropio) return 'Un campo no puede depender de sí mismo.';
+
+  const problema = validarCondicion(texto, campos);
+  if (problema)
+    return problema
+      .replace('La condición', 'La dependencia')
+      .replace('no puede decidir una rama. Solo se puede condicionar sobre',
+               'no puede decidir si se muestra otro campo. Solo se puede depender de');
+
+  // Un ciclo (a depende de b y b de a) deja a los dos campos invisibles para
+  // siempre, sin ningún error a la vista.
+  const porCodigo = new Map(campos.map((c) => [c.codigo, c]));
+  const vistos = new Set([codigoPropio]);
+  let actual = cond.campo;
+  while (actual) {
+    if (vistos.has(actual))
+      return `La dependencia forma un ciclo con '${actual}': ninguno de los dos campos se podría mostrar nunca.`;
+    vistos.add(actual);
+    const padre = parsearCondicion(porCodigo.get(actual)?.depende_de);
+    actual = padre?.campo ?? null;
+  }
+
+  return null;
+};
+
 // mysql2 devuelve una columna JSON ya parseada, pero el mismo objeto puede
 // venir del body de un request como string. Se acepta cualquiera de las dos.
 const normalizarOpciones = (opciones) => {
@@ -93,6 +170,108 @@ const normalizarOpciones = (opciones) => {
 };
 
 /**
+ * ¿Las condiciones de estas salidas cubren todas las respuestas posibles?
+ *
+ * Un paso con una pregunta Sí/No y sus dos ramas no necesita salida por
+ * defecto: pase lo que pase, una de las dos se cumple. Exigirle igual una
+ * tercera salida "por defecto" obliga a inventar un destino que nunca se usa.
+ *
+ * Se considera cubierto cuando todas las condiciones son sobre el mismo campo
+ * obligatorio y, entre todas, agotan sus valores (o hay un `!=`, que se queda
+ * con todo el resto).
+ */
+const salidasCubrenTodosLosCasos = (salientes, campos) => {
+  const conds = salientes.map((t) => parsearCondicion(t.condicion));
+  if (conds.length === 0 || conds.some((c) => !c)) return false;
+
+  const codigo = conds[0].campo;
+  if (conds.some((c) => c.campo !== codigo)) return false;
+
+  const campo = campos.find((c) => c.codigo === codigo);
+  // Sin el campo a la vista no se puede afirmar que estén cubiertos; el
+  // problema real (condición sobre un campo inexistente) lo reporta
+  // validarCondicion.
+  if (!campo || !campo.es_obligatorio) return false;
+
+  if (conds.some((c) => c.operador === '!=')) return true;
+
+  const posibles = campo.tipo_campo === 'booleano'
+    ? VALORES_BOOLEANO
+    : normalizarOpciones(campo.opciones);
+  if (posibles.length === 0) return false;
+
+  const cubiertos = new Set(conds.map((c) => c.valor));
+  return posibles.every((v) => cubiertos.has(v));
+};
+
+/**
+ * Los pasos de un caso que ya no se van a ejecutar: la rama que no se tomó.
+ *
+ * Al activar un protocolo se materializa el grafo entero, ramas incluidas. Si
+ * en la bifurcación se respondió "Sí", el paso colgado del "No" queda pendiente
+ * para siempre y se lee como una tarea que alguien olvidó hacer — aparece en la
+ * línea de tiempo y hace que cerrar el caso exija justificar pasos incompletos
+ * que nunca correspondieron.
+ *
+ * Se deriva de las respuestas ya registradas en vez de guardarse: un estado más
+ * en la tabla es un estado más que puede quedar desincronizado, y la regla es
+ * exactamente la del motor — desde un paso ya cerrado, la única salida viva es
+ * la que `elegirTransicion` habría tomado con sus `datos_salida`.
+ *
+ * @param {Array} pasos        filas de PROTOCOLO_ACTIVADO_PASO
+ * @param {Array} transiciones filas de PROTOCOLO_ACTIVADO_TRANSICION
+ * @returns {Set<number>} ids (`id_activado_paso`) de los pasos descartados
+ */
+const pasosDescartados = (pasos, transiciones) => {
+  const idDe = (p) => p.id_activado_paso ?? p.id_paso;
+  const porId = new Map(pasos.map((p) => [idDe(p), p]));
+
+  const salientesPor = new Map();
+  const entrantesPor = new Map();
+  for (const t of transiciones) {
+    if (!salientesPor.has(t.id_paso_origen)) salientesPor.set(t.id_paso_origen, []);
+    salientesPor.get(t.id_paso_origen).push(t);
+    if (!entrantesPor.has(t.id_paso_destino)) entrantesPor.set(t.id_paso_destino, []);
+    entrantesPor.get(t.id_paso_destino).push(t);
+  }
+
+  const fuera = new Set();
+
+  // Una transición está muerta si el caso ya no puede pasar por ella.
+  const muerta = (t) => {
+    if (fuera.has(t.id_paso_origen)) return true;
+    const origen = porId.get(t.id_paso_origen);
+    if (!origen) return true;
+    // Mientras el origen no se cierre, todavía puede mandar el caso por acá.
+    if (!['completado', 'omitido'].includes(origen.estado)) return false;
+    const elegida = elegirTransicion(salientesPor.get(t.id_paso_origen) ?? [], origen.datos_salida);
+    // Sin destino elegible (grafo roto) no se descarta nada: el problema es
+    // otro y esconder pasos lo haría más difícil de ver.
+    if (elegida.error) return false;
+    return elegida.transicion !== t;
+  };
+
+  // Punto fijo: descartar un paso mata sus salidas, y eso puede descartar al
+  // siguiente, en cadena.
+  let cambio = true;
+  while (cambio) {
+    cambio = false;
+    for (const p of pasos) {
+      const id = idDe(p);
+      if (fuera.has(id) || p.estado !== 'pendiente') continue;
+      const entrantes = entrantesPor.get(id) ?? [];
+      // Sin entradas es el paso inicial (o uno suelto): no se descarta.
+      if (entrantes.length === 0) continue;
+      if (entrantes.every(muerta)) {
+        fuera.add(id);
+        cambio = true;
+      }
+    }
+  }
+  return fuera;
+};
+
+/**
  * Batería de coherencia sobre el grafo completo. Corre al publicar y no en
  * cada edición: mientras el ADMIN arma el protocolo el grafo está roto casi
  * todo el tiempo (el primer paso creado no tiene todavía ninguna transición),
@@ -100,9 +279,12 @@ const normalizarOpciones = (opciones) => {
  *
  * @param {Array} pasos        filas de *_PASO
  * @param {Array} transiciones filas de *_TRANSICION
+ * @param {Array} campos       filas de *_PASO_CAMPO; sin ellas no se puede
+ *                             saber si las condiciones de un paso agotan las
+ *                             respuestas posibles y se exige salida por defecto
  * @returns {string[]} problemas encontrados; vacío = grafo publicable
  */
-const validarGrafo = (pasos, transiciones) => {
+const validarGrafo = (pasos, transiciones, campos = []) => {
   const problemas = [];
 
   if (pasos.length === 0) return ['El protocolo no tiene ningún paso definido.'];
@@ -149,8 +331,16 @@ const validarGrafo = (pasos, transiciones) => {
 
     // Si todas las salidas son condicionales y ninguna se cumple, el caso
     // queda igual de atascado que sin salidas. La rama por defecto es el
-    // escape obligatorio.
-    if (salientes.length > 0 && salientes.every((t) => t.condicion) && defaults.length === 0)
+    // escape obligatorio, salvo cuando las condiciones ya cubren todas las
+    // respuestas posibles (el caso corriente: una pregunta Sí/No con sus dos
+    // ramas), donde no hay ningún hueco que tapar.
+    const camposDelOrigen = camposDelPaso(p, campos.filter((c) => (c.id_paso ?? c.id_paso_estab) === p.id_paso));
+    if (
+      salientes.length > 0 &&
+      salientes.every((t) => t.condicion) &&
+      defaults.length === 0 &&
+      !salidasCubrenTodosLosCasos(salientes, camposDelOrigen)
+    )
       problemas.push(
         `Todas las transiciones desde '${p.nombre}' son condicionales y no hay una por defecto: ` +
         'si ninguna condición se cumple, el caso queda sin destino.'
@@ -243,13 +433,24 @@ const elegirTransicion = (transiciones, datosSalida) => {
 /**
  * Fecha límite de un paso que arranca en `desde`.
  *
- * `dias_habiles` cuenta de lunes a viernes y NO descuenta feriados: no hay
- * calendario de feriados en el sistema todavía. Para plazos legales de la
- * Superintendencia eso puede adelantar el vencimiento respecto del plazo real,
- * así que hay que reemplazarlo por un calendario de verdad antes de apoyarse
- * en las alertas para un sumario.
+ * `dias_habiles` descuenta fines de semana y feriados. Los feriados llegan como
+ * parámetro y no se consultan acá para no romper la regla del archivo: estas
+ * funciones son puras y no tocan la BD, porque las mismas corren sobre la
+ * plantilla, sobre el espejo y sobre el caso. Quien llama los trae con
+ * `feriados.service.js`, que los cachea.
+ *
+ * Si falta el set se lanza TypeError en vez de contar sin feriados: seguir de
+ * largo devolvería una fecha límite plausible pero corrida, y un plazo legal
+ * mal contado descubierto en una fiscalización no tiene arreglo retroactivo.
+ * Es el mismo criterio que requirePermission con un código string.
+ *
+ * @param {Date} desde
+ * @param {number} plazo_valor
+ * @param {string} plazo_unidad
+ * @param {Set<string>} [feriados] fechas 'YYYY-MM-DD' inhábiles; obligatorio
+ *   para 'dias_habiles'
  */
-const calcularFechaLimite = (desde, plazo_valor, plazo_unidad) => {
+const calcularFechaLimite = (desde, plazo_valor, plazo_unidad, feriados) => {
   if (!plazo_valor || !plazo_unidad) return null;
   const f = new Date(desde);
 
@@ -262,13 +463,46 @@ const calcularFechaLimite = (desde, plazo_valor, plazo_unidad) => {
     return f;
   }
 
+  if (!(feriados instanceof Set))
+    throw new TypeError(
+      'calcularFechaLimite necesita el set de feriados para contar días hábiles. ' +
+      'Traelo con cargarFeriados(id_establecimiento) de services/feriados.service.js.'
+    );
+
   let restantes = plazo_valor;
   while (restantes > 0) {
     f.setUTCDate(f.getUTCDate() + 1);
     const dia = f.getUTCDay();
-    if (dia !== 0 && dia !== 6) restantes--;
+    if (dia === 0 || dia === 6) continue;
+    if (feriados.has(f.toISOString().slice(0, 10))) continue;
+    restantes--;
   }
   return f;
+};
+
+/**
+ * ¿Este campo se le pregunta a alguien que ya respondió `datos`?
+ *
+ * Un campo puede depender de otro del mismo paso (`depende_de: 'campo=valor'`,
+ * la misma sintaxis de las condiciones de las transiciones, para no inventar un
+ * segundo lenguaje). "Descargos presentados" solo tiene sentido si antes se
+ * dijo que sí los presentó: preguntarlo igual invita a llenar un campo que
+ * contradice la respuesta anterior, y eso queda escrito en el expediente.
+ *
+ * Sin `depende_de` el campo se pregunta siempre. Si el campo del que depende
+ * todavía no fue respondido, el dependiente no se muestra: no se puede afirmar
+ * que corresponda.
+ */
+const campoVisible = (campo, datos) => {
+  const cond = parsearCondicion(campo?.depende_de);
+  if (!cond) return true;
+
+  const valor = (datos ?? {})[cond.campo];
+  if (valor === undefined || valor === null || String(valor).trim() === '') return false;
+
+  return cond.operador === '='
+    ? String(valor) === cond.valor
+    : String(valor) !== cond.valor;
 };
 
 /**
@@ -289,6 +523,12 @@ const validarDatosSalida = (campos, datos) => {
 
   const limpio = {};
   for (const campo of campos) {
+    // Un campo que no correspondía preguntarse no se exige ni se guarda, aunque
+    // el cliente lo mande: es lo que pasa cuando alguien responde 'sí', llena el
+    // dependiente y después cambia a 'no'. Guardarlo dejaría en el expediente un
+    // dato que la propia respuesta anterior desmiente.
+    if (!campoVisible(campo, entrada)) continue;
+
     const valor = entrada[campo.codigo];
     const vacio = valor === undefined || valor === null || String(valor).trim() === '';
 
@@ -339,12 +579,14 @@ const validarPlazo = (plazo_valor, plazo_unidad) => {
 };
 
 /** Validaciones de forma de un paso, sin mirar la BD. Devuelve mensaje o null. */
-const validarPaso = ({ nombre, tipo_paso, accion_al_vencer }) => {
+const validarPaso = ({ nombre, tipo_paso, accion_al_vencer, por_involucrado_rol }) => {
   if (!nombre?.trim()) return 'Nombre es requerido';
   if (tipo_paso && !TIPOS_PASO.includes(tipo_paso))
     return `tipo_paso debe ser uno de: ${TIPOS_PASO.join(', ')}.`;
   if (accion_al_vencer && !ACCIONES_VENCER.includes(accion_al_vencer))
     return `accion_al_vencer debe ser uno de: ${ACCIONES_VENCER.join(', ')}.`;
+  if (por_involucrado_rol && !ROLES_PASO_INVOLUCRADO.includes(por_involucrado_rol))
+    return `por_involucrado_rol debe ser uno de: ${ROLES_PASO_INVOLUCRADO.join(', ')}, o quedar vacío si el paso es del caso.`;
   return null;
 };
 
@@ -364,12 +606,125 @@ const validarCampo = ({ codigo, etiqueta, tipo_campo, opciones }) => {
   return null;
 };
 
+// Techo legal de la investigación cuando el involucrado es estudiante: 2 meses
+// (art. 16 E letra g del DFL 2/2009, según Ley 21.809).
+const DIAS_TECHO_ESTUDIANTE = 60;
+
+// Techo legal cuando el involucrado es personal del establecimiento.
+//
+// El inciso final del art. 16 E es explícito: cuando se determina la
+// responsabilidad administrativa de profesionales o asistentes de la educación
+// en establecimientos "administrados por Servicios Locales, municipalidades o
+// corporaciones municipales", los procedimientos investigativos "se regirán por
+// los plazos y etapas establecidas en el Título V de la ley N° 18.834 (...) o,
+// en su defecto, cuando corresponda, (...) de la ley N° 18.883".
+//
+// O sea que estos casos NO quedan sin plazo: quedan sujetos a otro. Antes acá
+// se eximían, que es la mitad de la regla y la mitad equivocada.
+//
+// El tope se toma del tramo más largo que la ley admite: la instrucción de un
+// sumario administrativo, 20 días hábiles prorrogables "hasta completar sesenta
+// días" (art. 133 de la Ley 18.883; el art. 141 de la 18.834 es equivalente).
+// Se elige el más permisivo a propósito: un protocolo que igual lo excede no
+// cabe ni en el procedimiento más largo que la ley contempla.
+//
+// Y son días HÁBILES, no corridos: el art. 143 de la 18.883 lo dice sin
+// ambigüedad — "los plazos señalados en este título serán de días hábiles".
+const DIAS_HABILES_TECHO_PERSONAL = 60;
+
+// Un día hábil ocupa ~1,4 días de calendario (5 hábiles por semana de 7). Es
+// una aproximación deliberada: al guardar el grafo todavía no existe la fecha
+// de inicio, así que no se puede saber qué feriados va a cruzar. Se prefiere
+// aproximar por exceso, porque el error caro es dejar publicar un protocolo que
+// en la práctica se pasa del plazo legal.
+const DIAS_CALENDARIO = { horas: (v) => v / 24, dias_corridos: (v) => v, dias_habiles: (v) => v * 1.4 };
+
+const plazoEnDias = (paso) =>
+  !paso.plazo_valor || !paso.plazo_unidad ? 0 : DIAS_CALENDARIO[paso.plazo_unidad](paso.plazo_valor);
+
+/**
+ * Camino más largo en días de calendario, siguiendo las transiciones.
+ *
+ * Se toma el camino más largo y no la suma de todos los pasos porque un grafo
+ * con ramas alternativas nunca las ejecuta todas: sumarlas rechazaría
+ * protocolos que en la práctica siempre terminan a tiempo.
+ *
+ * Los ciclos se cortan (un paso no se cuenta dos veces en el mismo camino). Un
+ * protocolo con vuelta atrás podría en teoría girar indefinidamente, pero eso
+ * no es un problema de plazos sino de diseño del grafo, y lo reporta validarGrafo.
+ */
+const caminoMasLargoEnDias = (pasos, transiciones) => {
+  const porId = new Map(pasos.map((p) => [p.id_paso, p]));
+  const salidas = new Map();
+  for (const t of transiciones) {
+    if (!salidas.has(t.id_paso_origen)) salidas.set(t.id_paso_origen, []);
+    salidas.get(t.id_paso_origen).push(t.id_paso_destino);
+  }
+
+  const desde = (id, enCamino) => {
+    if (enCamino.has(id)) return 0;
+    const paso = porId.get(id);
+    if (!paso) return 0;
+    enCamino.add(id);
+    let peor = 0;
+    for (const destino of salidas.get(id) ?? [])
+      peor = Math.max(peor, desde(destino, enCamino));
+    enCamino.delete(id);
+    return plazoEnDias(paso) + peor;
+  };
+
+  const iniciales = pasos.filter((p) => p.es_paso_inicial);
+  return Math.max(0, ...(iniciales.length > 0 ? iniciales : pasos).map((p) => desde(p.id_paso, new Set())));
+};
+
+/**
+ * @returns {string[]} problemas; vacío si el protocolo cabe en el plazo legal
+ */
+const validarTechoLegal = (pasos, transiciones, ambito) => {
+  const dias = caminoMasLargoEnDias(pasos, transiciones);
+
+  // Un protocolo 'mixto' alcanza a estudiantes y a personal, así que tiene que
+  // caber en el más corto de los dos techos: el del estudiante.
+  const esSoloPersonal = ambito === 'personal';
+
+  // El techo del personal está fijado en días hábiles y el camino más largo se
+  // mide en días de calendario, así que se convierte con la misma equivalencia
+  // que usa el resto del archivo.
+  const techo = esSoloPersonal
+    ? DIAS_CALENDARIO.dias_habiles(DIAS_HABILES_TECHO_PERSONAL)
+    : DIAS_TECHO_ESTUDIANTE;
+
+  if (dias <= techo) return [];
+
+  return esSoloPersonal
+    ? [
+        `El camino más largo del protocolo suma ~${Math.round(dias)} días de calendario y la ` +
+        `instrucción de un sumario administrativo no puede exceder ${DIAS_HABILES_TECHO_PERSONAL} días ` +
+        `hábiles (~${Math.round(techo)} de calendario), ni siquiera con la prórroga del art. 133 de la ` +
+        'Ley 18.883. El art. 16 E, inciso final, remite a esos plazos para los casos de personal.',
+      ]
+    : [
+        `El camino más largo del protocolo suma ~${Math.round(dias)} días de calendario y la ` +
+        `investigación de un caso con estudiantes no puede exceder 2 meses (~${DIAS_TECHO_ESTUDIANTE} días, ` +
+        'art. 16 E letra g). Acortá los plazos de los pasos o marcá el protocolo como de ámbito personal.',
+      ];
+};
+
 module.exports = {
+  DIAS_TECHO_ESTUDIANTE,
+  DIAS_HABILES_TECHO_PERSONAL,
+  caminoMasLargoEnDias,
+  validarTechoLegal,
   TIPOS_CAMPO,
   TIPOS_PASO,
   UNIDADES_PLAZO,
   ACCIONES_VENCER,
   TIPOS_PARTICIPACION,
+  ROLES_INVOLUCRADO,
+  ROLES_PASO_INVOLUCRADO,
+  TIPOS_PERSONA,
+  MEDIOS_ACUSE,
+  involucradosDelPaso,
   TIPOS_DECIDIBLES,
   VALORES_BOOLEANO,
   RE_CODIGO_CAMPO,
@@ -378,9 +733,12 @@ module.exports = {
   elegirTransicion,
   calcularFechaLimite,
   validarDatosSalida,
+  campoVisible,
   parsearCondicion,
   validarCondicion,
+  validarDependencia,
   validarGrafo,
+  pasosDescartados,
   validarPlazo,
   validarPaso,
   validarCampo,

@@ -131,4 +131,72 @@ const avisarPasoEnCurso = async (ejecutor, { activado, paso, excepto = null }) =
   });
 };
 
-module.exports = { destinatariosDePaso, crear, avisarPasoEnCurso };
+/**
+ * Destinatarios de un aviso que es del CASO y no de un paso puntual: el
+ * vencimiento de una medida de protección, por ejemplo.
+ *
+ * Alcanza a quien tenga algún rol en cualquier paso del caso, más quien lo
+ * activó. Se avisa a todos y no solo al paso en curso porque una medida vencida
+ * no pertenece a ningún paso: es del procedimiento entero, y quien tiene que
+ * reaccionar puede ser alguien que todavía no llegó a su paso.
+ *
+ * @param {object} ejecutor conn de la transacción, o el pool
+ * @param {number} id_protocolo_activado
+ * @returns {Promise<number[]>} ids de usuario, sin repetir
+ */
+const destinatariosDeCaso = async (ejecutor, id_protocolo_activado) => {
+  const [rows] = await ejecutor.query(
+    `SELECT DISTINCT u.id_usuario
+     FROM PROTOCOLO_ACTIVADO_PASO p
+     JOIN PROTOCOLO_ACTIVADO_PASO_ROL pr ON pr.id_activado_paso = p.id_activado_paso
+     JOIN USUARIO_ROLES ur ON ur.rol_id = pr.rol_id
+       AND (ur.expira_at IS NULL OR ur.expira_at > NOW())
+     JOIN USUARIO u ON u.id_usuario = ur.id_usuario AND u.activo = 1
+     WHERE p.id_protocolo_activado = ?
+       AND u.id_establecimiento = p.id_establecimiento`,
+    [id_protocolo_activado]
+  );
+
+  const [[caso]] = await ejecutor.query(
+    'SELECT id_usuario_activo FROM PROTOCOLO_ACTIVADO WHERE id_protocolo_activado = ?',
+    [id_protocolo_activado]
+  );
+
+  const ids = rows.map((r) => r.id_usuario);
+  if (caso?.id_usuario_activo) ids.push(caso.id_usuario_activo);
+  return [...new Set(ids)];
+};
+
+/**
+ * Coordinadores de convivencia educativa del establecimiento.
+ *
+ * Es a quien escala un plazo vencido. Se busca por `codigo` y no por el nombre
+ * del rol: el art. 15 de la Ley 21.809 renombró al "encargado de convivencia"
+ * como Coordinador de Convivencia Educativa, y ese renombre se hizo cambiando
+ * solo el nombre visible — el código sigue siendo ENCARGADO porque es lo que
+ * comparan el JWT y requireRole.
+ *
+ * @param {object} ejecutor conn de la transacción, o el pool
+ * @param {number} id_establecimiento
+ * @returns {Promise<number[]>} ids de usuario, sin repetir
+ */
+const coordinadoresDeConvivencia = async (ejecutor, id_establecimiento) => {
+  const [rows] = await ejecutor.query(
+    `SELECT DISTINCT u.id_usuario
+     FROM USUARIO_ROLES ur
+     JOIN ROLES r ON r.rol_id = ur.rol_id AND r.codigo = 'ENCARGADO' AND r.activo = TRUE
+     JOIN USUARIO u ON u.id_usuario = ur.id_usuario AND u.activo = 1
+     WHERE u.id_establecimiento = ?
+       AND (ur.expira_at IS NULL OR ur.expira_at > NOW())`,
+    [id_establecimiento]
+  );
+  return rows.map((r) => r.id_usuario);
+};
+
+module.exports = {
+  destinatariosDePaso,
+  destinatariosDeCaso,
+  coordinadoresDeConvivencia,
+  crear,
+  avisarPasoEnCurso,
+};
