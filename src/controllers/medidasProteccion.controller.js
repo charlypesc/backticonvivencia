@@ -2,6 +2,7 @@ const pool = require('../db/connection');
 const { calcularFechaLimite } = require('../utils/flujoProtocolo');
 const { cargarFeriados } = require('../services/feriados.service');
 const notificaciones = require('../services/notificaciones.service');
+const { TIPOS_MEDIDA, etiquetaTipo } = require('../constants/medidasProteccion');
 
 // Medidas de protección de un caso (art. 16 E letra j).
 //
@@ -104,11 +105,17 @@ const getByCaso = async (req, res) => {
 const crear = async (req, res) => {
   const {
     tipo, descripcion, fundamento, id_estudiante,
-    fecha_inicio, dias_habiles, es_reaplicacion,
+    fecha_inicio, dias_habiles, es_reaplicacion, id_activado_paso,
   } = req.body;
 
   if (!tipo || !fecha_inicio)
     return res.status(400).json({ message: 'tipo y fecha_inicio son requeridos' });
+
+  // El tipo se rechaza si no está en el catálogo en vez de aplanarlo a 'otra':
+  // de él dependen el tope de 15 días y la obligación de sustituir la medida al
+  // vencer, y una medida guardada como 'otra' se salta las dos.
+  if (!TIPOS_MEDIDA.includes(tipo))
+    return res.status(400).json({ message: `tipo inválido. Valores: ${TIPOS_MEDIDA.join(', ')}` });
 
   // La ley admite la suspensión solo cuando no se puede resguardar a la persona
   // afectada con otra medida. Exigir el fundamento por escrito es lo que hace
@@ -135,6 +142,20 @@ const crear = async (req, res) => {
     if (caso.estado !== 'activo')
       return res.status(409).json({ message: 'El caso no está activo' });
 
+    // De qué paso salió la medida. Es opcional —la ley permite adoptarla
+    // "desde el momento en que el establecimiento tome conocimiento", incluso
+    // antes de llegar al paso de resguardo— pero si viene, tiene que ser un
+    // paso de ESTE caso: apuntar a un paso ajeno haría que el otro protocolo
+    // diera por cumplido un resguardo que nunca ordenó.
+    if (id_activado_paso) {
+      const [[paso]] = await conn.query(
+        'SELECT id_activado_paso FROM PROTOCOLO_ACTIVADO_PASO WHERE id_activado_paso = ? AND id_protocolo_activado = ?',
+        [id_activado_paso, req.params.id]
+      );
+      if (!paso)
+        return res.status(400).json({ message: 'El paso indicado no pertenece a este caso' });
+    }
+
     // El término se calcula, no se digita: es el plazo legal, no una fecha que
     // alguien elija. Con feriados de la región del establecimiento.
     let fecha_termino = null;
@@ -154,15 +175,17 @@ const crear = async (req, res) => {
       // verdad y no una atribución inventada.
       `INSERT INTO MEDIDA_PROTECCION
          (id_protocolo_activado, id_establecimiento, id_estudiante, id_involucrado, tipo, descripcion,
-          fundamento, fecha_inicio, fecha_termino, dias_habiles, es_reaplicacion, id_usuario)
+          fundamento, fecha_inicio, fecha_termino, dias_habiles, es_reaplicacion, id_usuario,
+          id_activado_paso)
        VALUES (?, ?, ?,
                (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
                 WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1),
-               ?, ?, ?, ?, ?, ?, ?, ?)`,
+               ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [req.params.id, req.id_establecimiento, id_estudiante || null,
        req.params.id, id_estudiante || null, tipo,
        descripcion?.trim() || null, fundamento?.trim() || null,
-       fecha_inicio, fecha_termino, dias_habiles || null, es_reaplicacion ? 1 : 0, req.user.id]
+       fecha_inicio, fecha_termino, dias_habiles || null, es_reaplicacion ? 1 : 0, req.user.id,
+       id_activado_paso || null]
     );
 
     // Reaplicación por reiteración: la investigación tiene que concluir antes
@@ -195,6 +218,149 @@ const crear = async (req, res) => {
     await conn.rollback();
     console.error(err);
     res.status(500).json({ message: 'Error al registrar la medida de protección' });
+  } finally {
+    conn.release();
+  }
+};
+
+// PUT /api/medidas-proteccion/:id
+//
+// Corregir una medida mal cargada. No es "editar el expediente": es la ventana
+// para arreglar el error de tipeo del día que se registró, y por eso se cierra
+// apenas la medida empieza a producir efectos propios.
+//
+// Solo mientras la medida está `vigente` y todavía no tiene seguimientos: un
+// seguimiento es un hecho ocurrido bajo esta medida y con estas fechas —
+// moverle el plazo después dejaría el monitoreo colgando de un período que ya
+// no existe. Una medida concluida o sustituida tampoco se toca: ya cerró y
+// puede estar sosteniendo a la que la reemplazó.
+//
+// El cambio queda en la bitácora del caso con el antes y el después: corregir
+// sin dejar rastro es lo que una fiscalización no puede distinguir de alterar.
+const actualizar = async (req, res) => {
+  const {
+    tipo, descripcion, fundamento, id_estudiante,
+    fecha_inicio, dias_habiles, es_reaplicacion,
+  } = req.body;
+
+  if (!tipo || !fecha_inicio)
+    return res.status(400).json({ message: 'tipo y fecha_inicio son requeridos' });
+
+  // El tipo se rechaza si no está en el catálogo en vez de aplanarlo a 'otra':
+  // de él dependen el tope de 15 días y la obligación de sustituir la medida al
+  // vencer, y una medida guardada como 'otra' se salta las dos.
+  if (!TIPOS_MEDIDA.includes(tipo))
+    return res.status(400).json({ message: `tipo inválido. Valores: ${TIPOS_MEDIDA.join(', ')}` });
+
+  // Las mismas reglas que al crear: una medida corregida tiene que quedar tan
+  // defendible como una recién registrada.
+  if (tipo === 'suspension' && !fundamento?.trim())
+    return res.status(400).json({
+      message:
+        'La suspensión requiere fundamentar por qué no es posible resguardar a la persona afectada con otra medida',
+    });
+  if (tipo === 'suspension') {
+    if (!dias_habiles)
+      return res.status(400).json({ message: 'La suspensión requiere indicar los días hábiles' });
+    if (dias_habiles > MAX_DIAS_SUSPENSION)
+      return res.status(400).json({
+        message: `La suspensión no puede extenderse por más de ${MAX_DIAS_SUSPENSION} días hábiles (art. 16 E letra j)`,
+      });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    const [[medida]] = await conn.query(
+      `SELECT mp.*,
+              (SELECT COUNT(*) FROM MEDIDA_PROTECCION_SEGUIMIENTO s
+               WHERE s.id_medida_proteccion = mp.id_medida_proteccion) AS seguimientos,
+              (SELECT COUNT(*) FROM MEDIDA_PROTECCION o
+               WHERE o.id_medida_sustituye = mp.id_medida_proteccion) AS sustituye_a
+       FROM MEDIDA_PROTECCION mp
+       WHERE mp.id_medida_proteccion = ? AND mp.id_establecimiento = ?`,
+      [req.params.id, req.id_establecimiento]
+    );
+    if (!medida) return res.status(404).json({ message: 'Medida no encontrada' });
+
+    if (medida.estado !== 'vigente')
+      return res.status(409).json({
+        message:
+          `La medida está ${medida.estado} y ya no se puede corregir. ` +
+          'Registrá una medida nueva en su lugar.',
+      });
+    if (medida.seguimientos > 0)
+      return res.status(409).json({
+        message:
+          `Esta medida ya tiene ${medida.seguimientos} seguimiento(s) registrado(s) sobre sus fechas: ` +
+          'corregirla ahora dejaría ese monitoreo colgando de un período que ya no existe.',
+      });
+    if (medida.sustituye_a > 0)
+      return res.status(409).json({
+        message: 'Esta medida sustituyó a otra que ya se cerró apoyándose en ella: no se puede corregir.',
+      });
+
+    // El término se recalcula, igual que al crear: es el plazo legal y no una
+    // fecha que alguien elija.
+    let fecha_termino = null;
+    if (dias_habiles) {
+      const feriados = await cargarFeriados(req.id_establecimiento);
+      fecha_termino = calcularFechaLimite(
+        new Date(fecha_inicio + 'T12:00:00Z'), Number(dias_habiles), 'dias_habiles', feriados
+      ).toISOString().slice(0, 10);
+    }
+
+    await conn.beginTransaction();
+
+    await conn.query(
+      `UPDATE MEDIDA_PROTECCION
+       SET tipo = ?, descripcion = ?, fundamento = ?, id_estudiante = ?,
+           id_involucrado = (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+                             WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1),
+           fecha_inicio = ?, fecha_termino = ?, dias_habiles = ?, es_reaplicacion = ?
+       WHERE id_medida_proteccion = ?`,
+      [tipo, descripcion?.trim() || null, fundamento?.trim() || null, id_estudiante || null,
+       medida.id_protocolo_activado, id_estudiante || null,
+       fecha_inicio, fecha_termino, dias_habiles || null, es_reaplicacion ? 1 : 0, req.params.id]
+    );
+
+    // El techo que la reaplicación le puso al caso se recalcula sobre el plazo
+    // nuevo. No se puede "devolver" el que ya se había adelantado — LEAST no es
+    // reversible sin saber cuál era el original —, pero sí adelantarlo más.
+    if (es_reaplicacion && tipo === 'suspension' && fecha_termino) {
+      await conn.query(
+        `UPDATE PROTOCOLO_ACTIVADO
+         SET fecha_limite_investigacion = LEAST(COALESCE(fecha_limite_investigacion, ?), ?)
+         WHERE id_protocolo_activado = ?`,
+        [fecha_termino, fecha_termino, medida.id_protocolo_activado]
+      );
+    }
+
+    const cambios = [];
+    if (medida.tipo !== tipo)
+      cambios.push(`tipo ${etiquetaTipo(medida.tipo)} → ${etiquetaTipo(tipo)}`);
+    if (String(medida.fecha_inicio).slice(0, 10) !== fecha_inicio)
+      cambios.push(`inicio ${String(medida.fecha_inicio).slice(0, 10)} → ${fecha_inicio}`);
+    if (String(medida.fecha_termino ?? '') !== String(fecha_termino ?? ''))
+      cambios.push(`término ${medida.fecha_termino ?? 'sin plazo'} → ${fecha_termino ?? 'sin plazo'}`);
+    if ((medida.id_estudiante ?? null) !== (id_estudiante || null)) cambios.push('estudiante');
+    if ((medida.fundamento ?? '') !== (fundamento?.trim() || '')) cambios.push('fundamento');
+    if ((medida.descripcion ?? '') !== (descripcion?.trim() || '')) cambios.push('descripción');
+
+    await conn.query(
+      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+       VALUES (?, ?, 'medida_proteccion_editada', ?, ?, NOW())`,
+      [medida.id_protocolo_activado, req.id_establecimiento,
+       `Se corrige la medida de protección: ${cambios.join(', ') || 'sin cambios de fondo'}`,
+       req.user.id]
+    );
+
+    await conn.commit();
+    res.json({ fecha_termino, message: 'Medida de protección actualizada' });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Error al actualizar la medida de protección' });
   } finally {
     conn.release();
   }
@@ -257,7 +423,9 @@ const finalizar = async (req, res) => {
          (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
        VALUES (?, ?, 'medida_proteccion_finalizada', ?, ?, NOW())`,
       [medida.id_protocolo_activado, req.id_establecimiento,
-       id_medida_sustituye ? `${medida.tipo} sustituida por otra medida` : `${medida.tipo} concluida`,
+       id_medida_sustituye
+         ? `${etiquetaTipo(medida.tipo)} sustituida por otra medida`
+         : `${etiquetaTipo(medida.tipo)} concluida`,
        req.user.id]
     );
     await conn.commit();
@@ -304,4 +472,7 @@ const registrarSeguimiento = async (req, res) => {
   }
 };
 
-module.exports = { getByCaso, crear, finalizar, registrarSeguimiento, MAX_DIAS_SUSPENSION };
+module.exports = {
+  getByCaso, crear, actualizar, finalizar, registrarSeguimiento,
+  MAX_DIAS_SUSPENSION, TIPOS_MEDIDA,
+};

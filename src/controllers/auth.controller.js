@@ -10,7 +10,7 @@ const login = async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT u.*, e.nombre AS nombre_establecimiento
+      `SELECT u.*, e.nombre AS nombre_establecimiento, e.rbd, e.acceso_bloqueado
        FROM USUARIO u
        LEFT JOIN ESTABLECIMIENTO e ON u.id_establecimiento = e.id_establecimiento
        WHERE u.correo = ? AND u.activo = 1`,
@@ -27,7 +27,7 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Credenciales incorrectas' });
 
     const [rolesRows] = await pool.query(
-      `SELECT r.codigo
+      `SELECT r.codigo, r.nombre
        FROM USUARIO_ROLES ur
        JOIN ROLES r ON r.rol_id = ur.rol_id AND r.activo = TRUE
        WHERE ur.id_usuario = ?
@@ -45,6 +45,16 @@ const login = async (req, res) => {
     }
 
     const esAdmin = roles.includes('ADMIN');
+
+    // Establecimiento con el acceso suspendido (se activa desde Geo): nadie de
+    // ese colegio entra, aunque su usuario siga activo y la clave sea correcta.
+    // No borra ni desactiva nada — al desbloquearlo vuelven a entrar tal cual
+    // estaban. El ADMIN queda exento: es global y tiene que poder seguir
+    // administrando (y desbloqueando) ese establecimiento.
+    if (usuario.acceso_bloqueado && !esAdmin)
+      return res.status(403).json({
+        message: 'El acceso de este establecimiento está suspendido. Contacte al administrador.',
+      });
 
     // El ADMIN no lleva permisos en el token: pasa por bypass en el middleware.
     // Enumerarle los 73 códigos infla el JWT y lo dejaría sin los permisos que
@@ -81,7 +91,15 @@ const login = async (req, res) => {
       usuario: {
         id:                   usuario.id_usuario,
         correo:               usuario.correo,
+        // El nombre encabeza el saludo del navbar; puede venir null en cuentas
+        // creadas antes de que el alta lo pidiera, y ahí se cae al correo.
+        nombre:               usuario.nombre,
         rol:                  roles[0] ?? usuario.rol,
+        // El nombre del rol, no su código: es el cargo que se imprime bajo la
+        // firma del acta de notificación. Va sólo en la respuesta y no en el
+        // token — es un texto editable que quedaría congelado hasta el próximo
+        // login, igual que el nombre de la persona.
+        rol_nombre:           rolesRows[0]?.nombre ?? null,
         roles,
         permisos,
         // El ADMIN pasa por bypass en el backend, así que su lista de permisos
@@ -89,6 +107,9 @@ const login = async (req, res) => {
         es_admin:             esAdmin,
         id_establecimiento:   usuario.id_establecimiento,
         nombre_establecimiento: usuario.nombre_establecimiento,
+        // El RBD identifica al colegio ante el Mineduc: va junto al nombre en
+        // el navbar para saber sin dudar en cuál se está trabajando.
+        rbd_establecimiento:  usuario.rbd,
       },
     });
   } catch (err) {
@@ -97,7 +118,49 @@ const login = async (req, res) => {
   }
 };
 
-const me = (req, res) => res.json({ usuario: req.user });
+/**
+ * Los datos de la sesión, con lo que no viaja en el token.
+ *
+ * El JWT lleva id, roles y permisos, pero no el nombre de la persona ni el de su
+ * establecimiento: son textos que además pueden cambiar (se corrige el apellido
+ * mal escrito) y quedarían congelados hasta el próximo login. Se leen de la base
+ * en cada llamada, que es una consulta por arranque de la app.
+ */
+const me = async (req, res) => {
+  try {
+    const [[fila]] = await pool.query(
+      `SELECT u.nombre, u.correo, u.id_establecimiento,
+              e.nombre AS nombre_establecimiento, e.rbd,
+              -- El cargo se lee acá y no del token por lo mismo que el nombre:
+              -- es un texto que puede corregirse y se imprime en el acta de
+              -- notificación. Se resuelve por los roles vigentes del usuario y
+              -- no por un JOIN sobre ROLES.codigo, que no es único entre
+              -- establecimientos y multiplicaría la fila.
+              (SELECT r.nombre
+                 FROM USUARIO_ROLES ur
+                 JOIN ROLES r ON r.rol_id = ur.rol_id AND r.activo = TRUE
+                WHERE ur.id_usuario = u.id_usuario
+                  AND r.codigo = ?
+                  AND (ur.expira_at IS NULL OR ur.expira_at > NOW())
+                LIMIT 1) AS rol_nombre
+       FROM USUARIO u
+       LEFT JOIN ESTABLECIMIENTO e ON e.id_establecimiento = u.id_establecimiento
+       WHERE u.id_usuario = ?`,
+      [req.user.rol ?? null, req.user.id]
+    );
+    res.json({
+      usuario: {
+        ...req.user,
+        // Si la cuenta se borró entremedio, al menos vuelve lo del token.
+        ...(fila ?? {}),
+        rbd_establecimiento: fila?.rbd ?? null,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.json({ usuario: req.user });
+  }
+};
 
 // Cualquier usuario autenticado puede cambiar su propia clave: no lleva permiso
 // asociado. El control de acceso es la clave actual, no el rol — por eso el id

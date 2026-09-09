@@ -1,0 +1,596 @@
+{
+  "docs/ambito_protocolo_establecimiento.sql": {
+    "mtime": 1788211864.7576926,
+    "seen": 1788366655.5860438,
+    "ast_hash": "302c729497ecb5ea2235aa2293d4f24d",
+    "semantic_hash": "302c729497ecb5ea2235aa2293d4f24d"
+  },
+  "docs/involucrados_fase12.sql": {
+    "mtime": 1788287177.3649168,
+    "seen": 1788366655.586046,
+    "ast_hash": "1f3b90a72f29042477efc0d89353d45c",
+    "semantic_hash": "1f3b90a72f29042477efc0d89353d45c"
+  },
+  "docs/involucrados_fase12_arrastre.sql": {
+    "mtime": 1788211864.7586393,
+    "seen": 1788366655.586048,
+    "ast_hash": "ac6ab0dbc15c72065e9714e1aa9d795c",
+    "semantic_hash": "ac6ab0dbc15c72065e9714e1aa9d795c"
+  },
+  "docs/involucrados_fase12_catalogo.sql": {
+    "mtime": 1788211864.7591124,
+    "seen": 1788366655.586049,
+    "ast_hash": "c0cd5865a9d362cbb21d302812f346a7",
+    "semantic_hash": "c0cd5865a9d362cbb21d302812f346a7"
+  },
+  "docs/medidas_disciplinarias_plazos.sql": {
+    "mtime": 1788368760.3926466,
+    "seen": 1788374240.1674109,
+    "ast_hash": "08f45bff82dfc50fafdf7a484460c234",
+    "semantic_hash": "08f45bff82dfc50fafdf7a484460c234"
+  },
+  "docs/normativa/ocr-vision.swift": {
+    "mtime": 1788211864.7613745,
+    "seen": 1788366655.58605,
+    "ast_hash": "4dca1df87441e426fc24cb5fdd0d5adc",
+    "semantic_hash": "4dca1df87441e426fc24cb5fdd0d5adc"
+  },
+  "docs/protocolos_workflow.sql": {
+    "mtime": 1787784375.2081532,
+    "seen": 1788366655.586051,
+    "ast_hash": "f1992eece72a0eeb0d0f513f5c99fa9e",
+    "semantic_hash": "f1992eece72a0eeb0d0f513f5c99fa9e"
+  },
+  "docs/rbac_protocolos_workflow.sql": {
+    "mtime": 1787784375.2083788,
+    "seen": 1788366655.586051,
+    "ast_hash": "c480d79116925bca2cf093659b595bf0",
+    "semantic_hash": "c480d79116925bca2cf093659b595bf0"
+  },
+  "docs/rbac_roles_protocolos.sql": {
+    "mtime": 1787784375.2085598,
+    "seen": 1788366655.5860522,
+    "ast_hash": "75504814328a86b8390f4c4c4837ae30",
+    "semantic_hash": "75504814328a86b8390f4c4c4837ae30"
+  },
+  "docs/seguimiento_trayectoria.sql": {
+    "mtime": 1788211864.761658,
+    "seen": 1788366655.5860531,
+    "ast_hash": "c99c6f69b029fbddb7cb85d6bf06b7c9",
+    "semantic_hash": "c99c6f69b029fbddb7cb85d6bf06b7c9"
+  },
+  "docs/suspension_cautelar.sql": {
+    "mtime": 1788287181.4778597,
+    "seen": 1788366655.5860531,
+    "ast_hash": "0bbb4814e895103c13c7848a04bd7f43",
+    "semantic_hash": "0bbb4814e895103c13c7848a04bd7f43"
+  },
+  "docs/usuario_nombre.sql": {
+    "mtime": 1787784375.208719,
+    "seen": 1788366655.5860538,
+    "ast_hash": "54d937fb7cff4c57ad12ceb4c9ebe948",
+    "semantic_hash": "54d937fb7cff4c57ad12ceb4c9ebe948"
+  },
+  "package.json": {
+    "mtime": 1788211864.7638867,
+    "seen": 1788366655.5860548,
+    "ast_hash": "f53b026cb6c2f9955a45e8dba3bde49a",
+    "semantic_hash": "f53b026cb6c2f9955a45e8dba3bde49a"
+  },
+  "scripts/seed_protocolos.js": {
+    "mtime": 1788286953.3920534,
+    "seen": 1788366655.5860548,
+    "ast_hash": "f2ce960078b7a471115b61ff54212194",
+    "semantic_hash": "f2ce960078b7a471115b61ff54212194"
+  },
+  "src/constants/permisos.js": {
+    "mtime": 1788278915.1628659,
+    "seen": 1788366655.586056,
+    "ast_hash": "d20ab2ac5463aad96a5c135ecd151d8b",
+    "semantic_hash": "d20ab2ac5463aad96a5c135ecd151d8b"
+  },
+  "src/constants/tiposFaltaPlantilla.js": {
+    "mtime": 1788221539.9182134,
+    "seen": 1788366655.586057,
+    "ast_hash": "ac3a104043ff397cf6400d859a476664",
+    "semantic_hash": "ac3a104043ff397cf6400d859a476664"
+  },
+  "src/controllers/auth.controller.js": {
+    "mtime": 1788297101.1971915,
+    "seen": 1788366655.586057,
+    "ast_hash": "9e7005136d5b5055c980ea43b6877c14",
+    "semantic_hash": "9e7005136d5b5055c980ea43b6877c14"
+  },
+  "src/controllers/comunas.controller.js": {
+    "mtime": 1786761430.885616,
+    "seen": 1788366655.586058,
+    "ast_hash": "217bae74cf6dc15c0f0df30cd23d4345",
+    "semantic_hash": "217bae74cf6dc15c0f0df30cd23d4345"
+  },
+  "src/controllers/cursos.controller.js": {
+    "mtime": 1787181251.939472,
+    "seen": 1788366655.586059,
+    "ast_hash": "cfc7714a2454a9311e5748f214b8b83d",
+    "semantic_hash": "cfc7714a2454a9311e5748f214b8b83d"
+  },
+  "src/controllers/dashboard.controller.js": {
+    "mtime": 1788286921.728646,
+    "seen": 1788366655.586059,
+    "ast_hash": "4ce238d050a52d77d37daf0a3cf6bba4",
+    "semantic_hash": "4ce238d050a52d77d37daf0a3cf6bba4"
+  },
+  "src/controllers/documentos.controller.js": {
+    "mtime": 1788211864.7665868,
+    "seen": 1788366655.58606,
+    "ast_hash": "352df312e4d649a10b4bb27d731b8571",
+    "semantic_hash": "352df312e4d649a10b4bb27d731b8571"
+  },
+  "src/controllers/documentosInstitucionales.controller.js": {
+    "mtime": 1788211864.7670002,
+    "seen": 1788366655.586061,
+    "ast_hash": "d6faed6128d5ae1d88ff520ab5c67a78",
+    "semantic_hash": "d6faed6128d5ae1d88ff520ab5c67a78"
+  },
+  "src/controllers/establecimiento.controller.js": {
+    "mtime": 1788211864.7673292,
+    "seen": 1788366655.586061,
+    "ast_hash": "9eb6e5e508d074799b5640d1befc9c3f",
+    "semantic_hash": "9eb6e5e508d074799b5640d1befc9c3f"
+  },
+  "src/controllers/establecimientosGeo.controller.js": {
+    "mtime": 1788281339.3372898,
+    "seen": 1788366655.5860622,
+    "ast_hash": "35d7708ecbf6583f02d1364394d77931",
+    "semantic_hash": "35d7708ecbf6583f02d1364394d77931"
+  },
+  "src/controllers/estudiantes.controller.js": {
+    "mtime": 1788211864.7676687,
+    "seen": 1788366655.5860631,
+    "ast_hash": "19163a4af41ac75d7cd43ca16e1e0387",
+    "semantic_hash": "19163a4af41ac75d7cd43ca16e1e0387"
+  },
+  "src/controllers/expediente.controller.js": {
+    "mtime": 1788297446.9653506,
+    "seen": 1788366655.5860631,
+    "ast_hash": "d3aca94f485f382b63d4aa1c81710062",
+    "semantic_hash": "d3aca94f485f382b63d4aa1c81710062"
+  },
+  "src/controllers/feriados.controller.js": {
+    "mtime": 1788211864.7685983,
+    "seen": 1788366655.5860639,
+    "ast_hash": "d492a7f48241e35f435502e026f2ad87",
+    "semantic_hash": "d492a7f48241e35f435502e026f2ad87"
+  },
+  "src/controllers/informeExpulsion.controller.js": {
+    "mtime": 1788211864.7690575,
+    "seen": 1788366655.5860648,
+    "ast_hash": "be57068dbaf4c14328ad687a14b3630f",
+    "semantic_hash": "be57068dbaf4c14328ad687a14b3630f"
+  },
+  "src/controllers/involucrados.controller.js": {
+    "mtime": 1788293639.8296874,
+    "seen": 1788366655.5860648,
+    "ast_hash": "1443f3123c6e4f61ecb798aba9e99978",
+    "semantic_hash": "1443f3123c6e4f61ecb798aba9e99978"
+  },
+  "src/controllers/medidasDisciplinarias.controller.js": {
+    "mtime": 1788372044.0863554,
+    "seen": 1788374240.167936,
+    "ast_hash": "c3692c0256bf2a4f8b9133156d2fd638",
+    "semantic_hash": "c3692c0256bf2a4f8b9133156d2fd638"
+  },
+  "src/controllers/medidasProteccion.controller.js": {
+    "mtime": 1788219989.0202544,
+    "seen": 1788366655.586066,
+    "ast_hash": "9b6511911bb0557ee48d7203a3a4f247",
+    "semantic_hash": "9b6511911bb0557ee48d7203a3a4f247"
+  },
+  "src/controllers/notificaciones.controller.js": {
+    "mtime": 1787784375.210915,
+    "seen": 1788366655.586067,
+    "ast_hash": "80749726ce29508ff12666fb6ffad038",
+    "semantic_hash": "80749726ce29508ff12666fb6ffad038"
+  },
+  "src/controllers/paises.controller.js": {
+    "mtime": 1786761430.8883216,
+    "seen": 1788366655.586068,
+    "ast_hash": "d7a689a8617c2d71fd87837193b6936d",
+    "semantic_hash": "d7a689a8617c2d71fd87837193b6936d"
+  },
+  "src/controllers/protocoloFlujo.controller.js": {
+    "mtime": 1788372131.7437377,
+    "seen": 1788374240.167999,
+    "ast_hash": "269bf5e8e4476516f224feb8d12998ab",
+    "semantic_hash": "269bf5e8e4476516f224feb8d12998ab"
+  },
+  "src/controllers/protocoloFlujoEstablecimiento.controller.js": {
+    "mtime": 1788372224.7321448,
+    "seen": 1788374240.168,
+    "ast_hash": "ae0193fd64883e14ada7c22c7853c242",
+    "semantic_hash": "ae0193fd64883e14ada7c22c7853c242"
+  },
+  "src/controllers/protocolosActivados.controller.js": {
+    "mtime": 1788373456.5031605,
+    "seen": 1788374240.168001,
+    "ast_hash": "2b45642b2411c3dac2cb77e34f6d7e13",
+    "semantic_hash": "2b45642b2411c3dac2cb77e34f6d7e13"
+  },
+  "src/controllers/protocolosEstablecimiento.controller.js": {
+    "mtime": 1788211864.772524,
+    "seen": 1788366655.58607,
+    "ast_hash": "18f8d8977ef90674ccb06d0964e3fa6b",
+    "semantic_hash": "18f8d8977ef90674ccb06d0964e3fa6b"
+  },
+  "src/controllers/protocolosGenericos.controller.js": {
+    "mtime": 1786396121.954098,
+    "seen": 1788366655.586071,
+    "ast_hash": "0da897a7d4a2289b95c415f0f66ffd5a",
+    "semantic_hash": "0da897a7d4a2289b95c415f0f66ffd5a"
+  },
+  "src/controllers/provincias.controller.js": {
+    "mtime": 1786761430.888553,
+    "seen": 1788366655.586071,
+    "ast_hash": "8e99f4f868bf8e395eb7490b2c9f0da4",
+    "semantic_hash": "8e99f4f868bf8e395eb7490b2c9f0da4"
+  },
+  "src/controllers/regiones.controller.js": {
+    "mtime": 1786761430.8888097,
+    "seen": 1788366655.586072,
+    "ast_hash": "a295f2019a6f10443d9ba1f25a2c52ab",
+    "semantic_hash": "a295f2019a6f10443d9ba1f25a2c52ab"
+  },
+  "src/controllers/registros.controller.js": {
+    "mtime": 1788290189.7623715,
+    "seen": 1788366655.5860732,
+    "ast_hash": "a806d746c759818f597af8f2f0b9e3c6",
+    "semantic_hash": "a806d746c759818f597af8f2f0b9e3c6"
+  },
+  "src/controllers/roles.controller.js": {
+    "mtime": 1788211864.7754493,
+    "seen": 1788366655.586074,
+    "ast_hash": "023a98ed578a2e77930032807e17c211",
+    "semantic_hash": "023a98ed578a2e77930032807e17c211"
+  },
+  "src/controllers/sostenedor.controller.js": {
+    "mtime": 1787169937.6832235,
+    "seen": 1788366655.586074,
+    "ast_hash": "f9409eb6493690265f0aeb05bea3092d",
+    "semantic_hash": "f9409eb6493690265f0aeb05bea3092d"
+  },
+  "src/controllers/suspensionCautelar.controller.js": {
+    "mtime": 1788220026.9807522,
+    "seen": 1788366655.5860748,
+    "ast_hash": "7c9132977adc89509dfe92096288752c",
+    "semantic_hash": "7c9132977adc89509dfe92096288752c"
+  },
+  "src/controllers/tiposFalta.controller.js": {
+    "mtime": 1788211864.7769647,
+    "seen": 1788366655.586076,
+    "ast_hash": "51c46cee9ea2bbb9da1fef3980f8d24f",
+    "semantic_hash": "51c46cee9ea2bbb9da1fef3980f8d24f"
+  },
+  "src/controllers/usuarios.controller.js": {
+    "mtime": 1788295921.1980612,
+    "seen": 1788366655.586076,
+    "ast_hash": "38bd5c6d2139be4c2477793938cebd4b",
+    "semantic_hash": "38bd5c6d2139be4c2477793938cebd4b"
+  },
+  "src/db/connection.js": {
+    "mtime": 1788290140.2203221,
+    "seen": 1788366655.586077,
+    "ast_hash": "8c08fa8f8042bf824bad0cc8f42bbf1d",
+    "semantic_hash": "8c08fa8f8042bf824bad0cc8f42bbf1d"
+  },
+  "src/index.js": {
+    "mtime": 1788211864.7779555,
+    "seen": 1788366655.586078,
+    "ast_hash": "df20e7b3dfd485ac8dac8e29e12c4b83",
+    "semantic_hash": "df20e7b3dfd485ac8dac8e29e12c4b83"
+  },
+  "src/middleware/auth.js": {
+    "mtime": 1787328772.6321664,
+    "seen": 1788366655.586078,
+    "ast_hash": "1d9039c1214894a268f46218ab7cf9ec",
+    "semantic_hash": "1d9039c1214894a268f46218ab7cf9ec"
+  },
+  "src/middleware/confidencial.js": {
+    "mtime": 1788290148.9271286,
+    "seen": 1788366655.586079,
+    "ast_hash": "3bb17cac4624c5353f2a927c23c0211f",
+    "semantic_hash": "3bb17cac4624c5353f2a927c23c0211f"
+  },
+  "src/middleware/scope.js": {
+    "mtime": 1787170582.9191606,
+    "seen": 1788366655.586079,
+    "ast_hash": "f4980a81483fd1985485112fb5451749",
+    "semantic_hash": "f4980a81483fd1985485112fb5451749"
+  },
+  "src/routes/auth.routes.js": {
+    "mtime": 1787784375.2135494,
+    "seen": 1788366655.58608,
+    "ast_hash": "ad3787faaf7b7d6d431fc5c2e8469c5e",
+    "semantic_hash": "ad3787faaf7b7d6d431fc5c2e8469c5e"
+  },
+  "src/routes/comunas.routes.js": {
+    "mtime": 1787784375.2137234,
+    "seen": 1788366655.586081,
+    "ast_hash": "f21010f6863ad3cce33704058459cbdc",
+    "semantic_hash": "f21010f6863ad3cce33704058459cbdc"
+  },
+  "src/routes/constancias.routes.js": {
+    "mtime": 1788211864.7786067,
+    "seen": 1788366655.586081,
+    "ast_hash": "8581f0acc8cd255a7101d1c895437947",
+    "semantic_hash": "8581f0acc8cd255a7101d1c895437947"
+  },
+  "src/routes/cursos.routes.js": {
+    "mtime": 1787328798.9357224,
+    "seen": 1788366655.586082,
+    "ast_hash": "ca25c17553c09de11c993752697b0566",
+    "semantic_hash": "ca25c17553c09de11c993752697b0566"
+  },
+  "src/routes/dashboard.routes.js": {
+    "mtime": 1787170592.604498,
+    "seen": 1788366655.5860832,
+    "ast_hash": "01740f8516e017c0e9d36bf32075b00e",
+    "semantic_hash": "01740f8516e017c0e9d36bf32075b00e"
+  },
+  "src/routes/documentosInstitucionales.routes.js": {
+    "mtime": 1788211864.7787764,
+    "seen": 1788366655.5860832,
+    "ast_hash": "0ecd6f9f278edb03b1c42a70f3baa318",
+    "semantic_hash": "0ecd6f9f278edb03b1c42a70f3baa318"
+  },
+  "src/routes/documents.routes.js": {
+    "mtime": 1788211864.7790005,
+    "seen": 1788366655.5860841,
+    "ast_hash": "d48db74389b86fc277d8829a05e0df92",
+    "semantic_hash": "d48db74389b86fc277d8829a05e0df92"
+  },
+  "src/routes/establecimiento.routes.js": {
+    "mtime": 1787328798.936748,
+    "seen": 1788366655.586085,
+    "ast_hash": "061d8d74d9d56a2bec647f51c06b84ed",
+    "semantic_hash": "061d8d74d9d56a2bec647f51c06b84ed"
+  },
+  "src/routes/establecimientos.routes.js": {
+    "mtime": 1787328798.9371362,
+    "seen": 1788366655.586085,
+    "ast_hash": "d28b9d22d9fb19cd31e63ab598be0c49",
+    "semantic_hash": "d28b9d22d9fb19cd31e63ab598be0c49"
+  },
+  "src/routes/establecimientosGeo.routes.js": {
+    "mtime": 1788281342.8487709,
+    "seen": 1788366655.5860858,
+    "ast_hash": "9c760c0ec32525ab0d55a16d3003e1a3",
+    "semantic_hash": "9c760c0ec32525ab0d55a16d3003e1a3"
+  },
+  "src/routes/estudiantes.routes.js": {
+    "mtime": 1787328798.9378326,
+    "seen": 1788366655.5860858,
+    "ast_hash": "b5984d757d417a6354a823075252582a",
+    "semantic_hash": "b5984d757d417a6354a823075252582a"
+  },
+  "src/routes/expedientes.routes.js": {
+    "mtime": 1788211864.7791889,
+    "seen": 1788366655.586087,
+    "ast_hash": "3efc0a90cb9a038b6591c5e35f8958a9",
+    "semantic_hash": "3efc0a90cb9a038b6591c5e35f8958a9"
+  },
+  "src/routes/feriados.routes.js": {
+    "mtime": 1788211864.7793841,
+    "seen": 1788366655.586088,
+    "ast_hash": "5cf137c53c2cc44fbc4a0625aaa9532a",
+    "semantic_hash": "5cf137c53c2cc44fbc4a0625aaa9532a"
+  },
+  "src/routes/informesExpulsion.routes.js": {
+    "mtime": 1788211864.7795658,
+    "seen": 1788366655.586088,
+    "ast_hash": "067b3d75baf2e84ae37abe0acf6b1699",
+    "semantic_hash": "067b3d75baf2e84ae37abe0acf6b1699"
+  },
+  "src/routes/medidasDisciplinarias.routes.js": {
+    "mtime": 1788211864.779731,
+    "seen": 1788366655.586089,
+    "ast_hash": "ba231454567c675836dc1cfd7c9a2800",
+    "semantic_hash": "ba231454567c675836dc1cfd7c9a2800"
+  },
+  "src/routes/medidasProteccion.routes.js": {
+    "mtime": 1788219996.5123312,
+    "seen": 1788366655.58609,
+    "ast_hash": "075f7cbf4601f88c8eaea0676e8f0bef",
+    "semantic_hash": "075f7cbf4601f88c8eaea0676e8f0bef"
+  },
+  "src/routes/notificaciones.routes.js": {
+    "mtime": 1787784375.2138677,
+    "seen": 1788366655.58609,
+    "ast_hash": "bc7be26a8bbe1db2e15fb04dcf4a70a2",
+    "semantic_hash": "bc7be26a8bbe1db2e15fb04dcf4a70a2"
+  },
+  "src/routes/paises.routes.js": {
+    "mtime": 1787328798.9381232,
+    "seen": 1788366655.586091,
+    "ast_hash": "55f02817ffa666e22cb6811ca8575ecd",
+    "semantic_hash": "55f02817ffa666e22cb6811ca8575ecd"
+  },
+  "src/routes/protocoloFlujo.routes.js": {
+    "mtime": 1787784375.2140281,
+    "seen": 1788366655.586092,
+    "ast_hash": "dc2ff4146c05d57a8f7a2f770a332c78",
+    "semantic_hash": "dc2ff4146c05d57a8f7a2f770a332c78"
+  },
+  "src/routes/protocoloFlujoEstablecimiento.routes.js": {
+    "mtime": 1787784375.2141762,
+    "seen": 1788366655.586092,
+    "ast_hash": "7e9d1145b0915da4987a62faa0e52e78",
+    "semantic_hash": "7e9d1145b0915da4987a62faa0e52e78"
+  },
+  "src/routes/protocolosActivados.routes.js": {
+    "mtime": 1788295381.893842,
+    "seen": 1788366655.586093,
+    "ast_hash": "b246f6e164f55600a1edf3739b6c1fcf",
+    "semantic_hash": "b246f6e164f55600a1edf3739b6c1fcf"
+  },
+  "src/routes/protocolosEstablecimiento.routes.js": {
+    "mtime": 1787328798.9388888,
+    "seen": 1788366655.586093,
+    "ast_hash": "0631c891f61fe823822a2dcccf0f3691",
+    "semantic_hash": "0631c891f61fe823822a2dcccf0f3691"
+  },
+  "src/routes/protocolosGenericos.routes.js": {
+    "mtime": 1787328798.939474,
+    "seen": 1788366655.5860941,
+    "ast_hash": "0e717ecaea0cd90df5fd38909bd4cc46",
+    "semantic_hash": "0e717ecaea0cd90df5fd38909bd4cc46"
+  },
+  "src/routes/provincias.routes.js": {
+    "mtime": 1787328798.939847,
+    "seen": 1788366655.586095,
+    "ast_hash": "7e80de6785cecf89bb601609a6cd87e0",
+    "semantic_hash": "7e80de6785cecf89bb601609a6cd87e0"
+  },
+  "src/routes/regiones.routes.js": {
+    "mtime": 1787328798.9400525,
+    "seen": 1788366655.586095,
+    "ast_hash": "4ecf922380bd9f7a466a5415c85ed9d4",
+    "semantic_hash": "4ecf922380bd9f7a466a5415c85ed9d4"
+  },
+  "src/routes/registros.routes.js": {
+    "mtime": 1788278911.995013,
+    "seen": 1788366655.586096,
+    "ast_hash": "8de9edcda34c807ef35d637fc2c2a67e",
+    "semantic_hash": "8de9edcda34c807ef35d637fc2c2a67e"
+  },
+  "src/routes/roles.routes.js": {
+    "mtime": 1787342815.030094,
+    "seen": 1788366655.586097,
+    "ast_hash": "83e64fbb480ef908cd0401c68d754445",
+    "semantic_hash": "83e64fbb480ef908cd0401c68d754445"
+  },
+  "src/routes/sostenedor.routes.js": {
+    "mtime": 1787328798.9415586,
+    "seen": 1788366655.586098,
+    "ast_hash": "9e2db9df6c6bfd9b7635a05a34eba66b",
+    "semantic_hash": "9e2db9df6c6bfd9b7635a05a34eba66b"
+  },
+  "src/routes/suspensionesCautelares.routes.js": {
+    "mtime": 1788220034.090957,
+    "seen": 1788366655.586098,
+    "ast_hash": "c74d9d86680e8e870ec974e56022aee4",
+    "semantic_hash": "c74d9d86680e8e870ec974e56022aee4"
+  },
+  "src/routes/tiposFalta.routes.js": {
+    "mtime": 1788211864.7813685,
+    "seen": 1788366655.586099,
+    "ast_hash": "cd2211b0e2626dc0526caa76039a7427",
+    "semantic_hash": "cd2211b0e2626dc0526caa76039a7427"
+  },
+  "src/routes/usuarios.routes.js": {
+    "mtime": 1788295921.2370539,
+    "seen": 1788366655.586099,
+    "ast_hash": "d1b6145578fd9fc079a111d718270dcc",
+    "semantic_hash": "d1b6145578fd9fc079a111d718270dcc"
+  },
+  "src/services/documentai.service.js": {
+    "mtime": 1785946891.856896,
+    "seen": 1788366655.5860999,
+    "ast_hash": "445d41e37c949ca204c9a4c0ce44fe89",
+    "semantic_hash": "445d41e37c949ca204c9a4c0ce44fe89"
+  },
+  "src/services/feriados.service.js": {
+    "mtime": 1788211864.7817323,
+    "seen": 1788366655.586101,
+    "ast_hash": "d42d3557f6b66bf1d9d3d20fc8286869",
+    "semantic_hash": "d42d3557f6b66bf1d9d3d20fc8286869"
+  },
+  "src/services/gemini.service.js": {
+    "mtime": 1787784375.2149217,
+    "seen": 1788366655.586101,
+    "ast_hash": "6ced2a15719eb02c069b5f6b6efebcb1",
+    "semantic_hash": "6ced2a15719eb02c069b5f6b6efebcb1"
+  },
+  "src/services/notificaciones.service.js": {
+    "mtime": 1788211864.7821925,
+    "seen": 1788366655.586102,
+    "ast_hash": "480650192db8e20068503ada8d3277f0",
+    "semantic_hash": "480650192db8e20068503ada8d3277f0"
+  },
+  "src/services/vencimientos.service.js": {
+    "mtime": 1788373277.23486,
+    "seen": 1788374240.169054,
+    "ast_hash": "6cf9caa6b858be2a7fbdb01bad8ed733",
+    "semantic_hash": "6cf9caa6b858be2a7fbdb01bad8ed733"
+  },
+  "src/utils/comprimirArchivo.js": {
+    "mtime": 1788211864.7841532,
+    "seen": 1788366655.5861042,
+    "ast_hash": "d49532c1d9aab93aef080c2173a0951a",
+    "semantic_hash": "d49532c1d9aab93aef080c2173a0951a"
+  },
+  "src/utils/confidencial.js": {
+    "mtime": 1787784375.2156866,
+    "seen": 1788366655.586105,
+    "ast_hash": "6f79c1150df50c7f53bf008b76f0e651",
+    "semantic_hash": "6f79c1150df50c7f53bf008b76f0e651"
+  },
+  "src/utils/flujoProtocolo.js": {
+    "mtime": 1788286854.4209404,
+    "seen": 1788366655.586105,
+    "ast_hash": "08c87ff3d2ec38d9415f5da2ad1eddd1",
+    "semantic_hash": "08c87ff3d2ec38d9415f5da2ad1eddd1"
+  },
+  "src/utils/imagen.js": {
+    "mtime": 1788211864.7853749,
+    "seen": 1788366655.586106,
+    "ast_hash": "1c57e6ca2b3b5de8a2606b945d405e82",
+    "semantic_hash": "1c57e6ca2b3b5de8a2606b945d405e82"
+  },
+  "src/utils/password.js": {
+    "mtime": 1787784375.21628,
+    "seen": 1788366655.586106,
+    "ast_hash": "bf49a66d4a343f2a99add4f931c5339e",
+    "semantic_hash": "bf49a66d4a343f2a99add4f931c5339e"
+  },
+  "src/utils/sembrarTiposFalta.js": {
+    "mtime": 1788211864.785754,
+    "seen": 1788366655.5861068,
+    "ast_hash": "9cb649eab3b9a948f1268071eab363fc",
+    "semantic_hash": "9cb649eab3b9a948f1268071eab363fc"
+  },
+  "src/utils/sqlProtocolos.js": {
+    "mtime": 1788278925.9382935,
+    "seen": 1788366655.586108,
+    "ast_hash": "12ccb6372a6a217b452fe89a65af23c5",
+    "semantic_hash": "12ccb6372a6a217b452fe89a65af23c5"
+  },
+  "README.md": {
+    "mtime": 1786761430.8794932,
+    "seen": 1788366655.586108,
+    "ast_hash": "c97b216c8e75bf0a451b5f1b9ee8db95",
+    "semantic_hash": "c97b216c8e75bf0a451b5f1b9ee8db95"
+  },
+  "docs/normativa/03-Circular-482-2018-reglamentos-internos.OCR.txt": {
+    "mtime": 1788211864.7603366,
+    "seen": 1788366655.586109,
+    "ast_hash": "093cae47252fd59521e6a0a480e4534f",
+    "semantic_hash": "093cae47252fd59521e6a0a480e4534f"
+  },
+  "docs/normativa/08-REX-324-2026-deroga-circulares-781-782-202.OCR.txt": {
+    "mtime": 1788211864.7606893,
+    "seen": 1788366655.5861099,
+    "ast_hash": "b45872151c3b984bc4a65c42b4300160",
+    "semantic_hash": "b45872151c3b984bc4a65c42b4300160"
+  },
+  "docs/normativa/14-Circular-193-2018-embarazadas-madres-padres.OCR.txt": {
+    "mtime": 1788211864.7611024,
+    "seen": 1788366655.5861099,
+    "ast_hash": "0ad540b8151b0651991da65e67fb33d3",
+    "semantic_hash": "0ad540b8151b0651991da65e67fb33d3"
+  },
+  "docs/normativa/16-Ley-20084-responsabilidad-penal-adolescente.txt": {
+    "mtime": 1788281557.8027558,
+    "seen": 1788366655.586111,
+    "ast_hash": "c60bfef7ff375487a0fd10c68bc360dc",
+    "semantic_hash": "c60bfef7ff375487a0fd10c68bc360dc"
+  }
+}

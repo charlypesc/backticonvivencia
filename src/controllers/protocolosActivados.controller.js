@@ -8,6 +8,7 @@ const {
   calcularFechaLimite,
   validarDatosSalida,
   involucradosDelPaso,
+  esPasoDeAprobacion,
 } = require('../utils/flujoProtocolo');
 const notificaciones = require('../services/notificaciones.service');
 const { cargarFeriados } = require('../services/feriados.service');
@@ -60,6 +61,73 @@ const buscarPasoActivado = async (id_activado_paso, id_protocolo_activado) => {
     [id_activado_paso, id_protocolo_activado]
   );
   return rows[0] ?? null;
+};
+
+/**
+ * Qué clase de medida tiene constando cada paso del caso.
+ *
+ * Las tres tablas responden a la misma pregunta —¿qué paso ordenó esto?— pero
+ * son tres institutos distintos, así que cada una aporta su propia clase y
+ * ninguna cumple por otra:
+ *
+ *   MEDIDA_PROTECCION    → 'proteccion'      (Ley 21.809 art. 16 E letra j)
+ *   SUSPENSION_CAUTELAR  → 'cautelar'        (DFL 2/1998 art. 6 letra d)
+ *   MEDIDA_DISCIPLINARIA → 'disciplinaria'   (lo resuelto y sancionado)
+ *
+ * La disciplinaria se busca por el registro y no por el caso porque cuelga del
+ * hecho, no del protocolo.
+ */
+const clasesDeMedidaPorPaso = async (db, { id_protocolo_activado, id_registro }) => {
+  const [filas] = await db.query(
+    `SELECT id_activado_paso, 'disciplinaria' AS clase FROM MEDIDA_DISCIPLINARIA
+      WHERE id_registro = ? AND id_activado_paso IS NOT NULL
+     UNION
+     SELECT id_activado_paso, 'proteccion' FROM MEDIDA_PROTECCION
+      WHERE id_protocolo_activado = ? AND id_activado_paso IS NOT NULL
+     UNION
+     SELECT id_activado_paso, 'cautelar' FROM SUSPENSION_CAUTELAR
+      WHERE id_protocolo_activado = ? AND id_activado_paso IS NOT NULL`,
+    [id_registro, id_protocolo_activado, id_protocolo_activado]
+  );
+  const mapa = new Map();
+  for (const f of filas) {
+    if (!mapa.has(f.id_activado_paso)) mapa.set(f.id_activado_paso, new Set());
+    mapa.get(f.id_activado_paso).add(f.clase);
+  }
+  return mapa;
+};
+
+// Qué clases dan por cumplido un paso según lo que el paso pide. Cada instituto
+// se cumple con el suyo: una suspensión cautelar sobre el señalado no es una
+// medida de protección para la persona afectada, por más que ambas la resguarden
+// de hecho, y el paso que pide una tiene que seguir pidiéndola.
+//
+// Un paso sin clase declarada (los que existían antes de
+// docs/medidas_tipo_requerido.sql, y los que el establecimiento arma sin
+// comprometerse a una vía) se conforma con cualquiera: es el comportamiento
+// viejo, y degradarlo a "ninguna" dejaría pidiendo medida a pasos que ya la
+// tienen.
+const CLASES_QUE_CUMPLEN = {
+  proteccion: ['proteccion'],
+  cautelar: ['cautelar'],
+  disciplinaria: ['disciplinaria'],
+  cualquiera: ['proteccion', 'cautelar', 'disciplinaria'],
+};
+
+/**
+ * ¿Este paso ordena una medida que todavía no consta?
+ *
+ * El caso de 'sin_medida' no es un descuido sino una respuesta: varios pasos de
+ * resolución preguntan `tipo_medida` y ofrecen resolver que no corresponde
+ * sanción. Eso es una resolución válida y completa, y seguir reclamándole una
+ * medida convertiría en infracción justo lo contrario de una infracción.
+ */
+const medidaPendienteDe = (paso, clasesPorPaso) => {
+  if (!paso.requiere_medida) return false;
+  if (paso.datos_salida?.tipo_medida === 'sin_medida') return false;
+  const acepta = CLASES_QUE_CUMPLEN[paso.tipo_medida_requerida] ?? CLASES_QUE_CUMPLEN.cualquiera;
+  const registradas = clasesPorPaso.get(paso.id_activado_paso);
+  return !registradas || !acepta.some((c) => registradas.has(c));
 };
 
 const registrarEvento = (conn, { activado, paso = null, tipo, descripcion, id_usuario }) =>
@@ -187,7 +255,7 @@ const getDetalle = async (req, res) => {
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
 
     const [pasos] = await pool.query(
-      `SELECT p.*, u.correo AS responsable_correo
+      `SELECT p.*, u.nombre AS responsable_nombre, u.correo AS responsable_correo
        FROM PROTOCOLO_ACTIVADO_PASO p
        LEFT JOIN USUARIO u ON u.id_usuario = p.id_usuario_responsable
        WHERE p.id_protocolo_activado = ? ORDER BY p.id_activado_paso`,
@@ -225,9 +293,9 @@ const getDetalle = async (req, res) => {
     // devuelva filas del registro.
     const [[registro]] = await pool.query(
       `SELECT r.id_registro, r.asunto, r.fecha_incidente, r.antecedentes, r.acuerdos,
-              r.estado_validacion, r.es_confidencial, r.nota_confidencial, r.id_usuario,
+              r.es_confidencial, r.nota_confidencial, r.id_usuario,
               r.fecha_creacion, tf.nombre AS tipo_falta_nombre, tf.gravedad,
-              u.correo AS autor_correo
+              u.nombre AS autor_nombre, u.correo AS autor_correo
          FROM REGISTRO_CONVIVENCIA r
          JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
          JOIN USUARIO    u  ON u.id_usuario     = r.id_usuario
@@ -237,14 +305,55 @@ const getDetalle = async (req, res) => {
     // El cumplimiento por persona de los pasos que alcanzan a varios. Trae el
     // nombre del involucrado para que la pantalla no tenga que cruzarlo.
     const [porPersona] = await pool.query(
-      `SELECT pi.*, i.nombre AS involucrado_nombre, i.rol AS involucrado_rol
+      `SELECT pi.*, i.nombre AS involucrado_nombre, i.rol AS involucrado_rol,
+              i.rut AS involucrado_rut, i.curso AS involucrado_curso,
+              (a.id_paso_involucrado IS NOT NULL) AS tiene_acta_firmada,
+              -- Quién dejó la constancia. El dato ya se guardaba (pi.id_usuario)
+              -- pero no salía a la pantalla, así que la notificación se leía
+              -- como hecha por "el establecimiento" y no por una persona. El
+              -- cargo va junto al nombre por lo mismo que en el acta: importa en
+              -- qué calidad notificó, y el rol puede cambiar después.
+              ur.nombre AS notificador_nombre,
+              rn.nombre AS notificador_cargo
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       LEFT JOIN PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO_ARCHIVO a
+              ON a.id_paso_involucrado = pi.id_paso_involucrado
+       LEFT JOIN USUARIO ur ON ur.id_usuario = pi.id_usuario
+       LEFT JOIN ROLES   rn ON rn.rol_id = (
+              SELECT ro.rol_id FROM USUARIO_ROLES uro
+                JOIN ROLES ro ON ro.rol_id = uro.rol_id AND ro.activo = TRUE
+               WHERE uro.id_usuario = ur.id_usuario
+                 AND (uro.expira_at IS NULL OR uro.expira_at > NOW())
+               LIMIT 1)
        JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
        JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
        WHERE p.id_protocolo_activado = ?
        ORDER BY FIELD(i.rol, 'afectado','senalado','denunciante','testigo'), i.nombre`,
       [req.params.id]
     );
+
+    // Medidas disciplinarias ya registradas contra este caso. Cuelgan del
+    // registro y no del caso; cuando vienen atadas a un paso (fase de
+    // resolución) sirven para saber si el paso con requiere_medida ya tiene su
+    // medida constando, igual que requiere_notificacion con la constancia. Se
+    // traen todas (no solo las atadas a un paso) para que la pantalla pueda
+    // anticipar, antes de cerrar, exactamente lo mismo que valida `cerrar()`.
+    const [medidasDelCaso] = await pool.query(
+      `SELECT id_activado_paso, resultado, estado, fecha_termino
+       FROM MEDIDA_DISCIPLINARIA WHERE id_registro = ?`,
+      [activado.id_registro]
+    );
+    // Qué clase de medida tiene ya cada paso, para contrastarla con la que pide.
+    const clasesPorPaso = await clasesDeMedidaPorPaso(pool, {
+      id_protocolo_activado: req.params.id,
+      id_registro: activado.id_registro,
+    });
+
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const medidasSinResultado = medidasDelCaso.filter((m) => !m.resultado).length;
+    const medidasVencidasSinCerrar = medidasDelCaso.filter(
+      (m) => m.estado === 'vigente' && m.fecha_termino !== null && m.fecha_termino < hoyStr
+    ).length;
 
     // La rama que el caso no tomó se marca acá y no se guarda: la pantalla la
     // esconde para que la línea de tiempo muestre el recorrido real.
@@ -260,14 +369,21 @@ const getDetalle = async (req, res) => {
     const esAdministrador = misRoles.includes('ADMIN');
     const puedeTomarAjenos = tienePermiso(req, Permiso.ProtocoloActivadoReasignarPaso);
 
+    // El orden es el de puedeActuar y no otro: ser ADMIN o ser el responsable
+    // asignado alcanza por sí solo, sin mirar los roles del paso.
+    //
+    // Acá había un corte previo —"si el paso no tiene rol de ese tipo, nadie
+    // puede"— que dejaba pasos imposibles de avanzar: un paso guardado sin
+    // ejecutor no le habilitaba el botón ni al ADMIN ni a su propio responsable,
+    // aunque el endpoint de completar sí los aceptaba. La pantalla decía que no
+    // y la API decía que sí, así que el caso se quedaba trabado sin explicación.
+    // Un paso sin titular no es de nadie, y por eso mismo lo toma quien gestiona
+    // el caso: queda como 'en_lugar_de' y la bitácora lo deja escrito.
     const tituloSobre = (paso, tipo_participacion) => {
+      if (esAdministrador || paso.id_usuario_responsable === req.user.id) return 'propio';
       const delPaso = roles.filter(
         (r) => r.id_activado_paso === paso.id_activado_paso && r.tipo_participacion === tipo_participacion
       );
-      // Un paso sin rol de ese tipo (una aprobación que nadie aprueba) no es de
-      // nadie: no se puede "tomar en lugar de" un titular que no existe.
-      if (delPaso.length === 0) return null;
-      if (esAdministrador || paso.id_usuario_responsable === req.user.id) return 'propio';
       if (delPaso.some((r) => misRoles.includes(r.rol_codigo))) return 'propio';
       return puedeTomarAjenos ? 'en_lugar_de' : null;
     };
@@ -276,6 +392,8 @@ const getDetalle = async (req, res) => {
       ...activado,
       registro: registro ? reducirSiConfidencial(req, registro) : null,
       involucrados,
+      medidas_sin_resultado: medidasSinResultado,
+      medidas_vencidas_sin_cerrar: medidasVencidasSinCerrar,
       pasos: pasos.map((p) => {
         const suyos = porPersona.filter((x) => x.id_activado_paso === p.id_activado_paso);
         const delPaso = roles.filter((r) => r.id_activado_paso === p.id_activado_paso);
@@ -296,12 +414,16 @@ const getDetalle = async (req, res) => {
           // Quedó colgado de una rama que no se tomó: no es un paso olvidado.
           descartado: descartados.has(p.id_activado_paso),
           involucrados: suyos,
-          // Lo que la pantalla pinta en rojo: el paso se dio por hecho pero
-          // alguien todavía no firma. No bloquea nada (decisión de la fase
-          // 12.3); se avisa y se exige motivo recién al cerrar el caso.
-          acuses_pendientes: p.requiere_acuse
-            ? suyos.filter((x) => x.estado !== 'no_aplica' && x.fecha_acuse === null).length
+          // Lo que la pantalla pinta en rojo: el paso se dio por hecho pero a
+          // alguien todavía no consta que se le haya notificado. No bloquea
+          // nada (decisión de la fase 12.3); se avisa y se exige motivo recién
+          // al cerrar el caso.
+          notificaciones_pendientes: p.requiere_notificacion
+            ? suyos.filter((x) => x.estado !== 'no_aplica' && x.fecha_notificacion === null).length
             : 0,
+          // Igual mecánica que arriba pero sin distinguir por persona: la
+          // medida es una sola por paso, no una por involucrado.
+          medida_pendiente: medidaPendienteDe(p, clasesPorPaso),
         };
       }),
       transiciones,
@@ -318,7 +440,7 @@ const getBitacora = async (req, res) => {
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
 
     const [eventos] = await pool.query(
-      `SELECT e.*, u.correo AS usuario_correo, p.nombre AS paso_nombre
+      `SELECT e.*, u.nombre AS usuario_nombre, u.correo AS usuario_correo, p.nombre AS paso_nombre
        FROM PROTOCOLO_ACTIVADO_EVENTO e
        LEFT JOIN USUARIO u ON u.id_usuario = e.id_usuario
        LEFT JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = e.id_activado_paso
@@ -344,7 +466,7 @@ const cargarGrafoFuente = async (pe) => {
   const [espejo] = await pool.query(
     `SELECT id_paso_estab AS id_paso, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
             accion_al_vencer, es_paso_inicial, es_paso_final, id_paso_origen_catalogo,
-            por_involucrado_rol, requiere_acuse
+            por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida
      FROM PROTOCOLO_ESTABLECIMIENTO_PASO WHERE id_protocolo_establecimiento = ?`,
     [pe.id_protocolo_establecimiento]
   );
@@ -490,15 +612,17 @@ const activar = async (req, res) => {
           `INSERT INTO PROTOCOLO_ACTIVADO_PASO
              (id_protocolo_activado, id_establecimiento, id_paso_origen_catalogo, id_paso_origen_estab,
               nombre, descripcion, tipo_paso, estado, es_paso_inicial, es_paso_final,
-              plazo_valor, plazo_unidad, accion_al_vencer, por_involucrado_rol, requiere_acuse)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?)`,
+              plazo_valor, plazo_unidad, accion_al_vencer, por_involucrado_rol, requiere_notificacion,
+              requiere_medida, tipo_medida_requerida)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_protocolo_activado, req.id_establecimiento,
             fuente.esEspejo ? p.id_paso_origen_catalogo : p.id_paso,
             fuente.esEspejo ? p.id_paso : null,
             p.nombre, p.descripcion, p.tipo_paso, p.es_paso_inicial, p.es_paso_final,
             p.plazo_valor, p.plazo_unidad, p.accion_al_vencer,
-            p.por_involucrado_rol ?? null, p.requiere_acuse ?? 0,
+            p.por_involucrado_rol ?? null, p.requiere_notificacion ?? 0, p.requiere_medida ?? 0,
+            p.tipo_medida_requerida ?? null,
           ]
         );
         mapa.set(p.id_paso, r.insertId);
@@ -560,6 +684,29 @@ const activar = async (req, res) => {
         involucrados.push({ id_involucrado: r.insertId, rol: i.rol_en_incidente, nombre: i.nombre });
       }
 
+      // El denunciante (u otro involucrado) que no es estudiante se copia
+      // igual: un inspector o un profesor que reportó el hecho también tiene
+      // que quedar contra quién — o mejor dicho, a nombre de quién — se
+      // instruyó el caso. Sin esto quedaba anotado en el registro pero se
+      // perdía apenas se activaba el protocolo.
+      const [personalDelRegistro] = await conn.query(
+        `SELECT tipo_persona, id_usuario, nombre, rut, rol_en_incidente
+         FROM REGISTRO_INVOLUCRADO_NO_ESTUDIANTE
+         WHERE id_registro = ?`,
+        [id_registro]
+      );
+      for (const i of personalDelRegistro) {
+        const [r] = await conn.query(
+          `INSERT INTO PROTOCOLO_ACTIVADO_INVOLUCRADO
+             (id_protocolo_activado, id_establecimiento, tipo_persona, id_usuario,
+              nombre, rut, rol, id_usuario_registro)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id_protocolo_activado, req.id_establecimiento, i.tipo_persona, i.id_usuario,
+           i.nombre, i.rut, i.rol_en_incidente, req.user.id]
+        );
+        involucrados.push({ id_involucrado: r.insertId, rol: i.rol_en_incidente, nombre: i.nombre });
+      }
+
       // Los pasos que se cumplen una vez por persona reciben acá su fila por
       // cada involucrado que corresponda. El paso sigue siendo un solo nodo
       // del grafo: lo que se multiplica es el registro de cumplimiento.
@@ -591,7 +738,7 @@ const activar = async (req, res) => {
       const limite = await iniciarPaso(conn, pasoInicial);
       await registrarEvento(conn, {
         activado, paso: idInicial, tipo: 'inicio_paso', id_usuario: req.user.id,
-        descripcion: `Inicia '${inicial.nombre}'${limite ? ` con plazo hasta ${limite.toISOString()}` : ''}`,
+        descripcion: `Inicia ${inicial.nombre}${limite ? ` con plazo hasta ${limite.toISOString()}` : ''}`,
       });
 
       // Quien activa el protocolo casi nunca es quien ejecuta el primer paso:
@@ -656,7 +803,7 @@ const avanzar = async (conn, { req, activado, paso, estadoFinal, datos, evento, 
     await cerrarProtocolo(conn, activado.id_protocolo_activado);
     await registrarEvento(conn, {
       activado, paso: paso.id_activado_paso, tipo: 'cierre', id_usuario: req.user.id,
-      descripcion: `Protocolo cerrado al completarse el paso final '${paso.nombre}'`,
+      descripcion: `Protocolo cerrado al completarse el paso final ${paso.nombre}`,
     });
     return { cerrado: true };
   }
@@ -672,12 +819,15 @@ const avanzar = async (conn, { req, activado, paso, estadoFinal, datos, evento, 
   const limite = await iniciarPaso(conn, destino);
   await registrarEvento(conn, {
     activado, paso: destino.id_activado_paso, tipo: 'transicion', id_usuario: req.user.id,
-    descripcion: `'${paso.nombre}' → '${destino.nombre}'` +
-      (elegida.transicion.condicion ? ` (condición ${elegida.transicion.condicion})` : ' (rama por defecto)'),
+    descripcion: `${paso.nombre} → ${destino.nombre}` +
+      // Por qué rama salió es vocabulario del grafo: se anota sólo cuando hubo
+      // una condición que evaluar. Decir "(rama por defecto)" no informaba nada
+      // y ensuciaba el expediente.
+      (elegida.transicion.condicion ? ` (condición ${elegida.transicion.condicion})` : ''),
   });
   await registrarEvento(conn, {
     activado, paso: destino.id_activado_paso, tipo: 'inicio_paso', id_usuario: req.user.id,
-    descripcion: `Inicia '${destino.nombre}'${limite ? ` con plazo hasta ${limite.toISOString()}` : ''}`,
+    descripcion: `Inicia ${destino.nombre}${limite ? ` con plazo hasta ${limite.toISOString()}` : ''}`,
   });
   // El paso siguiente suele tocarle a otro rol: este es el aviso que hace que
   // el caso no se detenga esperando a que alguien entre a mirar por casualidad.
@@ -744,7 +894,7 @@ const completarPaso = async (req, res) => {
     if (!ctx) return;
     const { activado, paso, enLugarDe } = ctx;
 
-    if (paso.tipo_paso === 'aprobacion')
+    if (esPasoDeAprobacion(paso.tipo_paso))
       return res.status(409).json({ message: 'Este es un paso de aprobación: usa la acción de aprobar.' });
 
     const [campos] = await pool.query(
@@ -760,7 +910,7 @@ const completarPaso = async (req, res) => {
       const r = await avanzar(conn, {
         req, activado, paso, estadoFinal: 'completado', datos: validados.datos,
         evento: 'completado_paso',
-        descripcion: `Completa '${paso.nombre}'${sufijoEnLugarDe(enLugarDe)}`,
+        descripcion: `Completa ${paso.nombre}${sufijoEnLugarDe(enLugarDe)}`,
       });
       if (r.error) {
         await conn.rollback();
@@ -792,8 +942,19 @@ const aprobarPaso = async (req, res) => {
     if (!ctx) return;
     const { activado, paso, enLugarDe } = ctx;
 
-    if (paso.tipo_paso !== 'aprobacion')
+    if (!esPasoDeAprobacion(paso.tipo_paso))
       return res.status(409).json({ message: 'Este paso no es de tipo aprobación.' });
+
+    // El comentario es obligatorio cuando la decisión necesita fundamento: un
+    // rechazo sin motivo deja al siguiente sin saber qué corregir, y una
+    // aprobación firmada en lugar del rol titular tiene que decir por qué la
+    // tomó otro. Si la aprueba su propio titular, el comentario es opcional.
+    if ((!aprobado || enLugarDe) && !comentario?.trim())
+      return res.status(400).json({
+        message: aprobado
+          ? `Debes indicar por qué apruebas este paso en lugar del rol ${enLugarDe}.`
+          : 'Debes indicar el motivo del rechazo.',
+      });
 
     // Un paso de aprobación puede además tener campos configurados (el tipo de
     // medida que se resuelve, por ejemplo). 'aprobado' lo pone el motor y no se
@@ -812,7 +973,7 @@ const aprobarPaso = async (req, res) => {
         req, activado, paso, estadoFinal: 'completado',
         datos: { ...validados.datos, aprobado: aprobado ? 'si' : 'no' },
         evento: 'completado_paso',
-        descripcion: `${aprobado ? 'Aprueba' : 'Rechaza'} '${paso.nombre}'` +
+        descripcion: `${aprobado ? 'Aprueba' : 'Rechaza'} ${paso.nombre}` +
           sufijoEnLugarDe(enLugarDe) +
           (comentario?.trim() ? `: ${comentario.trim()}` : ''),
       });
@@ -853,7 +1014,7 @@ const omitirPaso = async (req, res) => {
       const r = await avanzar(conn, {
         req, activado, paso, estadoFinal: 'omitido', datos: null,
         evento: 'omitido_paso',
-        descripcion: `Omite '${paso.nombre}'${sufijoEnLugarDe(enLugarDe)}: ${motivo}`,
+        descripcion: `Omite ${paso.nombre}${sufijoEnLugarDe(enLugarDe)}: ${motivo}`,
       });
       if (r.error) {
         await conn.rollback();
@@ -894,7 +1055,7 @@ const reasignarPaso = async (req, res) => {
       return res.status(409).json({ message: `El paso ya está '${paso.estado}': no tiene sentido reasignarlo.` });
 
     const [u] = await pool.query(
-      'SELECT correo FROM USUARIO WHERE id_usuario = ? AND id_establecimiento = ? AND activo = 1',
+      'SELECT nombre, correo FROM USUARIO WHERE id_usuario = ? AND id_establecimiento = ? AND activo = 1',
       [id_usuario, req.id_establecimiento]
     );
     if (u.length === 0)
@@ -908,7 +1069,7 @@ const reasignarPaso = async (req, res) => {
       ]);
       await registrarEvento(conn, {
         activado, paso: paso.id_activado_paso, tipo: 'nota', id_usuario: req.user.id,
-        descripcion: `Responsable de '${paso.nombre}' asignado a ${u[0].correo}`,
+        descripcion: `Responsable de ${paso.nombre} asignado a ${u[0].nombre || u[0].correo}`,
       });
       await notificaciones.crear(conn, {
         usuarios: [id_usuario],
@@ -954,7 +1115,8 @@ const cerrar = async (req, res) => {
     // quedarlo siempre: exigir un motivo por ellos sería pedir que se
     // justifique no haber hecho algo que nunca correspondía hacer.
     const [pasosDelCaso] = await pool.query(
-      'SELECT id_activado_paso, estado, datos_salida FROM PROTOCOLO_ACTIVADO_PASO WHERE id_protocolo_activado = ?',
+      `SELECT id_activado_paso, estado, datos_salida, requiere_medida, tipo_medida_requerida
+       FROM PROTOCOLO_ACTIVADO_PASO WHERE id_protocolo_activado = ?`,
       [req.params.id]
     );
     const [transicionesDelCaso] = await pool.query(
@@ -970,29 +1132,76 @@ const cerrar = async (req, res) => {
         message: `Quedan ${pendientes} paso(s) sin completar. Para cerrar igual, indica un motivo.`,
       });
 
-    // Una firma pendiente no detiene el protocolo mientras corre (fase 12.3),
-    // pero el cierre es la última oportunidad de dejar dicho por qué se cerró
-    // sin ella. Mismo mecanismo que los pasos sin completar: no se prohíbe, se
-    // exige explicación, que es lo que la fiscalización va a leer.
-    const [sinAcuse] = await pool.query(
-      `SELECT COUNT(*) c FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+    // Una notificación sin constancia no detiene el protocolo mientras corre
+    // (fase 12.3), pero el cierre es la última oportunidad de dejar dicho por
+    // qué se cerró sin ella. Mismo mecanismo que los pasos sin completar: no se
+    // prohíbe, se exige explicación, que es lo que la fiscalización va a leer.
+    //
+    // Los pasos descartados quedan fuera por la misma razón que arriba: una
+    // notificación que pertenece a una rama que el caso no tomó no es una
+    // notificación pendiente.
+    const [sinNotificar] = await pool.query(
+      `SELECT pi.id_activado_paso FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
        JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
-       WHERE p.id_protocolo_activado = ? AND p.requiere_acuse = 1
-         AND pi.estado <> 'no_aplica' AND pi.fecha_acuse IS NULL`,
+       WHERE p.id_protocolo_activado = ? AND p.requiere_notificacion = 1
+         AND pi.estado <> 'no_aplica' AND pi.fecha_notificacion IS NULL`,
       [req.params.id]
     );
-    if (sinAcuse[0].c > 0 && !motivo)
+    const faltanNotificar = sinNotificar.filter((g) => !descartados.has(g.id_activado_paso)).length;
+    if (faltanNotificar > 0 && !motivo)
       return res.status(400).json({
-        message: `Hay ${sinAcuse[0].c} notificación(es) sin firma de recepción. Para cerrar igual, indica un motivo.`,
+        message: `Hay ${faltanNotificar} persona(s) sin constancia de notificación. Para cerrar igual, indica un motivo.`,
+      });
+
+    // Mismo mecanismo, ahora sobre las medidas: un paso de resolución que
+    // ordena una medida y no la tiene, una medida sin resultado (el dato que
+    // el informe de expulsión exige "con indicación de los resultados
+    // obtenidos"), o una suspensión vencida con el caso todavía activo — que es
+    // justo la infracción del art. 16 E letra j / Circular 482, no al revés.
+    // No se bloquea nada: se exige explicación, igual que arriba.
+    const [medidas] = await pool.query(
+      `SELECT id_activado_paso, resultado, estado, fecha_termino
+       FROM MEDIDA_DISCIPLINARIA WHERE id_registro = ?`,
+      [activado.id_registro]
+    );
+    const clasesPorPaso = await clasesDeMedidaPorPaso(pool, {
+      id_protocolo_activado: req.params.id,
+      id_registro: activado.id_registro,
+    });
+    // Los pasos ya vienen leídos arriba con lo que hace falta para decidir
+    // —requiere_medida, la clase que piden y los datos con que se resolvieron—,
+    // así que la consulta aparte que traía solo los ids sobraba.
+    const pasosSinMedida = pasosDelCaso.filter(
+      (p) => !descartados.has(p.id_activado_paso) && medidaPendienteDe(p, clasesPorPaso)
+    ).length;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const sinResultado = medidas.filter((m) => !m.resultado).length;
+    const vencidasSinCerrar = medidas.filter(
+      (m) => m.estado === 'vigente' && m.fecha_termino !== null && m.fecha_termino < hoy
+    ).length;
+    const faltantesMedida = [
+      pasosSinMedida > 0 ? `${pasosSinMedida} paso(s) sin medida registrada` : '',
+      sinResultado > 0 ? `${sinResultado} medida(s) sin resultado` : '',
+      vencidasSinCerrar > 0 ? `${vencidasSinCerrar} medida(s) vencida(s) sin cerrar` : '',
+    ].filter(Boolean);
+    if (faltantesMedida.length > 0 && !motivo)
+      return res.status(400).json({
+        message: `${faltantesMedida.join(', ')}. Para cerrar igual, indica un motivo.`,
       });
 
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      // Los descartados se dejan en 'pendiente' a propósito: marcarlos
+      // 'omitido' los volvía indistinguibles de un paso que sí correspondía y
+      // no se hizo, y `pasosDescartados` solo reconoce los pendientes. Es
+      // además cómo quedan cuando el caso cierra por el flujo normal, así que
+      // el cierre a mano deja de producir un estado distinto.
       await conn.query(
         `UPDATE PROTOCOLO_ACTIVADO_PASO SET estado = 'omitido'
-         WHERE id_protocolo_activado = ? AND estado IN ('pendiente','en_curso')`,
-        [req.params.id]
+         WHERE id_protocolo_activado = ? AND estado IN ('pendiente','en_curso')
+           ${descartados.size ? 'AND id_activado_paso NOT IN (?)' : ''}`,
+        descartados.size ? [req.params.id, [...descartados]] : [req.params.id]
       );
       await cerrarProtocolo(conn, req.params.id);
       await registrarEvento(conn, {
@@ -1123,9 +1332,14 @@ const remove = async (req, res) => {
        WHERE id_protocolo_activado = ? AND estado IN ('completado','omitido')`,
       [req.params.id]
     );
+    // El mensaje depende del estado porque anular solo acepta casos activos:
+    // sugerírselo a un caso ya cerrado mandaba a la persona a un botón que
+    // siempre iba a estar apagado, sin decirle por qué.
     if (avanzados[0].c > 0)
       return res.status(409).json({
-        message: 'Este protocolo ya tiene pasos ejecutados: eliminarlo borraría la bitácora. Anúlalo en su lugar.',
+        message: activado.estado === 'activo'
+          ? 'Este protocolo ya tiene pasos ejecutados: eliminarlo borraría la bitácora. Anúlalo en su lugar.'
+          : `Este protocolo está ${activado.estado} y ya tiene pasos ejecutados: su bitácora es el registro del caso tramitado y no se elimina.`,
       });
 
     await pool.query('DELETE FROM PROTOCOLO_ACTIVADO WHERE id_protocolo_activado = ?', [req.params.id]);

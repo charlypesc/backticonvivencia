@@ -11,7 +11,15 @@ const {
   validarCampo,
   validarTechoLegal,
   normalizarOpciones,
+  normalizarMedidaRequerida,
+  esPasoDeAprobacion,
 } = require('../utils/flujoProtocolo');
+const {
+  DIALECTO_ESTABLECIMIENTO,
+  guardarPasoCompleto,
+  mensajeDeError,
+  anidarGrafo,
+} = require('../utils/guardarPasoFlujo');
 
 // El grafo de un protocolo tal como lo ejecuta un establecimiento concreto.
 //
@@ -248,13 +256,14 @@ const personalizar = async (req, res) => {
           `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO
              (id_protocolo_establecimiento, id_paso_origen_catalogo, nombre, descripcion, tipo_paso,
               plazo_valor, plazo_unidad, accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-              por_involucrado_rol, requiere_acuse)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_protocolo_establecimiento, p.id_paso, p.nombre, p.descripcion, p.tipo_paso,
             p.plazo_valor, p.plazo_unidad, p.accion_al_vencer,
             p.es_paso_inicial, p.es_paso_final, p.orden_visual,
-            p.por_involucrado_rol, p.requiere_acuse,
+            p.por_involucrado_rol, p.requiere_notificacion, p.requiere_medida,
+            p.tipo_medida_requerida,
           ]
         );
         mapa.set(p.id_paso, r.insertId);
@@ -347,7 +356,7 @@ const crearPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-    por_involucrado_rol, requiere_acuse,
+    por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -375,13 +384,14 @@ const crearPaso = async (req, res) => {
       `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO
          (id_protocolo_establecimiento, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
           accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-          por_involucrado_rol, requiere_acuse)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_protocolo_establecimiento, nombre.trim(), descripcion?.trim() || null,
         tipo_paso || 'informativo', plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
+        normalizarMedidaRequerida(req.body),
       ]
     );
     res.status(201).json({ id_paso_estab: result.insertId, message: 'Paso creado' });
@@ -396,7 +406,7 @@ const actualizarPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-    por_involucrado_rol, requiere_acuse,
+    por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -437,13 +447,15 @@ const actualizarPaso = async (req, res) => {
       `UPDATE PROTOCOLO_ESTABLECIMIENTO_PASO
        SET nombre = ?, descripcion = ?, tipo_paso = ?, plazo_valor = ?, plazo_unidad = ?,
            accion_al_vencer = ?, es_paso_inicial = ?, es_paso_final = ?, orden_visual = ?,
-           por_involucrado_rol = ?, requiere_acuse = ?
+           por_involucrado_rol = ?, requiere_notificacion = ?, requiere_medida = ?,
+           tipo_medida_requerida = ?
        WHERE id_paso_estab = ? AND id_protocolo_establecimiento = ?`,
       [
         nombre.trim(), descripcion?.trim() || null, tipo_paso || paso.tipo_paso,
         plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
+        normalizarMedidaRequerida(req.body),
         id_paso, id_protocolo_establecimiento,
       ]
     );
@@ -451,6 +463,64 @@ const actualizarPaso = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al actualizar el paso' });
+  }
+};
+
+// Igual que en el catálogo: el formulario del paso guarda todo de una vez y en
+// una transacción, en vez de encadenar un request por cada pieza. Ver el
+// comentario de cabecera de utils/guardarPasoFlujo.js.
+const guardarPasoCompletoEstab = async (req, res) => {
+  const { id_protocolo_establecimiento, id_paso } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const pe = await buscarProtocoloEstablecimiento(id_protocolo_establecimiento, req.id_establecimiento);
+    if (!pe) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Protocolo de establecimiento no encontrado' });
+    }
+    // Un protocolo adoptado hereda el grafo del catálogo: hay que clonarlo
+    // antes de poder tocarlo, o el flujo quedaría mitad heredado y mitad propio.
+    const bloqueo = await exigirEspejoEditable(pe);
+    if (bloqueo) {
+      await conn.rollback();
+      return res.status(409).json({ message: bloqueo });
+    }
+
+    const { id_paso: idPaso, grafo } = await guardarPasoCompleto({
+      conn,
+      dialecto: DIALECTO_ESTABLECIMIENTO,
+      idProtocolo: Number(id_protocolo_establecimiento),
+      idPaso: id_paso ? Number(id_paso) : null,
+      cuerpo: req.body,
+      // A diferencia del catálogo global, acá sí valen los roles propios del
+      // colegio: es su copia y la ejecuta su gente. Lo que no puede es apuntar
+      // a un rol de OTRO establecimiento.
+      validarRol: (rol) => {
+        if (rol.id_establecimiento !== null && rol.id_establecimiento !== req.id_establecimiento)
+          return { status: 404, message: `El rol ${rol.rol_id} no existe.` };
+        if (!rol.activo) return `El rol '${rol.nombre}' está inactivo.`;
+        return null;
+      },
+    });
+
+    await conn.commit();
+    // Tras guardar, el espejo existe por definición: el grafo que se devuelve
+    // es siempre el propio y siempre editable.
+    res.json({
+      message: id_paso ? 'Paso actualizado' : 'Paso creado',
+      id_paso: idPaso,
+      grafo: { protocolo: pe, origen: 'propio', editable: true, ...anidarGrafo(grafo) },
+    });
+  } catch (err) {
+    await conn.rollback();
+    const conocido = mensajeDeError(err);
+    if (conocido) return res.status(conocido.status).json({ message: conocido.message });
+    console.error(err);
+    res.status(500).json({ message: 'Error al guardar el paso' });
+  } finally {
+    conn.release();
   }
 };
 
@@ -670,7 +740,7 @@ const reemplazarRoles = async (req, res) => {
       }
     }
 
-    if (paso.tipo_paso === 'aprobacion' && !roles.some((r) => (r.tipo_participacion ?? 'ejecutor') === 'aprobador'))
+    if (esPasoDeAprobacion(paso.tipo_paso) && !roles.some((r) => (r.tipo_participacion ?? 'ejecutor') === 'aprobador'))
       return res.status(409).json({
         message: 'Un paso de tipo aprobación necesita al menos un rol con tipo_participacion = aprobador.',
       });
@@ -942,7 +1012,7 @@ const validar = async (req, res) => {
       const delPaso = roles.filter((r) => r.id_paso_estab === p.id_paso_estab);
       if (!delPaso.some((r) => r.tipo_participacion === 'ejecutor'))
         problemas.push(`El paso '${p.nombre}' no tiene ningún rol ejecutor asignado.`);
-      if (p.tipo_paso === 'aprobacion' && !delPaso.some((r) => r.tipo_participacion === 'aprobador'))
+      if (esPasoDeAprobacion(p.tipo_paso) && !delPaso.some((r) => r.tipo_participacion === 'aprobador'))
         problemas.push(`El paso de aprobación '${p.nombre}' no tiene ningún rol aprobador.`);
       if (p.tipo_paso === 'formulario' && !campos.some((c) => c.id_paso_estab === p.id_paso_estab))
         problemas.push(`El paso de formulario '${p.nombre}' no tiene campos definidos.`);
@@ -958,7 +1028,7 @@ const validar = async (req, res) => {
 module.exports = {
   getGrafo,
   personalizar, restaurar,
-  crearPaso, actualizarPaso, eliminarPaso,
+  crearPaso, actualizarPaso, eliminarPaso, guardarPasoCompletoEstab,
   crearTransicion, actualizarTransicion, eliminarTransicion,
   reemplazarRoles,
   crearCampo, actualizarCampo, eliminarCampo,

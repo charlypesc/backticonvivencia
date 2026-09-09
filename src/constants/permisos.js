@@ -78,7 +78,6 @@ const Permiso = Object.freeze({
   RegistroEditar                : 42,
   RegistroEliminar              : 43,
   RegistroVerTodos              : 44,
-  RegistroValidar               : 45,
   RegistroConfirmar             : 46,
   RegistroVerConfidencial       : 75,
   RegistroEditarConfidencialidad: 76,
@@ -139,6 +138,11 @@ const Permiso = Object.freeze({
   UsuarioActivar   : 68,
   UsuarioAsignarRol: 69,
   UsuarioRestablecerPassword: 78,
+  // Ajustar los permisos de UNA persona por encima de los de su rol. Es un
+  // permiso aparte de asignar_rol: cambiar el rol elige entre plantillas ya
+  // aprobadas, mientras que esto arma una combinación que no existe en ningún
+  // rol, y por eso se puede repartir por separado.
+  UsuarioAsignarPermiso     : 114,
 
   // rol
   RolVer           : 70,
@@ -182,8 +186,11 @@ const Permiso = Object.freeze({
 
   // suspension_cautelar (art. 6 letra d del DFL 2/1998: la cautelar mientras
   // dura el procedimiento sancionatorio, distinta de la del art. 16 E letra j).
-  // Crear y resolver son facultad del director, no una decisión de producto:
-  // "El director tendrá la facultad de suspender, como medida cautelar".
+  // Resolver es facultad exclusiva del director. Crear lo tiene también el
+  // Coordinador de convivencia para poder registrar la medida, pero la facultad
+  // legal sigue siendo nominativa del director ("el director tendrá la facultad
+  // de suspender, como medida cautelar"): el acto notificado debe ir firmado
+  // por él o por quien lo subrogue formalmente.
   SuspensionCautelarVer                    : 110,
   SuspensionCautelarCrear                  : 111,
   SuspensionCautelarRegistrarReconsideracion: 112,
@@ -237,7 +244,6 @@ const CODIGO_POR_ID = Object.freeze({
   42: 'registro.editar',
   43: 'registro.eliminar',
   44: 'registro.ver_todos',
-  45: 'registro.validar',
   46: 'registro.confirmar',
   47: 'tipo_falta.ver',
   48: 'tipo_falta.crear',
@@ -306,6 +312,7 @@ const CODIGO_POR_ID = Object.freeze({
  111: 'suspension_cautelar.crear',
  112: 'suspension_cautelar.registrar_reconsideracion',
  113: 'suspension_cautelar.resolver',
+ 114: 'usuario.asignar_permiso',
 });
 
 const codigoDe = (id) => CODIGO_POR_ID[id] ?? `desconocido(${id})`;

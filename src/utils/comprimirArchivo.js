@@ -27,6 +27,31 @@ const cambiarExtension = (nombre, ext) =>
   `${String(nombre ?? 'archivo').replace(/\.[^.]+$/, '')}.${ext}`;
 
 /**
+ * El nombre del archivo tal como lo escribió la persona.
+ *
+ * multer entrega `originalname` con los bytes del nombre interpretados como
+ * latin-1: "Notificación María.pdf" llega como "NotificaciÃ³n MarÃ­a.pdf". Y
+ * macOS manda además las tildes descompuestas (una "I" seguida de un acento
+ * suelto), que es lo que salía partido —"MARIÌ•A"— en el expediente.
+ *
+ * Se corrige acá y no en cada controlador: el nombre entra al sistema por este
+ * único punto.
+ */
+const nombreLegible = (nombre) => {
+  const bruto = String(nombre ?? 'archivo');
+  let salida = bruto;
+  try {
+    const reinterpretado = Buffer.from(bruto, 'latin1').toString('utf8');
+    // Un nombre que ya venía bien no sobrevive el viaje de ida y vuelta: solo
+    // se acepta la reinterpretación cuando es exacta, o se rompería lo sano.
+    if (Buffer.from(reinterpretado, 'utf8').toString('latin1') === bruto) salida = reinterpretado;
+  } catch {
+    /* se queda el original: perder el nombre es peor que dejarlo raro */
+  }
+  return salida.normalize('NFC');
+};
+
+/**
  * Imagen → JPEG redimensionado.
  *
  * `rotate()` sin argumentos aplica la orientación EXIF antes de redimensionar:
@@ -72,7 +97,7 @@ const comprimirArchivo = async (archivo) => {
   const original = {
     buffer: archivo.buffer,
     mimetype: archivo.mimetype,
-    originalname: archivo.originalname,
+    originalname: nombreLegible(archivo.originalname),
     size: archivo.buffer.length,
     bytes_originales: archivo.buffer.length,
     comprimido: false,
@@ -91,7 +116,7 @@ const comprimirArchivo = async (archivo) => {
     return {
       buffer: r.buffer,
       mimetype: r.mimetype,
-      originalname: cambiarExtension(archivo.originalname, r.extension),
+      originalname: cambiarExtension(original.originalname, r.extension),
       size: r.buffer.length,
       bytes_originales: original.size,
       comprimido: true,
@@ -105,4 +130,4 @@ const comprimirArchivo = async (archivo) => {
   }
 };
 
-module.exports = { comprimirArchivo, LADO_MAXIMO, CALIDAD_JPEG };
+module.exports = { comprimirArchivo, nombreLegible, LADO_MAXIMO, CALIDAD_JPEG };

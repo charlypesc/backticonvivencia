@@ -10,8 +10,16 @@ const {
   validarPaso,
   validarCampo,
   normalizarOpciones,
+  normalizarMedidaRequerida,
   validarTechoLegal,
+  esPasoDeAprobacion,
 } = require('../utils/flujoProtocolo');
+const {
+  DIALECTO_CATALOGO,
+  guardarPasoCompleto,
+  mensajeDeError,
+  anidarGrafo,
+} = require('../utils/guardarPasoFlujo');
 
 // CRUD del grafo de un protocolo del catálogo global: pasos, transiciones,
 // roles por paso y campos por paso. Todo cuelga de /:id_protocolo, así que el
@@ -109,7 +117,7 @@ const crearPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-    por_involucrado_rol, requiere_acuse,
+    por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -138,14 +146,15 @@ const crearPaso = async (req, res) => {
       `INSERT INTO CATALOGO_PROTOCOLO_PASO
          (id_protocolo, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
           accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-          por_involucrado_rol, requiere_acuse)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_protocolo, nombre.trim(), descripcion?.trim() || null,
         tipo_paso || 'informativo', plazo.valor, plazo.unidad,
         accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
+        normalizarMedidaRequerida(req.body),
       ]
     );
     await volverABorrador(id_protocolo);
@@ -161,7 +170,7 @@ const actualizarPaso = async (req, res) => {
   const {
     nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
     accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-    por_involucrado_rol, requiere_acuse,
+    por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida,
   } = req.body;
 
   const forma = validarPaso(req.body);
@@ -188,13 +197,15 @@ const actualizarPaso = async (req, res) => {
       `UPDATE CATALOGO_PROTOCOLO_PASO
        SET nombre = ?, descripcion = ?, tipo_paso = ?, plazo_valor = ?, plazo_unidad = ?,
            accion_al_vencer = ?, es_paso_inicial = ?, es_paso_final = ?, orden_visual = ?,
-           por_involucrado_rol = ?, requiere_acuse = ?
+           por_involucrado_rol = ?, requiere_notificacion = ?, requiere_medida = ?,
+           tipo_medida_requerida = ?
        WHERE id_paso = ? AND id_protocolo = ?`,
       [
         nombre.trim(), descripcion?.trim() || null, tipo_paso || paso.tipo_paso,
         plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_acuse ? 1 : 0,
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
+        normalizarMedidaRequerida(req.body),
         id_paso, id_protocolo,
       ]
     );
@@ -203,6 +214,73 @@ const actualizarPaso = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al actualizar el paso' });
+  }
+};
+
+// Guarda el paso entero de una vez: sus datos, sus responsables, sus preguntas
+// y sus salidas, en una transacción. Los endpoints de a uno de más abajo siguen
+// existiendo (los usa el diagrama para mover o borrar cosas sueltas), pero el
+// formulario del paso guarda por acá: con la base a ~270 ms por consulta, hacer
+// nueve requests seguidos costaba quince segundos y podía dejar el paso a medio
+// escribir si uno de los últimos fallaba.
+const guardarPasoCompletoGenerico = async (req, res) => {
+  const { id_protocolo, id_paso } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[protocolo]] = await conn.query(
+      'SELECT id_protocolo, nombre, estado_flujo FROM CATALOGO_PROTOCOLOS_GENERICOS WHERE id_protocolo = ?',
+      [id_protocolo]
+    );
+    if (!protocolo) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Protocolo genérico no encontrado' });
+    }
+
+    const { id_paso: idPaso, grafo } = await guardarPasoCompleto({
+      conn,
+      dialecto: DIALECTO_CATALOGO,
+      idProtocolo: Number(id_protocolo),
+      idPaso: id_paso ? Number(id_paso) : null,
+      cuerpo: req.body,
+      // El catálogo es global: solo puede referenciar roles globales. Un rol de
+      // un colegio en la plantilla estándar significaría una plantilla que no se
+      // puede ejecutar en ningún otro establecimiento.
+      validarRol: (rol) => {
+        if (rol.id_establecimiento !== null)
+          return `'${rol.nombre}' es un rol de un establecimiento. El catálogo global solo admite roles globales.`;
+        if (!rol.activo) return `El rol '${rol.nombre}' está inactivo.`;
+        return null;
+      },
+    });
+
+    // Cualquier cambio estructural invalida la publicación, igual que en los
+    // endpoints de a uno; acá se escribe una sola vez y no nueve.
+    await conn.query(
+      `UPDATE CATALOGO_PROTOCOLOS_GENERICOS
+       SET estado_flujo = 'borrador', fecha_publicacion = NULL
+       WHERE id_protocolo = ? AND estado_flujo = 'publicado'`,
+      [id_protocolo]
+    );
+
+    await conn.commit();
+    res.json({
+      message: id_paso ? 'Paso actualizado' : 'Paso creado',
+      id_paso: idPaso,
+      grafo: {
+        protocolo: { ...protocolo, estado_flujo: 'borrador' },
+        ...anidarGrafo(grafo),
+      },
+    });
+  } catch (err) {
+    await conn.rollback();
+    const conocido = mensajeDeError(err);
+    if (conocido) return res.status(conocido.status).json({ message: conocido.message });
+    console.error(err);
+    res.status(500).json({ message: 'Error al guardar el paso' });
+  } finally {
+    conn.release();
   }
 };
 
@@ -424,7 +502,7 @@ const reemplazarRoles = async (req, res) => {
     }
 
     // Un paso de aprobación sin aprobador no se puede completar nunca.
-    if (paso.tipo_paso === 'aprobacion' && !roles.some((r) => (r.tipo_participacion ?? 'ejecutor') === 'aprobador'))
+    if (esPasoDeAprobacion(paso.tipo_paso) && !roles.some((r) => (r.tipo_participacion ?? 'ejecutor') === 'aprobador'))
       return res.status(409).json({
         message: 'Un paso de tipo aprobación necesita al menos un rol con tipo_participacion = aprobador.',
       });
@@ -675,7 +753,7 @@ const revisarProtocolo = async (id_protocolo) => {
     // Un paso sin ejecutor no le aparece a nadie en su bandeja.
     if (!delPaso.some((r) => r.tipo_participacion === 'ejecutor'))
       problemas.push(`El paso '${p.nombre}' no tiene ningún rol ejecutor asignado.`);
-    if (p.tipo_paso === 'aprobacion' && !delPaso.some((r) => r.tipo_participacion === 'aprobador'))
+    if (esPasoDeAprobacion(p.tipo_paso) && !delPaso.some((r) => r.tipo_participacion === 'aprobador'))
       problemas.push(`El paso de aprobación '${p.nombre}' no tiene ningún rol aprobador.`);
     if (p.tipo_paso === 'formulario' && !campos.some((c) => c.id_paso === p.id_paso))
       problemas.push(`El paso de formulario '${p.nombre}' no tiene campos definidos.`);
@@ -730,7 +808,7 @@ const publicar = async (req, res) => {
 
 module.exports = {
   getGrafo,
-  crearPaso, actualizarPaso, eliminarPaso,
+  crearPaso, actualizarPaso, eliminarPaso, guardarPasoCompletoGenerico,
   crearTransicion, actualizarTransicion, eliminarTransicion,
   reemplazarRoles,
   crearCampo, actualizarCampo, eliminarCampo,

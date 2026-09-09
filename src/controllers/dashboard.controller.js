@@ -14,18 +14,27 @@ const getResumen = async (req, res) => {
       [id_est]
     );
 
-    const [[{ pendientes }]] = await pool.query(
-      `SELECT COUNT(*) AS pendientes
-       FROM REGISTRO_CONVIVENCIA r
-       WHERE r.id_establecimiento = ?
-         AND r.estado_validacion = 'pendiente'`,
+    // Cuántos estudiantes tienen al menos un registro, no cuántos están
+    // activos. Con el padrón entero cargado, "estudiantes activos" contaba la
+    // matrícula —un número que no dice nada del trabajo de convivencia— y desde
+    // que el alta entra inactiva contaría exactamente lo mismo que esta
+    // consulta, pero por un rodeo: el estado de la ficha en vez del hecho.
+    // Se cuenta sobre REGISTRO_ESTUDIANTE, que es el hecho.
+    const [[{ estudiantes_con_registro }]] = await pool.query(
+      `SELECT COUNT(DISTINCT re.id_estudiante) AS estudiantes_con_registro
+       FROM REGISTRO_ESTUDIANTE re
+       JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro
+       WHERE r.id_establecimiento = ?`,
       [id_est]
     );
 
-    const [[{ estudiantes_activos }]] = await pool.query(
-      `SELECT COUNT(*) AS estudiantes_activos
-       FROM ESTUDIANTE
-       WHERE id_establecimiento = ? AND activo = 1`,
+    // Los protocolos hoy en curso. Es el mismo número que traía `casos_activos`
+    // dentro de cumplimiento: sube a las tarjetas de actividad, donde se lee
+    // junto a los registros del mes, y deja de estar repetido abajo.
+    const [[{ protocolos_activados }]] = await pool.query(
+      `SELECT COUNT(*) AS protocolos_activados
+       FROM PROTOCOLO_ACTIVADO
+       WHERE id_establecimiento = ? AND estado = 'activo'`,
       [id_est]
     );
 
@@ -34,10 +43,11 @@ const getResumen = async (req, res) => {
     // registros: un registro con 5 involucrados se comía la lista entera y los
     // registros anteriores desaparecían del dashboard.
     const [ultimos] = await pool.query(
-      `SELECT r.id_registro, r.asunto, r.estado_validacion, r.fecha_creacion,
+      `SELECT r.id_registro, r.asunto, r.fecha_creacion,
               r.id_usuario, r.es_confidencial, r.nota_confidencial,
               r.fecha_modificacion,
-              u.correo AS autor_correo, um.correo AS editor_correo,
+              u.nombre AS autor_nombre, u.correo AS autor_correo,
+              um.nombre AS editor_nombre, um.correo AS editor_correo,
               GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
                            ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
        FROM REGISTRO_CONVIVENCIA r
@@ -130,17 +140,17 @@ const getResumen = async (req, res) => {
              AND fecha_resolucion IS NULL
              AND fecha_limite_resolucion < CURDATE()) AS cautelares_sin_resolver,
 
-         -- Notificaciones entregadas sin firma de recepción. La firma no
-         -- detiene el protocolo (fase 12.3), así que sin esta métrica una
-         -- notificación sin acuse solo se ve abriendo el caso — y es lo primero
-         -- que se pregunta en una fiscalización: a quién se le avisó y cómo
-         -- consta.
+         -- Pasos dados por hechos sin constancia de haber notificado a la
+         -- persona. Falta de constancia no detiene el protocolo (fase 12.3),
+         -- así que sin esta métrica solo se ve abriendo el caso — y es lo
+         -- primero que se pregunta en una fiscalización: a quién se le avisó,
+         -- cuándo y por qué vía. No se pide firma, se pide constancia.
          (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
             JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
             JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = p.id_protocolo_activado
            WHERE p.id_establecimiento = ? AND pa.estado = 'activo'
-             AND p.requiere_acuse = 1 AND pi.estado <> 'no_aplica'
-             AND pi.fecha_acuse IS NULL) AS notificaciones_sin_acuse`,
+             AND p.requiere_notificacion = 1 AND pi.estado <> 'no_aplica'
+             AND pi.fecha_notificacion IS NULL) AS notificaciones_pendientes`,
       [id_est, id_est, id_est, id_est, id_est, id_est, id_est, id_est]
     );
 
@@ -156,7 +166,7 @@ const getResumen = async (req, res) => {
     );
 
     res.json({
-      registros_mes, pendientes, estudiantes_activos,
+      registros_mes, estudiantes_con_registro, protocolos_activados,
       ultimos: ultimosFiltrados,
       cumplimiento: {
         ...cumplimiento,

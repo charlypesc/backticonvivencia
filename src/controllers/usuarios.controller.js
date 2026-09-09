@@ -1,6 +1,11 @@
 const bcrypt = require('bcryptjs');
 const pool   = require('../db/connection');
-const { rolesDe } = require('../middleware/auth');
+const { rolesDe, tienePermiso, esAdmin } = require('../middleware/auth');
+const { Permiso, codigoDe, CODIGO_POR_ID } = require('../constants/permisos');
+// Compartidas con la pantalla de Roles a propósito: la derivación del código y
+// la guardia de "nadie otorga un permiso que no tiene" tienen que ser las mismas
+// acá que allá, o con el tiempo se separan. Ver roles.controller.
+const { derivarCodigo, permisosFueraDeAlcance } = require('./roles.controller');
 const { resolverEstablecimiento, establecimientoRequerido } = require('../middleware/scope');
 const { generarPassword } = require('../utils/password');
 const { sembrarTiposFalta } = require('../utils/sembrarTiposFalta');
@@ -147,6 +152,135 @@ const create = async (req, res) => {
       return res.status(409).json({ message: 'El correo ya está registrado' });
     console.error(err);
     res.status(500).json({ message: 'Error al crear usuario' });
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * PUT /usuarios/:id — corregir nombre, correo y roles de una cuenta existente.
+ *
+ * No estrena permiso propio: editar la ficha va con `usuario.crear` (quien da
+ * de alta a alguien puede corregirle el apellido mal escrito) y tocar sus roles
+ * exige además `usuario.asignar_rol`, que es el mismo par de permisos que ya
+ * gobierna el alta. Inventar un `usuario.editar` habría dejado a todos los
+ * roles sin poder usar la pantalla hasta repartirlo a mano en ROL_PERMISOS.
+ *
+ * La contraseña no se toca acá: para eso está resetPassword, que emite una
+ * nueva y devuelve el documento a entregar.
+ */
+const update = async (req, res) => {
+  const { correo, roles } = req.body;
+  const nombre = (req.body.nombre || '').trim();
+  const codigos = Array.isArray(roles) ? roles : roles ? [roles] : [];
+  const cambiaRoles = roles !== undefined;
+
+  if (!correo || !nombre)
+    return res.status(400).json({ message: 'Nombre y correo son requeridos' });
+  if (cambiaRoles && codigos.length === 0)
+    return res.status(400).json({ message: 'El usuario tiene que conservar al menos un rol' });
+  if (cambiaRoles && !tienePermiso(req, Permiso.UsuarioAsignarRol))
+    return res.status(403).json({ message: 'No tienes permiso para cambiar los roles de un usuario' });
+
+  const prohibido = codigos.find((c) => !puedeTocarRol(req, c));
+  if (prohibido)
+    return res.status(403).json({ message: `No puedes asignar el rol ${prohibido}` });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // El scope se valida sobre la fila, no sobre lo que venga en el body: un
+    // ADMIN acotado a un colegio no puede editar cuentas de otro.
+    const [[destino]] = await conn.query(
+      'SELECT id_usuario, id_establecimiento FROM USUARIO WHERE id_usuario = ?',
+      [req.params.id]
+    );
+    if (!destino) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    const id_est = resolverEstablecimiento(req);
+    if (id_est !== null && id_est !== undefined && destino.id_establecimiento !== id_est) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    let rolesRows = [];
+    if (cambiaRoles) {
+      // Mismo criterio que el alta: el rol tiene que ser global o del propio
+      // colegio del usuario, si no se le abre acceso cruzado entre colegios.
+      const [rows] = await conn.query(
+        `SELECT rol_id, codigo FROM ROLES
+         WHERE codigo IN (?) AND activo = TRUE
+           AND (id_establecimiento IS NULL OR id_establecimiento <=> ?)`,
+        [codigos, destino.id_establecimiento]
+      );
+      if (rows.length !== codigos.length) {
+        await conn.rollback();
+        const validos = rows.map((r) => r.codigo);
+        return res.status(400).json({
+          message: `Rol inválido: ${codigos.filter((c) => !validos.includes(c)).join(', ')}`,
+        });
+      }
+      rolesRows = rows;
+
+      // Los que se le quitan pasan por la misma guardia que quitarRol: nadie
+      // puede dejar el sistema sin ADMIN activo por la vía de una edición.
+      const [actuales] = await conn.query(
+        `SELECT r.rol_id, r.codigo FROM USUARIO_ROLES ur
+         JOIN ROLES r ON r.rol_id = ur.rol_id
+         WHERE ur.id_usuario = ?`,
+        [req.params.id]
+      );
+      const quitados = actuales.filter((a) => !codigos.includes(a.codigo));
+      const prohibidoQuitar = quitados.find((q) => !puedeTocarRol(req, q.codigo));
+      if (prohibidoQuitar) {
+        await conn.rollback();
+        return res.status(403).json({ message: `No puedes quitar el rol ${prohibidoQuitar.codigo}` });
+      }
+      if (quitados.some((q) => q.codigo === 'ADMIN')) {
+        const [[{ n }]] = await conn.query(
+          `SELECT COUNT(*) n FROM USUARIO_ROLES ur
+           JOIN ROLES r ON r.rol_id = ur.rol_id
+           JOIN USUARIO u ON u.id_usuario = ur.id_usuario AND u.activo = TRUE
+           WHERE r.codigo = 'ADMIN'`
+        );
+        if (n <= 1) {
+          await conn.rollback();
+          return res.status(409).json({ message: 'No puedes quitar el último ADMIN activo del sistema' });
+        }
+      }
+
+      await conn.query(
+        `DELETE FROM USUARIO_ROLES WHERE id_usuario = ? AND rol_id NOT IN (?)`,
+        [req.params.id, rolesRows.map((r) => r.rol_id)]
+      );
+      for (const r of rolesRows)
+        await conn.query(
+          `INSERT IGNORE INTO USUARIO_ROLES (id_usuario, rol_id, asignado_por) VALUES (?, ?, ?)`,
+          [req.params.id, r.rol_id, req.user.id]
+        );
+    }
+
+    // `USUARIO.rol` es la columna vieja de rol único; se mantiene alineada con
+    // el primero de la lista, igual que en el alta, para no dejar dos verdades.
+    await conn.query(
+      `UPDATE USUARIO SET correo = ?, nombre = ?${cambiaRoles ? ', rol = ?' : ''}
+       WHERE id_usuario = ?`,
+      cambiaRoles
+        ? [correo, nombre, codigos[0], req.params.id]
+        : [correo, nombre, req.params.id]
+    );
+
+    await conn.commit();
+    res.json({ message: 'Usuario actualizado' });
+  } catch (err) {
+    await conn.rollback();
+    if (err.code === 'ER_DUP_ENTRY')
+      return res.status(409).json({ message: 'El correo ya está registrado' });
+    console.error(err);
+    res.status(500).json({ message: 'Error al actualizar el usuario' });
   } finally {
     conn.release();
   }
@@ -328,7 +462,339 @@ const quitarRol = async (req, res) => {
   }
 };
 
+// ─── Permisos por persona ─────────────────────────────────────────────────
+//
+// Los roles útiles del sistema (INSPECTORIA, PSICOLOGO, ORIENTADOR…) son
+// globales: los comparten todos los colegios, así que nadie salvo el ADMIN
+// puede cambiarles los permisos — hacerlo se los cambiaría a todo el país.
+// Eso dejaba a un encargado sin ninguna forma de decir "esta inspectora mía,
+// además, exporta expedientes".
+//
+// USUARIO_PERMISOS es esa forma: una capa fina POR PERSONA encima del rol, con
+// dos efectos posibles.
+//
+//   permisos efectivos = permisos del rol + concedidos - denegados
+//
+// Es lo que calcula la vista VW_PERMISOS_EFECTIVOS, la misma que ya leía el
+// login: por eso nada aguas abajo (JWT, requirePermission, el frontend) cambia.
+// La PK es (id_usuario, permiso_id), así que una persona no puede tener el
+// mismo permiso concedido y denegado a la vez.
+//
+// Se usa con cuentagotas: si a media docena de personas hay que darles lo
+// mismo, lo que corresponde es un rol propio del establecimiento, no seis
+// excepciones que nadie va a recordar por qué existen. Por eso `motivo` se
+// guarda junto al override.
+
+/**
+ * Localiza al usuario destino dentro del alcance de quien pregunta y verifica
+ * que no sea un ADMIN. Devuelve `{ error }` con el status a responder, o
+ * `{ destino }`.
+ *
+ * Que un no-ADMIN no pueda tocar los permisos de un ADMIN es la misma guardia
+ * de resetPassword: sin ella, quien tenga usuario.asignar_permiso podría
+ * DENEGARLE permisos al administrador y dejar el sistema sin quién lo gobierne.
+ */
+const destinoAdministrable = async (req) => {
+  const id_est = resolverEstablecimiento(req);
+  const where  = id_est === null || id_est === undefined ? '' : 'AND id_establecimiento = ?';
+  const params = where ? [req.params.id, id_est] : [req.params.id];
+
+  const [[destino]] = await pool.query(
+    `SELECT id_usuario, correo, nombre, id_establecimiento
+       FROM USUARIO WHERE id_usuario = ? ${where}`, params
+  );
+  if (!destino) return { error: { status: 404, message: 'Usuario no encontrado' } };
+
+  const [rolesDestino] = await pool.query(
+    `SELECT r.codigo FROM USUARIO_ROLES ur
+     JOIN ROLES r ON r.rol_id = ur.rol_id
+     WHERE ur.id_usuario = ?`,
+    [destino.id_usuario]
+  );
+  if (rolesDestino.some((r) => !puedeTocarRol(req, r.codigo)))
+    return { error: { status: 403, message: 'No puedes cambiar los permisos de un ADMIN' } };
+
+  return { destino };
+};
+
+/**
+ * GET /usuarios/:id/permisos — de dónde le viene cada permiso a esta persona.
+ *
+ * Devuelve las tres capas por separado en vez de una lista plana: la pantalla
+ * tiene que poder mostrar "esto lo trae el rol" distinto de "esto se lo
+ * agregamos a mano", que es justamente la información que se pierde si se
+ * entrega todo mezclado.
+ */
+const getPermisos = async (req, res) => {
+  try {
+    const { error } = await destinoAdministrable(req);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    const [heredados] = await pool.query(
+      `SELECT DISTINCT rp.permiso_id, r.codigo AS rol_codigo, r.nombre AS rol_nombre
+         FROM USUARIO_ROLES ur
+         JOIN ROLES r         ON r.rol_id = ur.rol_id AND r.activo = TRUE
+         JOIN ROL_PERMISOS rp ON rp.rol_id = ur.rol_id
+        WHERE ur.id_usuario = ?
+          AND (ur.expira_at IS NULL OR ur.expira_at > NOW())
+        ORDER BY rp.permiso_id`,
+      [req.params.id]
+    );
+
+    const [overrides] = await pool.query(
+      `SELECT up.permiso_id, up.efecto, up.motivo, up.asignado_at, up.expira_at,
+              a.nombre AS asignado_por_nombre
+         FROM USUARIO_PERMISOS up
+         LEFT JOIN USUARIO a ON a.id_usuario = up.asignado_por
+        WHERE up.id_usuario = ?
+        ORDER BY up.permiso_id`,
+      [req.params.id]
+    );
+
+    const [efectivos] = await pool.query(
+      `SELECT permiso_id FROM VW_PERMISOS_EFECTIVOS WHERE id_usuario = ?`,
+      [req.params.id]
+    );
+
+    res.json({
+      // Un mismo permiso puede venir de más de un rol: se agrupa para poder
+      // decir "de Inspectoría, Docente" en el tooltip sin repetir la fila.
+      heredados: [...heredados.reduce((m, h) => {
+        const prev = m.get(h.permiso_id);
+        if (prev) prev.roles.push(h.rol_nombre);
+        else m.set(h.permiso_id, { permiso_id: h.permiso_id, roles: [h.rol_nombre] });
+        return m;
+      }, new Map()).values()],
+      overrides,
+      efectivos: efectivos.map((e) => e.permiso_id),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al obtener los permisos del usuario' });
+  }
+};
+
+/**
+ * PUT /usuarios/:id/permisos — reemplaza TODOS los overrides de la persona.
+ *
+ * Body: `{ conceder: [ids], denegar: [ids], motivo? }`. Es un reemplazo y no un
+ * parche porque la pantalla edita la lista completa: mandar altas y bajas por
+ * separado obligaría al frontend a llevar el diff, y un refresh a destiempo
+ * dejaría overrides fantasma que nadie pidió.
+ *
+ * Vale la misma regla que gobierna los roles: NADIE PUEDE OTORGAR UN PERMISO
+ * QUE NO TIENE. Sin eso, cualquiera con usuario.asignar_permiso se concedería
+ * a sí mismo (o a un cómplice) los 114 permisos y sería ADMIN de hecho — la
+ * misma escalada que roles.controller ya bloquea del otro lado.
+ */
+const setPermisos = async (req, res) => {
+  const conceder = [...new Set((req.body.conceder ?? []).map(Number).filter(Number.isInteger))];
+  const denegar  = [...new Set((req.body.denegar  ?? []).map(Number).filter(Number.isInteger))];
+  const motivo   = (req.body.motivo || '').trim() || null;
+
+  const enAmbas = conceder.filter((id) => denegar.includes(id));
+  if (enAmbas.length)
+    return res.status(400).json({
+      message: `No se puede conceder y denegar a la vez: ${enAmbas.map(codigoDe).join(', ')}`,
+    });
+
+  // Denegar no necesita tenerlo (quitar es siempre "hacia abajo"), pero
+  // conceder sí: es exactamente el permiso que se está repartiendo.
+  if (!esAdmin(req)) {
+    const propios = new Set(req.user.permisos ?? []);
+    const fuera = conceder.filter((id) => !propios.has(id));
+    if (fuera.length)
+      return res.status(403).json({
+        message: `No puedes conceder permisos que no tienes: ${fuera.map(codigoDe).join(', ')}`,
+      });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    const { error, destino } = await destinoAdministrable(req);
+    // No se sueltan las conexiones a mano en los early-return: el `finally`
+    // de abajo lo hace, y liberarla dos veces revienta el pool.
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    // Un id inexistente reventaría con un error de FK a mitad del reemplazo,
+    // cuando los overrides viejos ya se borraron. Se valida antes de tocar nada.
+    const todos = [...conceder, ...denegar];
+    if (todos.length) {
+      const [validos] = await conn.query(
+        'SELECT permiso_id FROM PERMISOS WHERE permiso_id IN (?)', [todos]
+      );
+      if (validos.length !== todos.length) {
+        const ok = new Set(validos.map((v) => v.permiso_id));
+        return res.status(400).json({
+          message: `Permiso inexistente: ${todos.filter((id) => !ok.has(id)).join(', ')}`,
+        });
+      }
+    }
+
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM USUARIO_PERMISOS WHERE id_usuario = ?', [destino.id_usuario]);
+
+    const filas = [
+      ...conceder.map((id) => [destino.id_usuario, id, 'conceder', motivo, req.user.id]),
+      ...denegar .map((id) => [destino.id_usuario, id, 'denegar',  motivo, req.user.id]),
+    ];
+    if (filas.length)
+      await conn.query(
+        `INSERT INTO USUARIO_PERMISOS (id_usuario, permiso_id, efecto, motivo, asignado_por)
+         VALUES ?`,
+        [filas]
+      );
+
+    await conn.commit();
+    res.json({
+      message: 'Permisos de la persona actualizados',
+      concedidos: conceder.length,
+      denegados:  denegar.length,
+      // Los permisos viajan dentro del JWT: los que ya tienen sesión abierta
+      // siguen con los de antes hasta volver a entrar. Mismo aviso que da
+      // roles.controller al guardar un rol, por el mismo motivo.
+      advertencia: 'Los cambios se aplican cuando la persona vuelva a iniciar sesión.',
+    });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error(err);
+    res.status(500).json({ message: 'Error al guardar los permisos de la persona' });
+  } finally {
+    conn.release();
+  }
+};
+
+/**
+ * POST /usuarios/:id/permisos/rol — convierte los permisos ajustados de una
+ * persona en un ROL propio del establecimiento, que después se le puede asignar
+ * a cualquier otro.
+ *
+ * Por qué existe además de los overrides: una excepción por persona no se
+ * hereda. Si la inspectora necesita exportar expedientes, y en marzo entra otra
+ * inspectora igual, con overrides hay que rehacerle la lista a mano una por
+ * una. Un rol se marca en el alta y listo. Los overrides quedan para lo
+ * genuinamente irrepetible ("cubre una licencia hasta noviembre").
+ *
+ * Qué hace, en una sola transacción:
+ *   1. crea el rol acotado al establecimiento de la persona (nunca global: un
+ *      rol global lo heredan todos los colegios del país),
+ *   2. le carga exactamente los permisos que vinieron,
+ *   3. se lo asigna a la persona REEMPLAZANDO sus roles anteriores,
+ *   4. le borra los overrides.
+ *
+ * El paso 3 reemplaza y no suma a propósito. El rol nuevo ya contiene el
+ * resultado completo que se veía en pantalla; dejarle además el rol viejo haría
+ * que todo lo que se había QUITADO volviera a entrar por esa puerta, y la
+ * persona terminaría con permisos que quien guardó acababa de sacarle.
+ */
+const guardarPermisosComoRol = async (req, res) => {
+  const nombre = (req.body.nombre || '').trim();
+  const descripcion = (req.body.descripcion || '').trim() || null;
+  const ids = [...new Set((req.body.permisos ?? []).map(Number))];
+
+  if (!nombre)
+    return res.status(400).json({ message: 'El nombre del rol es requerido' });
+  if (ids.some((id) => !Number.isInteger(id) || !CODIGO_POR_ID[id]))
+    return res.status(400).json({ message: 'Hay permisos que no existen en el catálogo' });
+  if (ids.length === 0)
+    return res.status(400).json({ message: 'Un rol sin permisos dejaría a la persona sin poder entrar a nada' });
+
+  // Crear un rol y asignarlo son facultades propias, con su permiso cada una:
+  // llegar acá con usuario.asignar_permiso no las incluye. Se chequean adentro
+  // y no en la ruta porque la ruta ya exige el permiso de la pantalla, y así el
+  // mensaje puede decir cuál de los tres falta.
+  if (!tienePermiso(req, Permiso.RolCrear))
+    return res.status(403).json({ message: 'No tienes permiso para crear roles (rol.crear)' });
+  if (!tienePermiso(req, Permiso.UsuarioAsignarRol))
+    return res.status(403).json({ message: 'No tienes permiso para cambiarle el rol a un usuario (usuario.asignar_rol)' });
+
+  // La misma guardia que gobierna los roles y los overrides: nadie reparte lo
+  // que no tiene. Sin esto, "guardar como rol" sería el atajo para fabricarse
+  // un rol con los 114 permisos y asignárselo.
+  const negados = permisosFueraDeAlcance(req, ids);
+  if (negados.length > 0)
+    return res.status(403).json({
+      message: `No puedes otorgar permisos que no tienes: ${negados.join(', ')}`,
+    });
+
+  const conn = await pool.getConnection();
+  try {
+    const { error, destino } = await destinoAdministrable(req);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    // Sin establecimiento no hay dónde acotar el rol, y crearlo global le
+    // cambiaría los permisos a todos los colegios: es justo lo que esta
+    // pantalla existe para evitar.
+    if (destino.id_establecimiento == null)
+      return res.status(400).json({
+        message: 'Esta persona no pertenece a un establecimiento, así que no se le puede crear un rol propio de uno.',
+      });
+
+    const codigo = derivarCodigo(nombre);
+    if (!codigo)
+      return res.status(400).json({ message: 'El nombre no genera un código válido. Usá letras o números.' });
+    if (codigo === 'ADMIN')
+      return res.status(409).json({ message: 'El código ADMIN está reservado' });
+
+    const [dup] = await conn.query(
+      `SELECT rol_id FROM ROLES WHERE codigo = ? AND id_establecimiento = ?`,
+      [codigo, destino.id_establecimiento]
+    );
+    if (dup.length > 0)
+      return res.status(409).json({
+        message: `Tu establecimiento ya tiene un rol llamado así (${codigo}). Usá otro nombre.`,
+      });
+
+    await conn.beginTransaction();
+
+    const [rol] = await conn.query(
+      `INSERT INTO ROLES (nombre, codigo, descripcion, id_establecimiento, es_sistema, activo)
+       VALUES (?, ?, ?, ?, FALSE, TRUE)`,
+      [nombre, codigo, descripcion, destino.id_establecimiento]
+    );
+
+    await conn.query(
+      `INSERT INTO ROL_PERMISOS (rol_id, permiso_id) VALUES ?`,
+      [ids.map((id) => [rol.insertId, id])]
+    );
+
+    // Reemplaza: ver el comentario de arriba sobre por qué no se suma.
+    await conn.query('DELETE FROM USUARIO_ROLES WHERE id_usuario = ?', [destino.id_usuario]);
+    await conn.query(
+      `INSERT INTO USUARIO_ROLES (id_usuario, rol_id, asignado_por) VALUES (?, ?, ?)`,
+      [destino.id_usuario, rol.insertId, req.user.id]
+    );
+
+    // Las excepciones ya no hacen falta: el rol nuevo las contiene. Dejarlas
+    // sería tener el mismo permiso escrito en dos lados, y al editar el rol
+    // después nadie entendería por qué la persona sigue con algo distinto.
+    await conn.query('DELETE FROM USUARIO_PERMISOS WHERE id_usuario = ?', [destino.id_usuario]);
+
+    // `USUARIO.rol` es la columna vieja de rol único; se mantiene alineada,
+    // igual que en el alta y en update.
+    await conn.query('UPDATE USUARIO SET rol = ? WHERE id_usuario = ?', [codigo, destino.id_usuario]);
+
+    await conn.commit();
+    res.status(201).json({
+      rol_id: rol.insertId,
+      codigo,
+      message: `Rol "${nombre}" creado y asignado`,
+      advertencia: 'Ya podés asignárselo a otras personas desde el alta o la edición de usuarios. ' +
+        'Los cambios se aplican cuando cada una vuelva a iniciar sesión.',
+    });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    if (err.code === 'ER_DUP_ENTRY')
+      return res.status(409).json({ message: 'Ya existe un rol con ese código' });
+    console.error(err);
+    res.status(500).json({ message: 'Error al guardar los permisos como rol' });
+  } finally {
+    conn.release();
+  }
+};
+
 module.exports = {
-  getAll, create, toggleActivo, resetPassword,
+  getAll, create, update, toggleActivo, resetPassword,
   getRoles, asignarRol, quitarRol,
+  getPermisos, setPermisos, guardarPermisosComoRol,
 };

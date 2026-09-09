@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const multer = require('multer');
 const {
   getAll, getByRegistro, getDetalle, getBitacora,
   create,
@@ -16,6 +17,16 @@ const { resolverScope, requireEstablecimiento } = require('../middleware/scope')
 const { Permiso } = require('../constants/permisos');
 
 router.use(verifyToken, resolverScope, requireEstablecimiento);
+
+// El acta firmada llega escaneada, fotografiada con el celular o como el
+// documento que tenga a mano quien la sube. No se filtra ni por tipo ni por
+// peso: comprimirArchivo() achica lo que puede (imagen y PDF) y deja pasar el
+// resto, que es mejor que rechazar el archivo y quedarse sin la constancia. El
+// tope de 50 MB es sólo para no cargar la memoria del proceso.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
 
 router.get('/',                       requirePermission(Permiso.ProtocoloActivadoVer), getAll);
 router.get('/registro/:id_registro',  requirePermission(Permiso.ProtocoloActivadoVer), getByRegistro);
@@ -51,6 +62,14 @@ router.delete('/:id/involucrados/:id_involucrado',     requirePermission(Permiso
 // firma. Va bajo el paso porque es parte de completarlo.
 router.post('/:id/gestiones/:id_paso_involucrado',
   requirePermission(Permiso.ProtocoloActivadoCompletarPaso), involucrados.registrarGestion);
+
+// El acta de notificación firmada por la persona. Adjuntarla es completar la
+// gestión (mismo permiso); verla es ver el caso.
+router.put('/:id/gestiones/:id_paso_involucrado/acta',
+  requirePermission(Permiso.ProtocoloActivadoCompletarPaso), upload.single('archivo'),
+  involucrados.adjuntarActaFirmada);
+router.get('/:id/gestiones/:id_paso_involucrado/acta',
+  requirePermission(Permiso.ProtocoloActivadoVer), involucrados.descargarActaFirmada);
 
 // Medidas de protección del caso (art. 16 E letra j). Cuelgan del caso porque
 // una medida sin caso no existe; el resto de sus acciones va en su propia ruta.

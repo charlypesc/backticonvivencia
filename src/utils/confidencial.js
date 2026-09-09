@@ -18,12 +18,16 @@ const puedeVerConfidencial = (req, registro) =>
 const puedeEditarConfidencialidad = (req, registro) =>
   esAutor(req, registro) || tienePermiso(req, Permiso.RegistroEditarConfidencialidad);
 
-// USUARIO no tiene nombre, solo correo: el correo es la única forma de
-// identificar al autor. Cada consulta lo aliasea distinto (encargado_correo en
-// registros, autor_correo en el resto), así que se normaliza acá en vez de
-// pedirle a cada SELECT que use el mismo alias.
+// A un funcionario se le nombra por su nombre: el correo solo queda de
+// respaldo, para las cuentas que todavía no lo tienen cargado. Cada consulta
+// aliasea distinto (encargado_correo en registros, autor_correo en el resto),
+// así que se normaliza acá en vez de pedirle a cada SELECT que use el mismo
+// alias.
 const autorCorreo = (registro) =>
   registro.autor_correo ?? registro.encargado_correo ?? null;
+
+const autorNombre = (registro) =>
+  registro.autor_nombre ?? registro.encargado_nombre ?? null;
 
 // Cualquier consulta que devuelva filas de REGISTRO_CONVIVENCIA (registros,
 // historial de estudiante, dashboard...) debe pasarlas por acá antes de
@@ -43,8 +47,10 @@ const reducirSiConfidencial = (req, registro) => {
     fecha_incidente: registro.fecha_incidente,
     fecha_creacion: registro.fecha_creacion,
     autor_correo: autorCorreo(registro),
+    autor_nombre: autorNombre(registro),
     fecha_modificacion: registro.fecha_modificacion,
     editor_correo: registro.editor_correo ?? null,
+    editor_nombre: registro.editor_nombre ?? null,
     es_confidencial: true,
     nota_confidencial: registro.nota_confidencial,
     // Los involucrados no son el contenido reservado: lo reservado es qué pasó.

@@ -147,8 +147,11 @@ const procesarImportacion = async (job, filas, id_establecimiento) => {
 
       const apellido = `${apellidoPaterno} ${apellidoMaterno}`.trim();
       await conn.query(
-        `INSERT INTO ESTUDIANTE (run, dv, nombre, apellido, sexo, id_curso, id_establecimiento)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        // Inactivos, igual que el alta de a uno: importar la matrícula del año
+        // es cargar el padrón, no declarar que el colegio está trabajando con
+        // esos 800 estudiantes. Se activan al entrar a un registro.
+        `INSERT INTO ESTUDIANTE (run, dv, nombre, apellido, sexo, id_curso, id_establecimiento, activo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
         [run, dv, nombre, apellido, sexo, id_curso, id_establecimiento]
       );
       runsExistentes.add(run);

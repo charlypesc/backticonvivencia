@@ -1,4 +1,5 @@
 const pool = require('../db/connection');
+const { esPasoDeAprobacion } = require('../utils/flujoProtocolo');
 
 // Bandeja de notificaciones dentro de la app (la campana de la barra superior).
 //
@@ -114,7 +115,7 @@ const crear = async (ejecutor, {
  * roles 'notificado' se enteran igual, que para eso están.
  */
 const avisarPasoEnCurso = async (ejecutor, { activado, paso, excepto = null }) => {
-  const tipos = paso.tipo_paso === 'aprobacion'
+  const tipos = esPasoDeAprobacion(paso.tipo_paso)
     ? ['ejecutor', 'aprobador', 'notificado']
     : ['ejecutor', 'notificado'];
   const usuarios = await destinatariosDePaso(ejecutor, paso.id_activado_paso, tipos);

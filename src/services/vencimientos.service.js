@@ -1,5 +1,6 @@
 const pool = require('../db/connection');
 const notificaciones = require('./notificaciones.service');
+const { etiquetaTipo } = require('../constants/medidasProteccion');
 
 // Job de plazos vencidos.
 //
@@ -159,7 +160,7 @@ async function procesarMedidasVencidas(lote = LOTE) {
       m.id_protocolo_activado, m.id_establecimiento, 'medida_proteccion_vencida',
       m.tipo === 'suspension'
         ? `Venció la suspensión (${m.fecha_termino}). Corresponde adoptar otra medida de protección.`
-        : `Venció la medida de protección '${m.tipo}' (${m.fecha_termino}).`,
+        : `Venció la medida de protección '${etiquetaTipo(m.tipo)}' (${m.fecha_termino}).`,
       null, new Date(),
     ])]
   );
@@ -185,6 +186,135 @@ async function procesarMedidasVencidas(lote = LOTE) {
   return { procesados: medidas.length };
 }
 
+/**
+ * Medidas disciplinarias: marca como cumplidas las que llegaron a su término,
+ * avisa un día antes de que termine una excepcional, y recuerda la revisión
+ * semestral de la condicionalidad.
+ *
+ * A diferencia de una medida de protección, llegar al término de una sanción
+ * es CUMPLIDA, no una infracción — el estudiante sirvió la medida. Lo único
+ * que de verdad exige seguimiento es la condicionalidad, que la Circular 482
+ * obliga a revisar "al final de cada semestre, independiente de la fecha en
+ * la cual se haya aplicado".
+ *
+ * MEDIDA_DISCIPLINARIA cuelga de id_registro, no de id_protocolo_activado (a
+ * diferencia de MEDIDA_PROTECCION): el join pasa por REGISTRO_CONVIVENCIA.
+ */
+async function procesarMedidasDisciplinariasVencidas(lote = LOTE) {
+  // ── Cumplidas: llegaron a su fecha_termino ────────────────────────────────
+  const [cumplidas] = await pool.query(
+    `SELECT md.id_medida, md.id_registro, md.id_establecimiento, md.tipo_medida, md.fecha_termino,
+            pa.id_protocolo_activado
+     FROM MEDIDA_DISCIPLINARIA md
+     JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = md.id_registro
+     JOIN PROTOCOLO_ACTIVADO pa ON pa.id_registro = r.id_registro AND pa.estado = 'activo'
+     WHERE md.estado = 'vigente' AND md.fecha_termino IS NOT NULL AND md.fecha_termino < CURDATE()
+     ORDER BY md.fecha_termino
+     LIMIT ?`,
+    [lote]
+  );
+
+  if (cumplidas.length > 0) {
+    await pool.query(
+      `UPDATE MEDIDA_DISCIPLINARIA SET estado = 'cumplida' WHERE id_medida IN (?)`,
+      [cumplidas.map((m) => m.id_medida)]
+    );
+    await pool.query(
+      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+       VALUES ?`,
+      [cumplidas.map((m) => [
+        m.id_protocolo_activado, m.id_establecimiento, 'medida_disciplinaria_cumplida',
+        `Se cumplió el plazo de la medida '${m.tipo_medida}' (${m.fecha_termino})`,
+        null, new Date(),
+      ])]
+    );
+    for (const m of cumplidas) {
+      const usuarios = await notificaciones.destinatariosDeCaso(pool, m.id_protocolo_activado);
+      await notificaciones.crear(pool, {
+        usuarios,
+        id_establecimiento: m.id_establecimiento,
+        tipo: 'medida_disciplinaria_cumplida',
+        titulo: 'Medida disciplinaria cumplida',
+        mensaje: `'${m.tipo_medida}' cumplió su plazo (${m.fecha_termino}).`,
+        id_protocolo_activado: m.id_protocolo_activado,
+      });
+    }
+  }
+
+  // ── Por terminar: aviso único, un día antes ───────────────────────────────
+  // No cambia estado ni deja bitácora: es un heads-up, no un hecho. Se dispara
+  // solo el día exacto en que faltan 24 horas para que no se repita cada
+  // corrida del job.
+  const [porTerminar] = await pool.query(
+    `SELECT md.id_medida, md.id_establecimiento, md.tipo_medida, md.fecha_termino,
+            pa.id_protocolo_activado
+     FROM MEDIDA_DISCIPLINARIA md
+     JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = md.id_registro
+     JOIN PROTOCOLO_ACTIVADO pa ON pa.id_registro = r.id_registro AND pa.estado = 'activo'
+     WHERE md.estado = 'vigente' AND md.fecha_termino = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+     LIMIT ?`,
+    [lote]
+  );
+  for (const m of porTerminar) {
+    const usuarios = await notificaciones.destinatariosDeCaso(pool, m.id_protocolo_activado);
+    await notificaciones.crear(pool, {
+      usuarios,
+      id_establecimiento: m.id_establecimiento,
+      tipo: 'medida_disciplinaria_por_terminar',
+      titulo: 'Medida disciplinaria por terminar',
+      mensaje: `'${m.tipo_medida}' termina mañana (${m.fecha_termino}).`,
+      id_protocolo_activado: m.id_protocolo_activado,
+    });
+  }
+
+  // ── Condicionalidad: revisión semestral ───────────────────────────────────
+  // No hay estado propio para "revisión pendiente": se evita reavisar cada
+  // corrida comprobando si ya existe el evento de bitácora para este caso
+  // desde la fecha de revisión en curso.
+  const [porRevisar] = await pool.query(
+    `SELECT md.id_medida, md.id_establecimiento, md.fecha_revision, pa.id_protocolo_activado
+     FROM MEDIDA_DISCIPLINARIA md
+     JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = md.id_registro
+     JOIN PROTOCOLO_ACTIVADO pa ON pa.id_registro = r.id_registro AND pa.estado = 'activo'
+     WHERE md.tipo_medida = 'condicionalidad' AND md.estado = 'vigente'
+       AND md.fecha_revision IS NOT NULL AND md.fecha_revision <= CURDATE()
+       AND NOT EXISTS (
+         SELECT 1 FROM PROTOCOLO_ACTIVADO_EVENTO e
+         WHERE e.id_protocolo_activado = pa.id_protocolo_activado
+           AND e.tipo_evento = 'condicionalidad_por_revisar'
+           AND e.fecha >= md.fecha_revision
+       )
+     LIMIT ?`,
+    [lote]
+  );
+  if (porRevisar.length > 0) {
+    await pool.query(
+      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+       VALUES ?`,
+      [porRevisar.map((m) => [
+        m.id_protocolo_activado, m.id_establecimiento, 'condicionalidad_por_revisar',
+        `Corresponde revisar la condicionalidad (semestre vencido el ${m.fecha_revision})`,
+        null, new Date(),
+      ])]
+    );
+    for (const m of porRevisar) {
+      const usuarios = await notificaciones.destinatariosDeCaso(pool, m.id_protocolo_activado);
+      await notificaciones.crear(pool, {
+        usuarios,
+        id_establecimiento: m.id_establecimiento,
+        tipo: 'condicionalidad_por_revisar',
+        titulo: 'Condicionalidad por revisar',
+        mensaje: `La Circular 482 exige revisarla al final de cada semestre (${m.fecha_revision}).`,
+        id_protocolo_activado: m.id_protocolo_activado,
+      });
+    }
+  }
+
+  return { cumplidas: cumplidas.length, porTerminar: porTerminar.length, porRevisar: porRevisar.length };
+}
+
 // Arranca el job periódico. Devuelve el timer para poder detenerlo (los tests
 // lo llaman a mano y no quieren un intervalo colgando).
 //
@@ -203,6 +333,12 @@ function iniciarJob() {
       const m = await procesarMedidasVencidas();
       if (m.procesados > 0)
         console.log(`[vencimientos] ${m.procesados} medida(s) de protección vencidas`);
+      const md = await procesarMedidasDisciplinariasVencidas();
+      if (md.cumplidas > 0 || md.porTerminar > 0 || md.porRevisar > 0)
+        console.log(
+          `[vencimientos] medidas disciplinarias: ${md.cumplidas} cumplida(s), ` +
+          `${md.porTerminar} por terminar, ${md.porRevisar} condicionalidad(es) por revisar`
+        );
     } catch (err) {
       // Un fallo del job no puede tumbar el proceso: se reintenta solo en la
       // próxima corrida.
@@ -216,4 +352,6 @@ function iniciarJob() {
   return timer;
 }
 
-module.exports = { procesarVencidos, procesarMedidasVencidas, iniciarJob };
+module.exports = {
+  procesarVencidos, procesarMedidasVencidas, procesarMedidasDisciplinariasVencidas, iniciarJob,
+};

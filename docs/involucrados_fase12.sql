@@ -88,24 +88,32 @@ CREATE TABLE PROTOCOLO_ACTIVADO_INVOLUCRADO (
 -- primera en completarse arrastraría el caso al paso siguiente. Lo que se
 -- multiplica son filas hijas de cumplimiento (tabla del punto 4).
 --
--- 'requiere_acuse': el paso no está completo hasta que la persona notificada
--- firma. Lo traen la notificación al apoderado y todo paso que entregue un
--- documento con recepción.
+-- 'requiere_notificacion': el paso no está completo hasta que conste que se
+-- notificó a la persona. Lo traen la notificación al apoderado y todo paso que
+-- entregue un documento.
+--
+-- RENOMBRADO 2026-09-01 (antes 'requiere_acuse'): no se le pide firma a la
+-- persona. La Superintendencia exige constancia, no firma — la fecha y la vía
+-- acreditan igual que un papel firmado, y pedir la firma solo conseguía que no
+-- se registrara nada. Las dos únicas actuaciones que sí exigen firma son la
+-- expulsión y la cancelación de matrícula, que van por INFORME_EXPULSION con la
+-- firma de los tres integrantes de la comisión. Ver PLAN-ADECUACION-LEY-21809.md
+-- sección 7.
 
 ALTER TABLE CATALOGO_PROTOCOLO_PASO
   ADD COLUMN por_involucrado_rol ENUM('afectado', 'senalado', 'testigo', 'denunciante', 'todos')
     DEFAULT NULL AFTER tipo_paso,
-  ADD COLUMN requiere_acuse TINYINT(1) NOT NULL DEFAULT 0 AFTER por_involucrado_rol;
+  ADD COLUMN requiere_notificacion TINYINT(1) NOT NULL DEFAULT 0 AFTER por_involucrado_rol;
 
 ALTER TABLE PROTOCOLO_ESTABLECIMIENTO_PASO
   ADD COLUMN por_involucrado_rol ENUM('afectado', 'senalado', 'testigo', 'denunciante', 'todos')
     DEFAULT NULL AFTER tipo_paso,
-  ADD COLUMN requiere_acuse TINYINT(1) NOT NULL DEFAULT 0 AFTER por_involucrado_rol;
+  ADD COLUMN requiere_notificacion TINYINT(1) NOT NULL DEFAULT 0 AFTER por_involucrado_rol;
 
 ALTER TABLE PROTOCOLO_ACTIVADO_PASO
   ADD COLUMN por_involucrado_rol ENUM('afectado', 'senalado', 'testigo', 'denunciante', 'todos')
     DEFAULT NULL AFTER tipo_paso,
-  ADD COLUMN requiere_acuse TINYINT(1) NOT NULL DEFAULT 0 AFTER por_involucrado_rol;
+  ADD COLUMN requiere_notificacion TINYINT(1) NOT NULL DEFAULT 0 AFTER por_involucrado_rol;
 
 -- ─── 4. Cumplimiento de un paso para cada involucrado ───────────────────────
 --
@@ -113,13 +121,13 @@ ALTER TABLE PROTOCOLO_ACTIVADO_PASO
 -- siempre; estas filas registran a quién se le cumplió y a quién falta.
 --
 -- Decisión de producto (2026-08-27): una fila pendiente NO detiene el
--- protocolo. Queda marcada en rojo con "falta firma" hasta que se registre el
--- acuse. Es la misma decisión de la fase 11a para la constancia del RICE, y
--- por la misma razón: obligar la firma para avanzar no consigue la firma,
--- consigue que marquen el paso como hecho para destrabar el caso. Un apoderado
--- inubicable no puede detener la investigación de los otros dos involucrados.
--- La garantía se conserva en el cierre: cerrar con acuses pendientes exige
--- motivo, igual que cerrar sin llegar al paso final.
+-- protocolo. Queda marcada en rojo con "falta notificar" hasta que se registre
+-- la notificación. Es la misma decisión de la fase 11a para la constancia del
+-- RICE, y por la misma razón: obligar la constancia para avanzar no la
+-- consigue, consigue que marquen el paso como hecho para destrabar el caso. Un
+-- apoderado inubicable no puede detener la investigación de los otros dos
+-- involucrados. La garantía se conserva en el cierre: cerrar con notificaciones
+-- pendientes exige motivo, igual que cerrar sin llegar al paso final.
 
 CREATE TABLE PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO (
   id_paso_involucrado INT NOT NULL AUTO_INCREMENT,
@@ -132,15 +140,17 @@ CREATE TABLE PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO (
   -- atrasado algo que se hizo a tiempo.
   fecha_gestion       DATE     DEFAULT NULL,
   observacion         VARCHAR(500) DEFAULT NULL,
-  fecha_acuse         DATETIME DEFAULT NULL,
-  medio_acuse         ENUM('presencial', 'correo', 'telefono', 'plataforma', 'carta')
+  -- Cuándo y por qué vía se le notificó. No hay firma de la persona: la
+  -- constancia es esto (renombradas 2026-09-01 desde fecha_acuse/medio_acuse).
+  fecha_notificacion  DATETIME DEFAULT NULL,
+  medio_notificacion  ENUM('presencial', 'correo', 'telefono', 'plataforma', 'carta')
                         DEFAULT NULL,
   id_usuario          INT DEFAULT NULL,
   fecha_registro      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id_paso_involucrado),
   UNIQUE KEY uq_papi_paso_involucrado (id_activado_paso, id_involucrado),
   KEY idx_papi_involucrado (id_involucrado),
-  KEY idx_papi_acuse (estado, fecha_acuse),  -- métrica de notificaciones sin acuse
+  KEY idx_papi_notificacion (estado, fecha_notificacion),  -- métrica de personas sin notificar
   CONSTRAINT fk_papi_paso FOREIGN KEY (id_activado_paso)
     REFERENCES PROTOCOLO_ACTIVADO_PASO (id_activado_paso) ON DELETE CASCADE,
   CONSTRAINT fk_papi_involucrado FOREIGN KEY (id_involucrado)

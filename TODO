@@ -1,182 +1,38 @@
 
-## Adecuación Ley 21.809 (PLAN-ADECUACION-LEY-21809.md)
+Exportación del expediente:
+  ✔ mostrar el nombre del funcionario (no el correo ni el id) en "Protocolo activado por", "Registrado por", responsables, bitácora, suspensiones y seguimientos @done
+    Causa: las consultas del expediente traían solo `u.correo`, y USUARIO ya tiene `nombre`. Se agregó `u.nombre` a cada JOIN y un helper `funcionario(nombre, correo)` que decide una sola vez cómo se nombra a un funcionario (correo solo de respaldo, null en modo redactado). Se replicó la regla en la ficha del caso, la bitácora en pantalla y "Registrado por" del registro.
+  ✔ ocultar la fila "Documento de origen" cuando no hay documento digitalizado @done
+  ✔ sacar las comillas de los nombres de paso y el "(rama por defecto)" de la bitácora @done
+    Causa: el motor escribía las descripciones para sí mismo (`Inicia 'paso 1'`, `... (rama por defecto)`). Se corrigió en la generación (protocolosActivados/involucrados) y, para los eventos ya guardados, con `limpiarDescripcion()` al emitir el expediente — la fila del evento no se reescribe, es rastro de auditoría.
+  ✔ acentos rotos en el nombre del acta ("MARIÌ•A") @done
+    Causa: doble problema. multer entrega `originalname` con los bytes UTF-8 leídos como latin-1, y macOS manda las tildes descompuestas (I + acento suelto); el filtro Latin-1 de jsPDF se llevaba el acento y partía la palabra. Se agregó `nombreLegible()` en comprimirArchivo (reinterpreta latin-1→utf8 solo si el viaje de ida y vuelta es exacto, y normaliza a NFC) y `.normalize('NFC')` en el `plano()` del expediente y del acta.
+  ✔ notificaciones: decir siempre fecha Y vía ("Notificado el 03/09/2026 por carta") @done
+  ✔ anexar las actas firmadas al final del PDF del expediente @done
+    Se arma el expediente con jsPDF y se pegan las actas con pdf-lib (nueva dependencia del front): una hoja separadora por acta ("ANEXO n", paso y persona), los PDF se copian página por página y las imágenes se ajustan a la hoja. Si un acta falla, se emite igual con la hoja que dice qué faltó. En modo redactado no se anexa ninguna: el escaneo trae nombre, RUT y firma.
+  ✔ correr el ALTER de docs/informe_expulsion_medio_notificacion.sql (vía de notificación al apoderado en INFORME_EXPULSION) @done
 
-✔ VACÍO 1 — Suspensión cautelar del art. 6 letra d @done
-  Tabla SUSPENSION_CAUTELAR nueva, separada de MEDIDA_PROTECCION: la cautelar
-  acompaña al procedimiento sancionatorio (10 días hábiles para RESOLVER desde
-  la notificación) y la de protección resguarda a la persona afectada (15 días
-  hábiles de DURACIÓN). Mezclarlas hacía imposible auditar cuál se aplicó.
-  Tres cosas salieron de leer el PDF y no el resumen del informe: la
-  notificación debe ser por escrito (el enum de medios va sin 'telefono'), la
-  cautelar alcanza a "miembros de la comunidad escolar" y no solo a alumnos, y
-  la reconsideración amplía la suspensión pero no reescribe la fecha límite —
-  se modela con estado 'ampliada_por_reconsideracion', que apaga la alerta sin
-  borrar el hecho. Migración en docs/suspension_cautelar.sql.
-  Sobre los "cinco días" de la reconsideración: no hay que interpretarlos, los
-  resuelve la regla supletoria. Ley 19.880 art. 25 y el glosario de la Supereduc
-  (entrada "Plazos") dicen que los plazos de días son de días hábiles, inhábiles
-  sábados, domingos y festivos — que es exactamente lo que hace
-  calcularFechaLimite(). Ante un plazo legal escrito a secas, buscar la regla
-  supletoria antes de decidir por criterio propio.
+Medidas vinculadas al paso que las ordena:
+  ✔ vincular medidas de protección y suspensiones cautelares al paso (las disciplinarias ya podían) @done
+    Causa: solo MEDIDA_DISCIPLINARIA tenía `id_activado_paso`, así que `requiere_medida` solo se podía satisfacer con una medida disciplinaria. Un paso de resguardo quedaba reclamando para siempre una medida que sí estaba cargada, pero en otra tabla. Se agregó la columna en las otras dos (docs/medidas_vinculo_paso.sql), los `crear` la aceptan validando que el paso sea del caso, y `pasosConMedidaRegistrada()` cuenta las tres con un UNION.
+  ✔ marcar requiere_medida en los cinco pasos de resguardo del catálogo @done
+    Son los del art. 16 E letra j: acoso, vulneración de derechos, connotación sexual, agresión física y discriminación. La bandera existía en la BD desde la migración de plazos pero el seed nunca la escribía (ni la columna estaba en el INSERT), así que ningún paso la tenía en 1.
+  ✔ correr el ALTER + los dos UPDATE de docs/medidas_vinculo_paso.sql @done
+    Se aplicaron el 2026-09-07. Síntoma que los destapó: el detalle del caso devolvía 500 y la pantalla no cargaba — el código ya consultaba MEDIDA_PROTECCION.id_activado_paso y la columna no existía. Lección: al agregar una consulta que depende de una columna nueva, la migración deja de ser opcional; o se aplica junto con el deploy o el endpoint se cae entero.
+  ☐ avisar al cerrar el caso si quedan medidas de protección vigentes o cautelares sin resolver
+    La ley las acota: "podrán extenderse hasta la conclusión del procedimiento respectivo" (art. 16 E letra j). Cerrar con una suspensión de protección corriendo es la infracción, y hoy `cerrar()` solo mira MEDIDA_DISCIPLINARIA — ni consulta MEDIDA_PROTECCION ni SUSPENSION_CAUTELAR.
 
-✔ Art. 16 E letra j: eran DOS deberes, no uno @done
-  El texto dice "realizar un monitoreo pedagógico del estudiante suspendido Y
-  disponer medidas para resguardar la continuidad de su trayectoria educativa".
-  MEDIDA_PROTECCION_SEGUIMIENTO tenía una descripción libre donde los dos caían
-  en el mismo registro, así que no se podía responder cuál se cumplió — que es
-  justo lo que se pregunta en fiscalización. Se agregó `tipo`
-  enum(monitoreo_pedagogico, continuidad_trayectoria, otro) con DEFAULT 'otro'
-  para no atribuirle cumplimiento a filas viejas, y el listado ahora devuelve
-  falta_monitoreo_pedagogico / falta_continuidad_trayectoria por separado.
-  Migración en docs/seguimiento_trayectoria.sql.
-  Lección: cuando un texto legal usa "y" entre dos verbos, son dos
-  obligaciones — y un campo de texto libre que las mezcla no acredita ninguna.
-
-☐ Parvularia: fuera de alcance por decisión de producto
-  El art. 16 E letra i prohíbe medidas disciplinarias a niños de educación
-  parvularia. NO se implementó guarda: el sistema está pensado de 1° básico en
-  adelante. Anotado para que quede el registro de que la prohibición existe y
-  la decisión fue deliberada, no un olvido. Si algún día se cubre parvularia,
-  hay que agregar la guarda ANTES de habilitar esos niveles — hoy CURSO.nivel
-  es varchar libre y el alta manual no lo valida.
-
-✔ Techo legal: los casos de personal no quedaban sin plazo @done
-  El art. 16 E, inciso final, no exime a los casos de personal: los remite al
-  Título V del Estatuto Administrativo (Ley 18.883 para municipales — este
-  colegio es Municipal DAEM). validarTechoLegal() hacía `if (ambito ===
-  'personal') return []`, o sea aplicaba la mitad de la regla y la mitad
-  equivocada. Ahora usa el tramo más largo que la ley admite: 60 días hábiles
-  de instrucción de sumario (art. 133), y son hábiles porque el art. 143 lo
-  dice expreso.
-
-✔ El flujo del establecimiento nunca validaba el techo legal @done
-  Bug más grave que el anterior y encontrado de casualidad al mirarlo.
-  validarTechoLegal solo se llamaba desde protocoloFlujo.controller.js (el
-  catálogo genérico). Cuando un colegio personalizaba su copia —que es donde
-  realmente edita los plazos— no se validaba nada: podía publicar un protocolo
-  de estudiantes que sumara más de 2 meses. Se agregó la llamada en
-  protocoloFlujoEstablecimiento.controller.js.
-  Lección: al agregar una validación, revisar TODOS los caminos por los que se
-  publica lo validado, no solo aquel en el que se está trabajando.
-
-✔ PROTOCOLO_ESTABLECIMIENTO.ambito nunca se poblaba @done
-  La columna existía y ningún controller la escribía: las 12 filas del
-  establecimiento estaban en NULL, así que el protocolo de personal se validaba
-  como si fuera de estudiantes. Se arregló en los dos extremos: la adopción
-  ahora copia el ámbito del catálogo, y buscarProtocoloEstablecimiento hace
-  COALESCE(pe.ambito, cp.ambito) para que las filas viejas funcionen sin
-  depender del backfill. Migración en docs/ambito_protocolo_establecimiento.sql
-  (10 filas; las 2 restantes son protocolos propios sin genérico y quedan NULL
-  a propósito → techo del estudiante, el más estricto).
-
-✔ Permisos 93-109 huérfanos @done
-  Bug preexistente encontrado de paso: los 17 permisos de la Ley 21.809
-  (medidas de protección, informe de expulsión, expediente, feriados,
-  documentos institucionales, constancias) estaban en PERMISOS pero sin una
-  sola fila en ROL_PERMISOS, que llegaba hasta el id 92. Las features estaban
-  construidas y devolvían 403 a todo el mundo, incluido el Director. Se
-  asignaron en el paso 4 de la misma migración, respetando a quién nombra la
-  ley: expulsión la decide solo el Director, el informe lo elabora la comisión
-  de tres (profesor jefe, coordinador de convivencia, UTP).
-
-☐ VACÍO 2 — Expulsión: acreditar el trámite previo del art. 6 d
-☐ Poda de ciberacoso: convertirlo en rama del protocolo de acoso escolar
-☐ VACÍO 3 — Gestión Colaborativa de Conflictos (art. 16 E letra k)
-☐ VACÍO 5 — Actualización participativa del RI (art. 16 H)
-☐ VACÍO 4 — Canal de denuncias con reserva de identidad (art. 16 E letra e)
-☐ Revisar la Ley 21.827 completa (publicada 12-ago-2026, no analizada)
-
-## Simplificar los protocolos del catálogo (revisión 2026-08-29)
-
-Revisión paso a paso de los 11 protocolos de scripts/seed_protocolos.js buscando
-sacar fricción sin tocar lo que la ley exige. Los tres recortes seguros quedaron
-aplicados y recargados en la BD el 2026-08-29; los dos últimos ítems van al
-revés (falta garantía, no sobra) y siguen pendientes.
-Backup previo de las 5 tablas del catálogo (485 filas) en el scratchpad de la
-sesión: backup-catalogo-protocolos-20260829.sql
-
-✔ Ciclo de seguimiento: dejar de reabrir la investigación completa @done
-  En acoso (línea ~125), ciberacoso (~169) y violencia entre adultos (~279), la
-  transición 'situacion_resuelta=no' vuelve al paso de investigación, lo que
-  obliga a re-ejecutar investigación → descargos → resolución → notificación →
-  apelación cada 15 días, con firmas nuevas. Vulneración, connotación sexual,
-  suicidio y maltrato de adulto ya usan el auto-ciclo seguimiento → seguimiento,
-  que es la forma liviana y cumple igual: el debido proceso ya se agotó en la
-  primera vuelta y ninguna norma exige reinstruir. Unificar los tres al
-  auto-ciclo. Es el recorte de mayor impacto del catálogo.
-  Hecho: los tres usan ahora ['seguimiento','seguimiento','situacion_resuelta=no'].
-  Lo que NO se pudo hacer: subir CICLO_SEGUIMIENTO de 15 a 30 días corridos. Se
-  probó y el --dry-run lo rechazó: en acoso, ciberacoso y maltrato de adulto el
-  camino más largo se va a ~63 días y pasa el techo de 2 meses del art. 16 E
-  letra g. Queda en 15 con el comentario explicando por qué. Lección: antes de
-  tocar un plazo del catálogo, correr --dry-run — validarTechoLegal es el que
-  manda, no el criterio de comodidad.
-
-✔ Quitar los campos Sí/No que no ramifican ni son contenido mínimo @done
-  Son ~10 selects obligatorios que siempre se responden igual y cuyo dato real
-  ya vive en el adjunto o en el acuse. Cada uno es un click más antes de poder
-  completar el paso:
-  - hubo_entrevistas y evidencia_recopilada (acoso ~100, maltrato adulto ~457)
-  - comprobante_adjunto en los 6 pasos de denuncia externa (duplica el adjunto)
-  - formulario_emitido (accidentes ~363): el paso ya es de tipo adjunto
-  - apoderado_contactado (suicidio ~296, accidentes ~365): el paso ya pide acuse
-  - apoderados_citados (ciberacoso ~145)
-  Hecho: los 6 se eliminaron. Donde el paso quedaba sin campos y era de tipo
-  'formulario' (que el propio seed valida que tenga al menos uno) se reemplazó
-  por un txt('observaciones', ...) opcional en vez de forzar un Sí/No. El
-  catálogo quedó en 92 campos, 73 obligatorios.
-
-✔ Fusionar los dos pasos informativos duplicados @done
-  - Maltrato de adulto: 'recepcion' → 'notif_direccion' (~434-439) son el mismo
-    acto: mismo ejecutor (Encargado), misma ventana de 2 h, y el Director ya
-    quedó como notificado en el paso anterior. Deja el protocolo más pesado del
-    catálogo en 13 pasos en vez de 14.
-  - Accidentes: 'atencion' → 'primeros' (~356-359), ambos del Encargado de Salud
-    en 2 h. Fusionar como campo primeros_auxilios_aplicados.
-  NO fusionar el resto de los informativos sin campos (resguardo a la víctima,
-  contención, apoyo al estudiante, separación de las partes): ahí el paso es la
-  medida cautelar misma y su marca de tiempo es la prueba de que se protegió a
-  tiempo.
-  Hecho: maltrato de adulto quedó en 13 pasos y accidentes en 5. Al fusionar un
-  paso hay que acordarse de la transición: en accidentes la rama por defecto de
-  'atencion' apuntaba a 'primeros' y hubo que reapuntarla a 'seguro', o el
-  protocolo quedaba con un destino inexistente.
-
-☐ La apelación no se puede registrar cuando de verdad ocurre
-  CAMPO_APELACION ('¿Se presentó apelación?', ~74) se pregunta DENTRO del paso
-  de notificación, que se completa el mismo día. En ese momento nadie apeló
-  todavía, así que siempre se responde "No" y el flujo se va a seguimiento. Si
-  el apoderado apela tres días después, dentro de su plazo, el grafo ya no tiene
-  por dónde volver. No es engorro: es un derecho que el sistema no puede
-  acreditar. Necesita un paso de espera con el plazo del RICE, o una reapertura
-  explícita. Cambio de grafo grande — confirmar el diseño antes de tocarlo.
-
-☐ Violencia entre adultos (id 6) sanciona sin escuchar al señalado
-  Único de los once que no usa pasoDescargos(): solo tiene un Sí/No
-  descargos_recibidos dentro de la investigación (~266), y después aplica una
-  medida con ambito_medida laboral. Acá hay que AGREGAR el paso de notificación
-  de cargos y descargos con acuse, no recortar.
+Diagrama del flujo:
+  ✔ el diagrama salía en blanco en los protocolos del establecimiento que heredan el flujo del catálogo @done
+    Causa: `idPaso()` en protocolo-flujo.ts elegía el nombre del campo por la RUTA (`esEstablecimiento` → `id_paso_estab`), no por el origen de los datos. Un protocolo del colegio sin personalizar devuelve las filas del catálogo tal cual, con `id_paso`: los 12 nodos quedaban con `id: undefined` y el grafo no dibujaba nada. Se cambió a `p?.id_paso_estab ?? p?.id_paso` (igual para transiciones y campos). Las aristas ya estaban bien porque ambas tablas nombran igual `id_paso_origen`/`id_paso_destino`.
+    Lección: cuando un endpoint puede devolver filas de dos tablas distintas según el estado (acá `origen: catalogo | establecimiento`), el cliente tiene que decidir por lo que trae la respuesta, no por la ruta que usó para pedirla. El síntoma parecía caprichoso — se veía bien en los protocolos ya personalizados y en blanco en los heredados.
+    Pista falsa que costó tiempo: se buscó primero por el lado de permisos. El coordinador ya tenía el 82 y ya entraba; la pantalla cargaba y solo el lienzo estaba vacío. Antes de revisar RBAC conviene confirmar si la pantalla carga o no: si carga, el problema no es de permisos.
 
 ## Registro de tiempo
-- 2026-08-29 17:16 → 22:07 (4h51m)
-- 2026-08-27 13:53 → 21:28 (31h35m)
-- 2026-08-27 15:29 → 21:28 (29h58m)
-- 2026-08-26 19:18 → 22:02 (2h44m)
-- 2026-08-26 17:37 → 22:02 (4h25m)
-- 2026-08-26 17:44 → 22:02 (4h17m)
-- 2026-08-26 16:02 → 22:02 (5h59m)
-- 2026-08-26 17:49 → 22:02 (4h13m)
-- 2026-08-26 19:48 → 22:02 (2h14m)
-- 2026-08-26 18:13 → 22:02 (3h49m)
-- 2026-08-26 10:36 → 22:02 (11h26m)
-- 2026-08-26 19:07 → 22:02 (2h55m)
-- 2026-08-26 16:45 → 22:02 (5h17m)
-- 2026-08-26 17:44 → 22:02 (4h17m)
-- 2026-08-26 21:48 → 22:02 (13m)
-- 2026-08-26 16:11 → 22:02 (5h51m)
-- 2026-08-24 19:20 → 19:44 (24m)
-- 2026-08-22 18:56 → 20:53 (1h57m)
-- 2026-08-22 13:13 → 14:00 (47m)
-- 2026-08-22 13:39 → 14:00 (21m)
-- 2026-08-21 16:47 → 20:06 (3h18m)
-- 2026-08-21 16:36 → 16:40 (4m)
+- 2026-09-07 15:49 → 00:19 (8h30m)
+- 2026-09-07 15:33 → 00:19 (8h45m)
+- 2026-09-03 17:50 → 17:59 (8m)
+- 2026-09-03 15:27 → 17:59 (2h31m)
+- 2026-09-02 13:31 → 19:21 (5h49m)
+- 2026-09-02 17:31 → 19:21 (1h49m)
+- 2026-09-02 16:56 → 19:21 (2h24m)

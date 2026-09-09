@@ -10,9 +10,9 @@
 // llegue a producción y deje casos atascados en un nodo sin salida.
 
 // Formato deliberadamente mínimo: `campo=valor` o `campo!=valor`. No hay >, <
-// ni AND/OR. Los campos que deciden una rama son selectores y booleanos, no
-// números, y un motor de reglas de verdad es una pieza que hay que mantener y
-// depurar para algo que ninguna transición de un protocolo escolar necesita.
+// ni AND/OR. Los campos que deciden una rama son selectores, no números, y un
+// motor de reglas de verdad es una pieza que hay que mantener y depurar para
+// algo que ninguna transición de un protocolo escolar necesita.
 // Si algún día hacen falta rangos, se amplía acá y en validarCondicion().
 const RE_CONDICION = /^\s*([a-z][a-z0-9_]{0,49})\s*(!=|=)\s*(.+?)\s*$/;
 
@@ -21,8 +21,30 @@ const RE_CONDICION = /^\s*([a-z][a-z0-9_]{0,49})\s*(!=|=)\s*(.+?)\s*$/;
 // parsear la condición sin ambigüedad.
 const RE_CODIGO_CAMPO = /^[a-z][a-z0-9_]{0,49}$/;
 
-const TIPOS_CAMPO = ['texto', 'numero', 'fecha', 'seleccion', 'booleano'];
-const TIPOS_PASO = ['informativo', 'formulario', 'adjunto', 'aprobacion', 'notificacion_externa'];
+// 'booleano' se sacó: una pregunta 'seleccion' con las opciones 'si'/'no' abre
+// las mismas dos ramas (ver TIPOS_DECIDIBLES y CAMPO_APROBACION, que siempre
+// fue 'seleccion') y era el mismo tipo de campo contado dos veces.
+const TIPOS_CAMPO = ['texto', 'numero', 'fecha', 'seleccion'];
+// Los cinco primeros son formas de ejecutar un paso; los seis últimos son
+// trámites concretos que se repiten en todos los protocolos y que el editor
+// precarga enteros (texto, plazo, a quién alcanza y preguntas), en vez de que
+// cada colegio los reescriba con sus palabras y después no haya forma de leer
+// "en cuántos casos se notificó fuera de plazo".
+const TIPOS_PASO = [
+  'informativo', 'formulario', 'adjunto', 'aprobacion', 'notificacion_externa',
+  'seguimiento', 'notificacion_apoderado', 'notificacion_estudiante',
+  'medida_proteccion', 'medida_disciplinaria', 'medida_cautelar',
+];
+
+// Pasos que se resuelven aprobando o rechazando, no completando un formulario.
+// Una medida disciplinaria y una cautelar son decisiones que alguien firma —la
+// dirección— y de las que cuelga una rama según lo resuelto, que es exactamente
+// lo que hace un paso de aprobación; no son un tipo nuevo de conducta, son el
+// mismo acto con otro nombre.
+const TIPOS_PASO_APROBACION = ['aprobacion', 'medida_disciplinaria', 'medida_cautelar'];
+
+/** ¿Este paso se resuelve aprobando/rechazando? */
+const esPasoDeAprobacion = (tipo_paso) => TIPOS_PASO_APROBACION.includes(tipo_paso);
 const UNIDADES_PLAZO = ['horas', 'dias_habiles', 'dias_corridos'];
 const ACCIONES_VENCER = ['notificar', 'escalar', 'marcar_alerta'];
 const TIPOS_PARTICIPACION = ['ejecutor', 'aprobador', 'notificado'];
@@ -33,15 +55,73 @@ const TIPOS_PARTICIPACION = ['ejecutor', 'aprobador', 'notificado'];
 // activar el protocolo, o sea antes de todo.
 const ROLES_INVOLUCRADO = ['afectado', 'senalado', 'testigo', 'denunciante'];
 
+// Las PARTES del caso: aquella a favor de quien se instruye y aquella contra
+// quien se instruye. Testigo y denunciante intervienen en el caso pero no son
+// partes: no se les notifica la resolución ni se les hace seguimiento.
+const ROLES_PARTE = ['afectado', 'senalado'];
+
 // A qué involucrados les toca un paso. 'todos' es lo que corresponde cuando la
 // obligación alcanza a las dos partes (notificar la resolución), que no es lo
 // mismo que un paso del caso (por_involucrado_rol nulo), que se hace una vez.
+//
+// 'todos' significa AMBAS PARTES, no "todo el mundo": hasta 2026-09-01 excluía
+// solo al testigo, así que el denunciante recibía la notificación de la
+// resolución y las comunicaciones a la familia de los diez pasos que usan este
+// valor. El denunciante puede ser un profesor, un vecino o el apoderado de otro
+// curso; notificarlo choca de frente con el deber de resguardar la intimidad
+// del afectado y la identidad del acusado (Circular 482/2018, Anexo 2, vi y ix)
+// y le abre un plazo de apelación a quien no es parte.
 const ROLES_PASO_INVOLUCRADO = [...ROLES_INVOLUCRADO, 'todos'];
+
+// Qué clase de medida ordena un paso con `requiere_medida`. Sin esto la bandera
+// se conformaba con cualquiera de las tres tablas, y un paso de resguardo se
+// daba por cumplido con la sanción disciplinaria del mismo caso.
+//
+// Una clase por tabla, y ninguna cumple por otra. En particular, la medida de
+// protección (Ley 21.809 art. 16 E letra j) y la suspensión cautelar (DFL 2/1998
+// art. 6 letra d) NO son intercambiables: la primera va a favor de la persona
+// afectada y la puede adoptar el establecimiento desde que toma conocimiento de
+// los hechos; la segunda recae sobre el señalado, la decreta solo el director
+// dentro de un procedimiento sancionatorio ya iniciado, y abre un plazo de diez
+// días hábiles para resolver. Decretar la cautelar no descarga el deber de
+// proteger a la persona afectada —ni el monitoreo pedagógico ni la continuidad
+// de la trayectoria educativa que la letra j impone por separado—, así que darla
+// por buena en un paso de protección apagaba un aviso que tenía que seguir
+// encendido.
+const TIPOS_MEDIDA_REQUERIDA = ['proteccion', 'cautelar', 'disciplinaria', 'cualquiera'];
+
+/**
+ * El par (requiere_medida, tipo_medida_requerida) reducido a lo único que se
+ * guarda: la clase, o null si el paso no ordena medida.
+ *
+ * Los dos campos pueden llegar en desacuerdo desde el editor —se destildó la
+ * casilla pero el select quedó con su valor, o al revés— y dejar la clase
+ * puesta sobre un paso que ya no pide medida hace que el paso reaparezca
+ * pidiéndola apenas alguien vuelva a marcar la casilla por otro motivo. Que la
+ * casilla mande es lo que el usuario ve.
+ *
+ * 'cualquiera' es el default y no un error: un establecimiento que arma un paso
+ * propio y marca "ordena una medida" sin elegir clase está diciendo justamente
+ * eso, y el comportamiento viejo era ese.
+ */
+const normalizarMedidaRequerida = ({ requiere_medida, tipo_medida_requerida }) =>
+  (requiere_medida ? (tipo_medida_requerida || 'cualquiera') : null);
+
+// El mismo criterio que `involucradosDelPaso`, en SQL, para las consultas que
+// materializan o borran filas de cumplimiento. Va acá y no copiado en cada
+// consulta porque son tres lugares: si divergen, quedan filas de cumplimiento
+// que el motor no sabe que existen y el caso no avanza nunca. Espera dos
+// parámetros, ambos el rol del involucrado.
+const SQL_ROL_ALCANZA_PASO =
+  "(p.por_involucrado_rol = ? OR (p.por_involucrado_rol = 'todos' AND ? IN ('afectado', 'senalado')))";
 
 const TIPOS_PERSONA = ['estudiante', 'funcionario', 'externo'];
 
-// Cómo se acreditó que la persona recibió la notificación.
-const MEDIOS_ACUSE = ['presencial', 'correo', 'telefono', 'plataforma', 'carta'];
+// Por qué vía se notificó a la persona. No se le pide firma: la Superintendencia
+// fiscaliza que exista constancia de que se notificó, cuándo y cómo — no un
+// papel firmado. Las únicas dos actuaciones que sí exigen firma son la expulsión
+// y la cancelación de matrícula, que viven en INFORME_EXPULSION.
+const MEDIOS_NOTIFICACION = ['presencial', 'correo', 'telefono', 'plataforma', 'carta'];
 
 /**
  * Involucrados del caso a los que les toca un paso.
@@ -55,16 +135,14 @@ const MEDIOS_ACUSE = ['presencial', 'correo', 'telefono', 'plataforma', 'carta']
 const involucradosDelPaso = (paso, involucrados) => {
   const rol = paso?.por_involucrado_rol;
   if (!rol) return [];
-  if (rol === 'todos') return involucrados.filter((i) => i.rol !== 'testigo');
+  if (rol === 'todos') return involucrados.filter((i) => ROLES_PARTE.includes(i.rol));
   return involucrados.filter((i) => i.rol === rol);
 };
 
-// Solo estos tipos pueden decidir una rama. Condicionar sobre un texto libre
-// es una condición que nunca se cumple salvo por coincidencia exacta, y sobre
-// una fecha o un número haría falta comparación por rango, que no existe.
-const TIPOS_DECIDIBLES = ['seleccion', 'booleano'];
-
-const VALORES_BOOLEANO = ['si', 'no'];
+// Solo este tipo puede decidir una rama. Condicionar sobre un texto libre es
+// una condición que nunca se cumple salvo por coincidencia exacta, y sobre una
+// fecha o un número haría falta comparación por rango, que no existe.
+const TIPOS_DECIDIBLES = ['seleccion'];
 
 /** `'gravedad=grave'` → `{ campo: 'gravedad', operador: '=', valor: 'grave' }`; null si no parsea. */
 const parsearCondicion = (condicion) => {
@@ -96,9 +174,6 @@ const validarCondicion = (condicion, campos) => {
   if (!TIPOS_DECIDIBLES.includes(campo.tipo_campo))
     return `El campo '${cond.campo}' es de tipo '${campo.tipo_campo}' y no puede decidir una rama. ` +
            `Solo se puede condicionar sobre campos de tipo ${TIPOS_DECIDIBLES.join(' o ')}.`;
-
-  if (campo.tipo_campo === 'booleano' && !VALORES_BOOLEANO.includes(cond.valor))
-    return `El campo '${cond.campo}' es booleano: el valor debe ser ${VALORES_BOOLEANO.join(' o ')}, no '${cond.valor}'.`;
 
   if (campo.tipo_campo === 'seleccion') {
     const opciones = normalizarOpciones(campo.opciones);
@@ -195,9 +270,7 @@ const salidasCubrenTodosLosCasos = (salientes, campos) => {
 
   if (conds.some((c) => c.operador === '!=')) return true;
 
-  const posibles = campo.tipo_campo === 'booleano'
-    ? VALORES_BOOLEANO
-    : normalizarOpciones(campo.opciones);
+  const posibles = normalizarOpciones(campo.opciones);
   if (posibles.length === 0) return false;
 
   const cubiertos = new Set(conds.map((c) => c.valor));
@@ -387,7 +460,7 @@ const CAMPO_APROBACION = Object.freeze({
  * configurados, salvo en aprobación, donde es el implícito.
  */
 const camposDelPaso = (paso, campos) =>
-  paso?.tipo_paso === 'aprobacion' ? [CAMPO_APROBACION, ...(campos ?? [])] : (campos ?? []);
+  esPasoDeAprobacion(paso?.tipo_paso) ? [CAMPO_APROBACION, ...(campos ?? [])] : (campos ?? []);
 
 /**
  * Elige el destino al completar un paso.
@@ -542,8 +615,6 @@ const validarDatosSalida = (campos, datos) => {
       return { error: `El campo '${campo.etiqueta}' debe ser un número.` };
     if (campo.tipo_campo === 'fecha' && Number.isNaN(Date.parse(texto)))
       return { error: `El campo '${campo.etiqueta}' debe ser una fecha válida.` };
-    if (campo.tipo_campo === 'booleano' && !VALORES_BOOLEANO.includes(texto))
-      return { error: `El campo '${campo.etiqueta}' debe ser ${VALORES_BOOLEANO.join(' o ')}.` };
     if (campo.tipo_campo === 'seleccion') {
       const opciones = normalizarOpciones(campo.opciones);
       if (!opciones.includes(texto))
@@ -579,7 +650,8 @@ const validarPlazo = (plazo_valor, plazo_unidad) => {
 };
 
 /** Validaciones de forma de un paso, sin mirar la BD. Devuelve mensaje o null. */
-const validarPaso = ({ nombre, tipo_paso, accion_al_vencer, por_involucrado_rol }) => {
+const validarPaso = ({ nombre, tipo_paso, accion_al_vencer, por_involucrado_rol,
+                       tipo_medida_requerida }) => {
   if (!nombre?.trim()) return 'Nombre es requerido';
   if (tipo_paso && !TIPOS_PASO.includes(tipo_paso))
     return `tipo_paso debe ser uno de: ${TIPOS_PASO.join(', ')}.`;
@@ -587,6 +659,8 @@ const validarPaso = ({ nombre, tipo_paso, accion_al_vencer, por_involucrado_rol 
     return `accion_al_vencer debe ser uno de: ${ACCIONES_VENCER.join(', ')}.`;
   if (por_involucrado_rol && !ROLES_PASO_INVOLUCRADO.includes(por_involucrado_rol))
     return `por_involucrado_rol debe ser uno de: ${ROLES_PASO_INVOLUCRADO.join(', ')}, o quedar vacío si el paso es del caso.`;
+  if (tipo_medida_requerida && !TIPOS_MEDIDA_REQUERIDA.includes(tipo_medida_requerida))
+    return `tipo_medida_requerida debe ser uno de: ${TIPOS_MEDIDA_REQUERIDA.join(', ')}.`;
   return null;
 };
 
@@ -717,16 +791,21 @@ module.exports = {
   validarTechoLegal,
   TIPOS_CAMPO,
   TIPOS_PASO,
+  TIPOS_PASO_APROBACION,
+  esPasoDeAprobacion,
   UNIDADES_PLAZO,
   ACCIONES_VENCER,
   TIPOS_PARTICIPACION,
+  TIPOS_MEDIDA_REQUERIDA,
+  normalizarMedidaRequerida,
   ROLES_INVOLUCRADO,
+  ROLES_PARTE,
   ROLES_PASO_INVOLUCRADO,
+  SQL_ROL_ALCANZA_PASO,
   TIPOS_PERSONA,
-  MEDIOS_ACUSE,
+  MEDIOS_NOTIFICACION,
   involucradosDelPaso,
   TIPOS_DECIDIBLES,
-  VALORES_BOOLEANO,
   RE_CODIGO_CAMPO,
   CAMPO_APROBACION,
   camposDelPaso,

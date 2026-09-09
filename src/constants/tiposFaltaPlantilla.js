@@ -104,7 +104,7 @@ const TIPOS_FALTA_PLANTILLA = [
     nombre: 'Falta de respeto',
     gravedad: 'grave',
     descripcion: 'Trato irrespetuoso, gestos obscenos o desacato hacia un compañero o funcionario del establecimiento.',
-    medida_sugerida: 'Citación al apoderado, servicio comunitario y medida reparatoria',
+    medida_sugerida: 'Citación al apoderado y medida reparatoria según el reglamento interno',
   },
   {
     nombre: 'Reiteración de faltas leves',
@@ -116,11 +116,25 @@ const TIPOS_FALTA_PLANTILLA = [
   // ── GRAVÍSIMAS ───────────────────────────────────────────────────────────
   // Conducta consciente y deliberada que daña la integridad física o psíquica
   // de un miembro de la comunidad educativa, o que constituye delito.
+  // La agresión física va desagregada por quién agrede a quién, y no como un
+  // "cualquier miembro de la comunidad educativa", porque las tres direcciones
+  // tienen vías distintas: entre estudiantes va por el protocolo de agresión
+  // física; de un adulto a un estudiante, por el de maltrato (y no termina en
+  // sanción al estudiante); de un estudiante a un funcionario, en el
+  // procedimiento disciplinario con el agravante del art. 8 bis del Estatuto
+  // Docente. Un tipo único las mezclaba y hacía que el protocolo sugerido casi
+  // nunca fuera el que correspondía.
   {
-    nombre: 'Agresión física',
+    nombre: 'Agresión física entre estudiantes',
     gravedad: 'gravísima',
-    descripcion: 'Golpes o agresión corporal a cualquier miembro de la comunidad educativa, dentro o fuera del establecimiento.',
+    descripcion: 'Golpes o agresión corporal de un estudiante a otro, dentro o fuera del establecimiento. Si el agresor o el afectado es un adulto, corresponde otro tipo de falta: la vía y el protocolo son distintos.',
     medida_sugerida: 'Suspensión de clases y citación al apoderado',
+  },
+  {
+    nombre: 'Agresión de un estudiante a un funcionario',
+    gravedad: 'gravísima',
+    descripcion: 'Violencia física o psicológica de un estudiante hacia un docente, asistente de la educación u otro funcionario, ocurrida durante el ejercicio de sus funciones o como resultado de ellas, dentro o fuera del establecimiento.',
+    medida_sugerida: 'Debido proceso con descargos y medida disciplinaria proporcional; acompañamiento al funcionario afectado. La Ley 21.809 la califica de especial gravedad.',
   },
   {
     nombre: 'Agresión verbal o amenazas',
@@ -199,6 +213,23 @@ const TIPOS_FALTA_PLANTILLA = [
     gravedad: 'gravísima',
     descripcion: 'Provocar incendios o explosiones, dar falsas alarmas de emergencia o cualquier conducta que ponga en riesgo evidente la integridad de otros.',
     medida_sugerida: 'Suspensión de clases, citación al apoderado y denuncia si corresponde',
+  },
+
+  // ── HECHOS QUE NO SON FALTAS DEL ESTUDIANTE ──────────────────────────────
+  // El catálogo clasifica conductas de estudiantes, pero el registro de
+  // convivencia es la puerta de entrada de todo hecho que se documenta, y hay
+  // hechos donde el estudiante es la persona afectada y no la señalada. Sin un
+  // tipo para eso, un maltrato de un adulto hacia un estudiante se terminaba
+  // anotando bajo "Agresión física" —la falta que se le imputa a un
+  // estudiante—, y el expediente quedaba diciendo lo contrario de lo ocurrido.
+  //
+  // La medida sugerida dice expresamente que no hay sanción al estudiante: es
+  // el campo que el equipo lee al registrar.
+  {
+    nombre: 'Agresión de un funcionario a un estudiante',
+    gravedad: 'gravísima',
+    descripcion: 'Maltrato físico o psicológico de un funcionario, docente, asistente de la educación o adulto de la comunidad hacia un estudiante. La responsabilidad es del adulto: el estudiante es la persona afectada, no la señalada.',
+    medida_sugerida: 'Activación del protocolo, separación del trato directo con estudiantes y derivación al procedimiento laboral o administrativo. No corresponde medida disciplinaria contra el estudiante.',
   },
 ];
 
