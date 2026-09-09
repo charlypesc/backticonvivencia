@@ -5,6 +5,7 @@ const {
   create,
   update,
   remove,
+  cambiarAcceso,
   importarExcel,
   getProgresoImportacion,
 } = require('../controllers/establecimientosGeo.controller');
@@ -30,6 +31,9 @@ router.post('/',          requirePermission(Permiso.EstablecimientoCrear), creat
 router.post('/importar',  requirePermission(Permiso.EstablecimientoImportar), uploadExcel.single('archivo'), importarExcel);
 router.get('/importar/:jobId/progreso', requirePermission(Permiso.EstablecimientoImportar), getProgresoImportacion);
 router.put('/:id',        requirePermission(Permiso.EstablecimientoEditar), update);
+// Suspender/restablecer el acceso no borra datos: va con el mismo permiso de
+// edición, no con el de eliminar.
+router.patch('/:id/acceso', requirePermission(Permiso.EstablecimientoEditar), cambiarAcceso);
 router.delete('/:id',     requirePermission(Permiso.EstablecimientoEliminar), remove);
 
 module.exports = router;

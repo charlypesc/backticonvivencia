@@ -20,6 +20,10 @@ const DIAS_HABILES_INFORME = 5;
 
 const ROLES_COMISION = ['profesor_jefe', 'coordinador_convivencia', 'equipo_tecnico_pedagogico'];
 
+// Las vías por las que se puede notificar la medida al apoderado. Espeja el
+// enum de la columna (ver docs/informe_expulsion_medio_notificacion.sql).
+const MEDIOS_NOTIFICACION_APODERADO = ['presencial', 'correo', 'plataforma', 'carta'];
+
 // Campos que la ley enumera y sin los cuales el informe no está completo.
 const CAMPOS_EXIGIDOS = [
   ['antecedentes_conductuales',    'antecedentes conductuales'],
@@ -268,10 +272,20 @@ const emitir = async (req, res) => {
 // la aplica igual, la ley lo obliga a fundamentar de forma pormenorizada: acá
 // eso es un requisito de la petición, no una advertencia que se pueda ignorar.
 const decidir = async (req, res) => {
-  const { decision, fundamento_director, fecha_notificacion_apoderado } = req.body;
+  const { decision, fundamento_director, fecha_notificacion_apoderado,
+          medio_notificacion_apoderado } = req.body;
 
   if (!['aplica', 'no_aplica'].includes(decision))
     return res.status(400).json({ message: 'decision debe ser aplica o no_aplica' });
+
+  // Sin 'telefono', igual que en la suspensión cautelar: de esta notificación
+  // cuelgan el plazo de reconsideración y los 5 días para informar a la
+  // Superintendencia, y una llamada no deja constancia de qué se comunicó.
+  if (medio_notificacion_apoderado &&
+      !MEDIOS_NOTIFICACION_APODERADO.includes(medio_notificacion_apoderado))
+    return res.status(400).json({
+      message: `medio_notificacion_apoderado debe ser uno de: ${MEDIOS_NOTIFICACION_APODERADO.join(', ')}`,
+    });
 
   try {
     const informe = await buscarInforme(pool, req.params.id, req.id_establecimiento);
@@ -304,10 +318,12 @@ const decidir = async (req, res) => {
     await pool.query(
       `UPDATE INFORME_EXPULSION
        SET decision_director = ?, fundamento_director = ?, fecha_decision = NOW(),
-           fecha_notificacion_apoderado = ?, fecha_limite_informes = ?
+           fecha_notificacion_apoderado = ?, medio_notificacion_apoderado = ?,
+           fecha_limite_informes = ?
        WHERE id_informe = ?`,
       [decision, fundamento_director?.trim() || null,
-       fecha_notificacion_apoderado || null, fecha_limite_informes, req.params.id]
+       fecha_notificacion_apoderado || null, medio_notificacion_apoderado || null,
+       fecha_limite_informes, req.params.id]
     );
     await pool.query(
       `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO

@@ -3,7 +3,7 @@
 const router = require('express').Router({ mergeParams: true });
 const {
   getGrafo,
-  crearPaso, actualizarPaso, eliminarPaso,
+  crearPaso, actualizarPaso, eliminarPaso, guardarPasoCompletoGenerico,
   crearTransicion, actualizarTransicion, eliminarTransicion,
   reemplazarRoles,
   crearCampo, actualizarCampo, eliminarCampo,
@@ -20,6 +20,12 @@ router.use(verifyToken);
 // Ver el grafo lo puede hacer cualquiera que vaya a ejecutarlo; editarlo, solo
 // el ADMIN. Por eso el permiso de lectura va aparte del de escritura.
 router.get('/', requirePermission(Permiso.ProtocoloFlujoVer), getGrafo);
+
+// El paso entero de una vez: datos, responsables, preguntas y salidas en una
+// transacción. Es por donde guarda el formulario del editor; los endpoints de
+// a uno de abajo quedan para las ediciones sueltas desde el diagrama.
+router.post('/pasos/completo',          requirePermission(Permiso.ProtocoloFlujoEditar), guardarPasoCompletoGenerico);
+router.put ('/pasos/:id_paso/completo', requirePermission(Permiso.ProtocoloFlujoEditar), guardarPasoCompletoGenerico);
 
 router.post  ('/pasos',          requirePermission(Permiso.ProtocoloFlujoEditar), crearPaso);
 router.put   ('/pasos/:id_paso', requirePermission(Permiso.ProtocoloFlujoEditar), actualizarPaso);

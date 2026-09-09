@@ -33,11 +33,17 @@ const normalizar = (texto) => {
 // obligaría a listar todas las columnas o a depender de ONLY_FULL_GROUP_BY
 // estando apagado, que es justo el tipo de cosa que se rompe al cambiar de
 // servidor.
+// El sostenedor va en el mismo listado (LEFT JOIN, no subconsulta por fila):
+// la ficha del establecimiento en Geo tiene que poder mostrar quién lo sostiene
+// —o que no tiene— sin una segunda llamada por colegio abierto.
 const SELECT_CON_USUARIOS = `
   SELECT e.*,
+         s.representante_legal AS sostenedor_nombre,
+         s.rut                 AS sostenedor_rut,
          (SELECT COUNT(*) FROM USUARIO u
            WHERE u.id_establecimiento = e.id_establecimiento) AS cantidad_usuarios
-    FROM ESTABLECIMIENTO e`;
+    FROM ESTABLECIMIENTO e
+    LEFT JOIN SOSTENEDOR s ON s.id_sostenedor = e.id_sostenedor`;
 
 const getAll = async (req, res) => {
   try {
@@ -122,6 +128,31 @@ const update = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY')
       return res.status(409).json({ message: 'RBD ya registrado' });
     res.status(500).json({ message: 'Error al actualizar' });
+  }
+};
+
+// Suspende (o restablece) el acceso de todos los usuarios de un
+// establecimiento. Es lo contrario de `remove`: no borra ni desactiva nada —
+// solo levanta una bandera que el login consulta (ver auth.controller). Al
+// desbloquear, la gente vuelve a entrar exactamente como estaba.
+const cambiarAcceso = async (req, res) => {
+  const bloqueado = req.body.acceso_bloqueado ? 1 : 0;
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE ESTABLECIMIENTO SET acceso_bloqueado = ? WHERE id_establecimiento = ?`,
+      [bloqueado, req.params.id]
+    );
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Establecimiento no encontrado' });
+
+    res.json({
+      acceso_bloqueado: bloqueado,
+      message: bloqueado ? 'Acceso suspendido' : 'Acceso restablecido',
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al cambiar el acceso' });
   }
 };
 
@@ -311,4 +342,4 @@ const getProgresoImportacion = (req, res) => {
   res.json(job);
 };
 
-module.exports = { getAll, create, update, remove, importarExcel, getProgresoImportacion };
+module.exports = { getAll, create, update, remove, cambiarAcceso, importarExcel, getProgresoImportacion };

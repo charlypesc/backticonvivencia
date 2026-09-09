@@ -3,7 +3,7 @@ const router = require('express').Router({ mergeParams: true });
 const {
   getGrafo,
   personalizar, restaurar,
-  crearPaso, actualizarPaso, eliminarPaso,
+  crearPaso, actualizarPaso, eliminarPaso, guardarPasoCompletoEstab,
   crearTransicion, actualizarTransicion, eliminarTransicion,
   reemplazarRoles,
   crearCampo, actualizarCampo, eliminarCampo,
@@ -24,6 +24,12 @@ router.post  ('/personalizar', requirePermission(Permiso.ProtocoloFlujoEstableci
 router.delete('/personalizar', requirePermission(Permiso.ProtocoloFlujoEstablecimientoRestaurar),    restaurar);
 
 const editar = requirePermission(Permiso.ProtocoloFlujoEstablecimientoEditar);
+
+// El paso entero de una vez: datos, responsables, preguntas y salidas en una
+// transacción. Es por donde guarda el formulario del editor; los endpoints de
+// a uno de abajo quedan para las ediciones sueltas desde el diagrama.
+router.post('/pasos/completo',          editar, guardarPasoCompletoEstab);
+router.put ('/pasos/:id_paso/completo', editar, guardarPasoCompletoEstab);
 
 router.post  ('/pasos',          editar, crearPaso);
 router.put   ('/pasos/:id_paso', editar, actualizarPaso);

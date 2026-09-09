@@ -1,0 +1,4746 @@
+### AVISO: ESTE DOCUMENTO NO ES NORMATIVA. Es el reglamento interno (RICE) de
+### un establecimiento concreto (RBD 91), recogido del repositorio público de
+### MINEDUC como EJEMPLO de redacción. No tiene valor legal ni obliga a nadie.
+### La norma aplicable está en docs/normativa/. Ver rice-modelos/README.md.
+
+ SERVICIO LOCAL DE EDUCACIÓN PÚBLICA CHINCHORRO
+
+    SUBDIRECCIÓN DE APOYO TÉCNICO PEDAGÓGICO
+
+
+
+          REGLAMENTO INTERNO
+           ESCUELA RURAL MULTIGRADO
+
+
+
+
+            Establecimiento: Escuela Cosapilla
+                         RBD: 91
+                 Comuna: General Lagos
+                Región: Arica y Parinacota
+Sostenedor: Servicio Local de Educación Pública Chinchorro
+                  Año de vigencia: 2026
+ Fecha de aprobación por el Consejo Escolar: 06/04/2026
+
+                                                             Página 1
+ÍNDICE
+TÍTULO I. Introducción
+TÍTULO II. Principios que orientan el Reglamento Interno
+TÍTULO III. Derechos y deberes de la comunidad educativa
+TÍTULO IV. Regulaciones técnico-administrativas
+TÍTULO V. Regulaciones sobre procesos de admisión
+TÍTULO VI. Regulaciones sobre pagos en el régimen de financiamiento compartido
+TÍTULO VII. Regulación sobre uso de uniforme escolar
+TÍTULO VIII. Seguridad escolar y resguardo de derechos
+TÍTULO IX. Gestión pedagógica y protección a la maternidad y paternidad
+TÍTULO X. Normas, faltas, medidas disciplinarias y procedimientos
+TÍTULO XI. Convivencia escolar
+TÍTULO XII. Aprobación, modificaciones, actualización y difusión
+TÍTULO XIII. Entrada en vigencia
+TÍTULO XIV. Sanciones aplicables
+
+ANEXOS. Protocolos obligatorios y formularios (plantillas)
+ANEXO 14. Protocolo de actuación frente a situaciones de riesgo suicida, ideación suicida, autolesiones e
+intento suicida.
+
+
+
+
+                                                                                               Página 2
+TÍTULO I
+INTRODUCCIÓN
+Artículo 1°
+
+El presente Reglamento Interno (en adelante, el “Reglamento”) establece las normas de organización,
+funcionamiento, convivencia y procedimientos aplicables a la Escuela Rural Multigrado Cosapilla (en
+adelante, el “Establecimiento”), ubicada en la comuna de General Lagos, Región de Arica y Parinacota,
+con reconocimiento oficial del Estado. Su finalidad es asegurar un ambiente educativo protector, seguro,
+inclusivo y respetuoso, garantizando el ejercicio efectivo de derechos y deberes de todos los integrantes
+de la comunidad educativa, en coherencia con la Ley N° 21.430 y el interés superior del niño.
+
+Artículo 2° Marco normativo y jerarquía.
+
+El presente Reglamento Interno se dicta en conformidad con la Constitución Política de la República, la
+legislación educacional vigente y las instrucciones impartidas por la Superintendencia de Educación y
+demás autoridades competentes.
+
+En caso de contradicción entre este Reglamento y la normativa de rango superior, primarán la
+Constitución, las leyes, los reglamentos y las instrucciones vigentes de la autoridad competente. En
+ningún caso el Reglamento podrá contener disposiciones contrarias al ordenamiento jurídico vigente.
+
+Normativa base aplicable
+
+El presente instrumento se fundamenta especialmente en las siguientes disposiciones:
+
+    •   Constitución Política de la República de Chile.
+
+    •   DFL N° 2 de 2009 del Ministerio de Educación, que fija el texto refundido, coordinado y
+        sistematizado de la Ley General de Educación (LGE).
+
+    •   Ley N° 20.529, que crea el Sistema Nacional de Aseguramiento de la Calidad de la Educación
+        Parvularia, Básica y Media y su Fiscalización.
+
+    •   Ley N° 20.536, sobre Violencia Escolar.
+
+    •   Ley N° 20.845, de Inclusión Escolar que regula la admisión de los y las estudiantes, elimina el
+        financiamiento compartido y prohíbe el lucro en establecimientos que reciben aportes del
+        Estado.
+
+    •   Ley N° 21.040, que crea el Sistema de Educación Pública y los Servicios Locales de Educación
+        Pública.
+
+    •   Ley N° 19.979 (que modifica la Ley General de Educación en materia de Consejos Escolares)
+
+    •   Ley N° 21.430, sobre Garantías y Protección Integral de los Derechos de la Niñez y Adolescencia.
+
+
+
+
+                                                                                                  Página 3
+    •   Ley N° 21.801, que prohíbe y regula el uso de dispositivos móviles electrónicos de comunicación
+        personal en establecimientos educacionales.
+
+    •   Ley N° 21.545, que establece la promoción de la inclusión, la atención integral y la protección de
+        los derechos de las personas con Trastorno del Espectro Autista.
+
+    •   Ley N° 20.422, que establece normas sobre igualdad de oportunidades e inclusión social de
+        personas con discapacidad.
+
+    •   Ley N° 21.128, que fortalece las facultades de los directores en materia de convivencia escolar.
+
+    •   Ley N° 20.370
+
+    •   Decreto Supremo N° 67 de 2018, sobre evaluación, calificación y promoción escolar.
+
+    •   Decreto Supremo N° 313 de 1972, que reglamenta el Seguro Escolar de Accidentes.
+
+    •   Decreto Supremo N° 315 de 2010, que reglamenta los requisitos de adquisición, mantención y
+        pérdida del reconocimiento oficial del Estado.
+
+    •   Resolución Exenta N° 482 de 2018 de la Superintendencia de Educación, que aprueba la Circular
+        que imparte instrucciones sobre Reglamentos Internos (y sus actualizaciones vigentes, incluida la
+        REX N° 781 cuando corresponda).
+
+Asimismo, el presente Reglamento deberá interpretarse en coherencia con la Política Nacional de
+Convivencia Educativa vigente, la Estrategia Nacional de Educación Pública y las demás circulares e
+instrucciones emitidas por la Superintendencia de Educación que resulten aplicables.
+
+Artículo 3° Definiciones generales.
+
+•   Comunidad educativa: estudiantes, familias, docentes, asistentes y directivos.
+•   Multigrado: organización pedagógica con estudiantes de diferentes niveles en un mismo grupo.
+•   Medidas formativas: acciones pedagógicas orientadas a aprender normas y reparar daños.
+•   Medidas disciplinarias: decisiones fundadas ante incumplimientos, con debido proceso.
+
+Artículo 4°: Contexto territorial e interculturalidad
+
+El establecimiento educacional Escuela de Cosapilla, ubicado en la localidad de Cosapilla, comuna de
+General Lagos, Región de Arica y Parinacota, se emplaza en un territorio altiplánico caracterizado por su
+altura geográfica, condiciones climáticas extremas, dispersión territorial, aislamiento relativo y
+limitaciones de conectividad. En consideración a este contexto, el presente Reglamento Interno
+reconoce la necesidad de adoptar medidas organizativas, preventivas y de resguardo pertinentes a dicha
+realidad territorial.
+
+En este sentido, el establecimiento implementará protocolos específicos frente a contingencias
+climáticas propias del entorno altiplánico, tales como nevazones, lluvias estivales (invierno altiplánico),
+vientos intensos, descensos bruscos de temperatura y eventuales cortes de rutas o aislamiento
+
+
+                                                                                                    Página 4
+temporal. Asimismo, se dispondrán planes de seguridad y evacuación ajustados a la infraestructura rural
+del establecimiento, considerando la distancia respecto de centros de salud, servicios de emergencia y
+tiempos de respuesta en situaciones críticas.
+
+De igual forma, se establecerán mecanismos de comunicación alternativos y pertinentes con las familias
+y la comunidad educativa ante eventuales fallas en la conectividad telefónica o digital, resguardando la
+oportuna entrega de información y la continuidad del proceso educativo, en consideración de los
+tiempos de traslado y la dispersión geográfica de los estudiantes.
+
+La organización pedagógica y de convivencia escolar se desarrollará bajo el enfoque de aula rural
+multigrado, promoviendo estrategias de enseñanza colaborativa entre estudiantes de distintos niveles,
+el aprendizaje entre pares y el fortalecimiento del sentido comunitario. Asimismo, se resguardarán las
+trayectorias educativas continuas mediante una planificación flexible, contextualizada y pertinente,
+especialmente en lo referido a horarios, calendarización de actividades, participación en instancias
+externas y desarrollo de actividades extracurriculares, considerando las condiciones de transporte y
+desplazamiento propias del territorio.
+
+En materia de interculturalidad, el establecimiento reconoce, respeta y valora la identidad cultural del
+pueblo aymara y la diversidad cultural presente en la comuna y la región, promoviendo una educación
+pertinente, inclusiva y coherente con el enfoque de derechos. En este marco, se integrarán en la vida
+escolar elementos de la cosmovisión andina, saberes ancestrales, prácticas comunitarias, expresiones
+culturales y el calendario ceremonial propio del territorio, favoreciendo el reconocimiento y
+participación en festividades tradicionales.
+
+Asimismo, se promoverá el respeto, valoración y eventual uso del idioma aymara, especialmente en
+contextos donde existan estudiantes o familias hablantes, fomentando prácticas pedagógicas
+contextualizadas que contribuyan al fortalecimiento de la identidad cultural y el sentido de pertenencia.
+
+El establecimiento velará por prevenir, sancionar y erradicar toda forma de discriminación arbitraria
+basada en origen étnico, nacionalidad, lengua, identidad cultural, situación migratoria u otras
+condiciones, garantizando un ambiente de convivencia escolar fundado en el respeto mutuo, la
+inclusión, la participación y el diálogo intercultural, en concordancia con lo establecido en la Ley N°
+21.430 sobre Garantías y Protección Integral de los Derechos de la Niñez y Adolescencia, y la Ley N°
+20.845 de Inclusión Escolar.
+
+Finalmente, se promoverá activamente la participación de la comunidad educativa, incluyendo familias,
+autoridades tradicionales, sabios locales y organizaciones territoriales, como un eje fundamental del
+quehacer institucional, fortaleciendo el vínculo entre la escuela y el territorio, y favoreciendo una
+educación contextualizada, pertinente y con sentido comunitario.
+
+
+
+
+                                                                                                  Página 5
+Artículo 5° Ámbito de aplicación.
+
+Las disposiciones del Reglamento son obligatorias para estudiantes, madres, padres y apoderados,
+docentes, asistentes de la educación, directivos, profesionales de apoyo, personal externo y toda
+persona que participe en actividades del Establecimiento.
+
+
+TÍTULO II
+PRINCIPIOS QUE ORIENTAN EL REGLAMENTO INTERNO
+Artículo 6° Principios.
+
+La aplicación e interpretación del Reglamento se rige por los siguientes principios:
+
+•   Dignidad humana y trato respetuoso.
+•   Interés superior del niño y protección reforzada (Ley N° 21.430).
+•   No discriminación arbitraria e inclusión.
+•   Legalidad, transparencia y rendición de cuentas.
+•   Debido proceso (justo y racional procedimiento).
+•   Proporcionalidad, gradualidad y enfoque formativo-restaurativo.
+•   Participación y derecho a ser oído, según edad y madurez.
+•   Corresponsabilidad familia-escuela-Estado.
+
+Artículo 7° No discriminación e inclusión.
+
+Se prohíbe toda discriminación arbitraria en el acceso, permanencia, participación y trato dentro del
+Establecimiento. Se adoptarán apoyos y ajustes razonables para asegurar participación efectiva,
+especialmente en contextos de NEE, discapacidad, pertenencia cultural, movilidad humana u otras
+condiciones.
+
+Enfoque inclusivo, de derechos y respeto a la neurodiversidad
+
+El establecimiento educacional Escuela de Cosapilla orienta su quehacer institucional en base a un
+enfoque inclusivo, de derechos y de respeto a la diversidad, reconociendo a todos los estudiantes como
+sujetos de derecho, con igualdad de oportunidades para acceder, participar y progresar en su trayectoria
+educativa.
+
+En este marco, la comunidad educativa promoverá una educación inclusiva que valore la diversidad
+como un elemento enriquecedor del proceso de enseñanza y aprendizaje, favoreciendo la eliminación de
+barreras para el aprendizaje y la participación, y garantizando condiciones que permitan el desarrollo
+integral de todos los estudiantes, en coherencia con la normativa vigente.
+
+El establecimiento reconoce y respeta la neurodiversidad como parte de la diversidad humana,
+promoviendo prácticas pedagógicas, convivenciales y organizacionales que favorezcan la inclusión, el
+bienestar y la participación de estudiantes con distintas formas de aprendizaje, comunicación y relación
+con el entorno, incluyendo a aquellos con condición del espectro autista.
+
+
+                                                                                                Página 6
+En concordancia con lo establecido en la Ley N° 21.545, que establece la promoción de la inclusión, la
+atención integral y la protección de los derechos de las personas con condición del espectro autista, el
+establecimiento adoptará las medidas necesarias para garantizar apoyos adecuados, ajustes razonables y
+una respuesta educativa pertinente a sus necesidades.
+
+Asimismo, y en cumplimiento de la Circular N° 586 de la Superintendencia de Educación, el
+establecimiento resguardará el derecho de los estudiantes a recibir una educación libre de
+discriminación, promoviendo entornos educativos seguros, respetuosos y libres de prácticas excluyentes,
+asegurando el acompañamiento oportuno y el resguardo de su bienestar físico y emocional.
+
+La comunidad educativa en su conjunto será responsable de promover una cultura institucional basada
+en el respeto, la inclusión, la participación y la valoración de la diversidad, fortaleciendo prácticas que
+favorezcan la convivencia armónica y el reconocimiento de las diferencias individuales como una
+oportunidad de aprendizaje colectivo.
+
+
+
+Artículo 8° Confidencialidad y protección de datos.
+
+La información sensible relativa a estudiantes y sus familias será tratada con estricta confidencialidad,
+resguardando su dignidad, honra y vida privada. Solo podrá ser conocida y utilizada por aquellas
+personas que, en razón de sus funciones directivas, pedagógicas, psicosociales o administrativas, deban
+acceder a ella para fines de protección, acompañamiento, apoyo educativo o cumplimiento de
+obligaciones legales.
+
+Se considerará información sensible, entre otros antecedentes, aquellos referidos a diagnósticos
+médicos o de salud mental, necesidades educativas especiales, situaciones de vulneración de derechos,
+medidas de protección decretadas por tribunales de familia, antecedentes de estudiantes bajo cuidado
+alternativo o programas del Estado, situaciones de violencia intrafamiliar, migración forzada, identidad
+de género, así como cualquier dato personal cuyo uso indebido pueda afectar la integridad o el bienestar
+del estudiante.
+
+En el caso de estudiantes que se encuentren bajo la protección del Estado —ya sea en programas
+ambulatorios, residencias, familias de acogida u otras medidas judiciales— el establecimiento deberá
+extremar los resguardos respecto de su información personal, evitando su divulgación innecesaria ante
+la comunidad educativa. La comunicación con organismos externos deberá realizarse únicamente por los
+canales formales y por parte del equipo directivo o profesionales designados, asegurando trazabilidad y
+respaldo documental.
+
+El tratamiento de datos personales deberá ajustarse a la normativa vigente en materia de protección de
+la vida privada y a los principios de finalidad, proporcionalidad y necesidad, garantizando que la
+información recopilada sea pertinente, actualizada y utilizada exclusivamente para fines educativos y de
+protección integral, en coherencia con la Ley N° 21.430 y la Ley N° 19.628.
+
+
+
+
+                                                                                                   Página 7
+La vulneración del deber de confidencialidad por parte de funcionarios o funcionarias podrá dar lugar a
+responsabilidades administrativas, sin perjuicio de otras acciones legales que correspondan.
+
+
+TÍTULO III
+DERECHOS Y DEBERES DE LA COMUNIDAD EDUCATIVA
+Artículo 9° (Derechos de las y los estudiantes).
+
+•   Educación de calidad en ambiente protector y libre de violencia.
+•   Ser oídos y participar, conforme a su edad y madurez.
+•   Protección frente a vulneraciones y acceso a apoyos oportunos.
+•   Identidad cultural e interculturalidad respetada; libertad de conciencia en el marco del respeto
+    mutuo.
+•   Acceso a evaluación justa, apoyos pedagógicos y adecuaciones pertinentes al multigrado.
+•   Seguridad y cuidado, incluyendo Seguro Escolar.
+
+Derechos de los estudiantes con condición del espectro autista
+• Apoyos y ajustes razonables:
+   Recibir apoyos pedagógicos, sociales y emocionales, mediante ajustes pertinentes a sus necesidades.
+• Educación pertinente e inclusiva:
+   Acceder a una educación de calidad que respete sus ritmos, características y contexto.
+• Evaluación diversificada:
+   Ser evaluados con procedimientos flexibles (DEC), adecuados a sus formas de aprendizaje.
+• No discriminación:
+   Ser respetados en su dignidad, sin exclusión ni trato desigual por su condición.
+• Plan de Apoyo Individual (PAEC):
+   Contar con un plan de apoyo elaborado con la familia y ajustado a sus necesidades.
+
+Artículo 10° (Deberes de las y los estudiantes).
+
+•   Respetar dignidad de todas las personas, sin violencia ni discriminación.
+•   Cumplir normas de aula y del Establecimiento.
+•   Cuidar infraestructura, materiales y entorno natural.
+•   Participar en actividades formativas y cumplir acuerdos de convivencia.
+
+Deberes de la comunidad educativa respecto a estudiantes con condición del espectro autista
+• Del establecimiento:
+   Implementar apoyos, ajustes razonables y condiciones adecuadas para el aprendizaje.
+• Del equipo docente:
+   Aplicar estrategias inclusivas, evaluación diversificada (DEC) y seguimiento del PAEC.
+• De los estudiantes:
+   Respetar la diversidad, promoviendo inclusión, empatía y buen trato.
+
+
+                                                                                                 Página 8
+•   De las familias y apoderados:
+    Colaborar con el establecimiento y participar en el seguimiento del PAEC.
+•   De la comunidad educativa:
+    Fomentar una cultura inclusiva basada en el respeto y la valoración de la diversidad.
+
+
+Artículo 11° (Derechos y deberes de madres, padres y apoderados).
+
+Derechos:
+
+•   Ser informados sobre el proceso educativo y convivencia.
+•   Participar en instancias de la comunidad educativa.
+•   Acceder a orientación y canales formales de comunicación.
+•
+
+Deberes:
+
+•   Asegurar asistencia y puntualidad, coordinando contingencias de transporte rural.
+•   Colaborar con medidas de apoyo pedagógico y socioemocional.
+•   Mantener trato respetuoso; abstenerse de agresiones o amenazas.
+•   Respetar procedimientos formales y confidencialidad cuando corresponda.
+•   Participar de las reuniones de padres y apoderados.
+
+Artículo 12° (Derechos y deberes del personal).
+
+Derechos:
+• Desempeñar sus funciones en un ambiente laboral respetuoso, seguro y libre de violencia, maltrato o
+acoso.
+• Recibir respaldo institucional ante situaciones que afecten su integridad física o psíquica en el ejercicio
+de sus funciones.
+• Ser informados oportunamente sobre decisiones institucionales que incidan en la organización, gestión
+y convivencia del establecimiento.
+• Participar en instancias formales de reflexión pedagógica, mejora institucional y trabajo colaborativo.
+• Acceder a instancias de formación, capacitación y acompañamiento técnico en materias pedagógicas,
+de convivencia y protección de derechos.
+• Contar con protocolos claros de actuación frente a situaciones de conflicto, vulneración de derechos o
+emergencias.
+
+Deberes:
+• Ejercer sus funciones en conformidad con la normativa vigente, el Proyecto Educativo Institucional, el
+presente Reglamento Interno y los protocolos establecidos.
+• Resguardar en todo momento el interés superior del niño, niña y adolescente, promoviendo el enfoque
+de derechos y el buen trato.
+• Prevenir, detectar e informar oportunamente situaciones de riesgo, sospecha o vulneración de
+
+
+
+                                                                                                   Página 9
+derechos, activando los protocolos institucionales sin realizar investigaciones paralelas.
+• Mantener un trato respetuoso, inclusivo y no discriminatorio hacia estudiantes, familias y demás
+integrantes de la comunidad educativa.
+• Resguardar la confidencialidad de la información sensible a la que accedan debido a su cargo,
+especialmente en casos de estudiantes con medidas de protección, necesidades educativas especiales o
+antecedentes personales reservados.
+• Actuar con responsabilidad y diligencia en el cumplimiento de sus funciones pedagógicas, formativas y
+de resguardo.
+• Colaborar activamente en la implementación del Plan de Gestión de la Convivencia Escolar y en las
+acciones preventivas y formativas del establecimiento.
+
+
+TÍTULO IV
+REGULACIONES TÉCNICO-ADMINISTRATIVAS
+Artículo 13° Niveles y modalidad.
+
+El Establecimiento imparte Educación Básica en modalidad rural multigrado. La organización multigrado
+considerará criterios pedagógicos, de convivencia y bienestar, resguardando trayectorias educativas.
+
+Artículo 14° Jornada, horarios y asistencia.
+
+La jornada escolar del establecimiento será Jornada Escolar Completa (JEC), desarrollándose en un
+horario regular de funcionamiento entre las 08:30 y las 16:00, de lunes a viernes, sin perjuicio de
+adecuaciones autorizadas por la autoridad competente en atención a condiciones territoriales, climáticas
+o de transporte propias del contexto rural altiplánico.
+
+El establecimiento organizará su funcionamiento diario considerando tiempos pedagógicos, recreativos y
+de alimentación, resguardando el bienestar integral de las y los estudiantes, especialmente en contextos
+de altura geográfica y bajas temperaturas.
+
+
+
+1. Distribución referencial de la jornada diaria
+
+ Bloque            Horario                         Actividad
+
+ 1°                08:30 – 09:15                   Primera hora de clases
+
+ 2°                09:15 – 10:00                   Segunda hora de clases
+
+                                          10:00 – 10:15
+                                             Recreo
+ 3°                10:15 – 11:00                  Tercera hora de clases
+
+ 4°                11:00 – 11:45                   Cuarta hora de clases
+
+
+
+                                                                                               Página 10
+                                               11:45 – 12:00
+                                                  Recreo
+    5°                  12:00 – 12:45                  Quinta hora de clases
+
+    6°                  12:45 – 13:30                  Sexta hora de clases
+
+                                                13:30/14:30
+                                                 Almuerzo
+    7°                  14:30 – 15:15                  Séptima hora de clases
+
+    8°                  15:15 – 16:00                  Octava hora de clases
+
+
+
+La organización específica podrá ajustarse en función del carácter multigrado del establecimiento,
+priorizando metodologías integradas y trabajo colaborativo entre niveles.
+
+2. Asistencia y puntualidad
+
+La asistencia a clases es obligatoria conforme a la normativa vigente y constituye un requisito esencial
+para la continuidad de las trayectorias educativas. El establecimiento llevará un registro diario y
+sistemático de asistencia, el cual será informado periódicamente a las familias.
+
+Se considerará inasistencia justificada aquella que sea acreditada por certificado médico, razones de
+fuerza mayor, contingencias climáticas propias del territorio (nevazones, lluvias altiplánicas, cortes de
+ruta), situaciones familiares graves u otras debidamente fundamentadas.
+
+En casos de inasistencias reiteradas, el establecimiento activará acciones de seguimiento y apoyo, tales
+como:
+
+         •   Contacto telefónico o presencial con la familia.
+
+         •   Entrevistas de acompañamiento.
+
+         •   Coordinación con dupla psicosocial cuando corresponda.
+
+         •   Activación de redes de apoyo si existiere sospecha de vulneración de derechos. (Se envía
+             formulario de derivación Alerta o Alarma a OLN de la comuna).
+
+
+
+Artículo 15° Estructura organizacional y roles.
+
+•        Docente Encargado/a: conducción institucional, aplicación del Reglamento y resguardo de derechos,
+         coordinación del PGCE y activación de protocolos.
+•        Equipo docente: gestión pedagógica multigrado, evaluación y convivencia de aula.
+•        Consejo Escolar/Comité: participación, seguimiento y propuesta de mejoras.
+
+
+
+                                                                                                    Página 11
+•   Asistentes (si existen): apoyo educativo, seguridad, cuidado y administración.
+
+
+Artículo 16° Canales de comunicación institucional.
+
+•   Cuaderno de comunicaciones.
+•   Llamadas telefónicas.
+•   Mensajería institucional (WhatsApp u otro canal definido por Dirección y declarado en el Reglamento
+    Interno).
+•   Reuniones presenciales calendarizadas.
+•   Visitas domiciliarias coordinadas (cuando proceda y con resguardo).
+
+
+Artículo 17° Uso de infraestructura y recursos.
+
+El uso de salas, patios, biblioteca, comedor (si aplica) y espacios comunitarios se regirá por normas de
+seguridad, higiene y cuidado del patrimonio. Se prohíbe el uso riesgoso de calefacción y artefactos; la
+Dirección definirá protocolos internos de mantención preventiva.
+
+Artículo 18° (Convivencia con servicios y comunidad local).
+
+El establecimiento promoverá una vinculación activa, sistemática y colaborativa con las redes comunales
+y territoriales, reconociendo que en contextos rurales y altiplánicos la escuela constituye un eje
+articulador fundamental de la vida comunitaria. En este marco, se fortalecerá la coordinación con
+servicios de salud rural (postas y estaciones médico-rurales), municipalidad, oficinas de desarrollo
+comunitario, programas de apoyo social, fuerzas de orden y seguridad cuando corresponda, así como
+con organizaciones culturales, comunitarias y autoridades tradicionales del territorio.
+
+La articulación con la red local tendrá por finalidad favorecer la corresponsabilidad territorial en la
+protección y promoción de los derechos de niños, niñas y adolescentes, así como apoyar la continuidad y
+permanencia de sus trayectorias educativas. En particular, el establecimiento mantendrá canales
+formales de coordinación con dispositivos que forman parte del Sistema de Garantías de la Niñez, tales
+como la Oficina Local de la Niñez (OLN), facilitando la participación de estudiantes pertenecientes al
+“Consejo Consultivo de NNA”, programas de protección especializada, programas ambulatorios de
+reparación, residencias o familias de acogida cuando existan estudiantes bajo medidas de protección, en
+coherencia con la Ley N° 21.430.
+
+La colaboración con la comunidad también incluirá el reconocimiento de saberes locales, el vínculo con
+organizaciones culturales y comunitarias, juntas vecinales, asociaciones indígenas y autoridades
+tradicionales, fortaleciendo el sentido de pertenencia y la identidad territorial. Esta articulación se
+desarrollará siempre resguardando la confidencialidad de la información personal de estudiantes y
+familias, compartiendo antecedentes únicamente cuando exista fundamento legal y necesidad de
+protección.
+
+
+
+
+                                                                                                 Página 12
+El establecimiento asumirá, por tanto, un rol activo en la construcción de una red de apoyo integral,
+donde la escuela, la familia, el Estado y la comunidad actúan de manera coordinada para garantizar el
+derecho a la educación, la protección integral y el desarrollo pleno de niños, niñas y adolescentes del
+territorio.
+
+En el marco de actividades pedagógicas, culturales, deportivas o formativas que se desarrollen fuera del
+establecimiento o fuera del territorio comunal, incluyendo salidas pedagógicas, encuentros inter-
+escolares, ferias o actividades intersectoriales, el establecimiento deberá resguardar el consentimiento
+informado del padre, madre o apoderado/a y el asentimiento del estudiante, cuando corresponda a su
+edad y grado de madurez.
+
+
+TÍTULO V
+REGULACIONES REFERIDAS A LOS PROCESOS DE ADMISIÓN
+Artículo 19° Sistema de Admisión Escolar.
+
+El ingreso al establecimiento se rige por el Sistema de Admisión Escolar (SAE), conforme al principio de
+no selección, igualdad de oportunidades y acceso universal a la educación. En consecuencia, el
+establecimiento no podrá realizar procesos de selección académica, entrevistas selectivas, aplicación de
+pruebas de admisión, revisión de antecedentes socioeconómicos, antecedentes disciplinarios u otros
+criterios que impliquen discriminación arbitraria o vulneración del derecho a la educación, en coherencia
+con la Ley N° 20.845 y la Ley General de Educación.
+
+El Sistema de Admisión Escolar es el mecanismo oficial, centralizado y transparente mediante el cual las
+familias postulan a establecimientos que reciben financiamiento del Estado. El establecimiento deberá
+respetar estrictamente los resultados publicados por el SAE, procediendo a la matrícula de los y las
+estudiantes asignados dentro de los plazos establecidos por la autoridad ministerial.
+
+En el caso de vacantes disponibles una vez finalizado el proceso regular de asignación, la gestión de
+cupos deberá realizarse exclusivamente a través del procedimiento oficial denominado “Anótate en la
+Lista”, plataforma dispuesta por el Ministerio de Educación para administrar listas de espera en forma
+pública, objetiva y trazable. El establecimiento no podrá llevar listas paralelas, registros informales ni
+comprometer cupos por vías distintas a las autorizadas por la normativa vigente.
+
+El establecimiento deberá garantizar un trato digno, respetuoso y no discriminatorio durante todo el
+proceso de matrícula, resguardando especialmente la continuidad de trayectorias educativas, la
+permanencia de estudiantes de continuidad y el interés superior del niño, niña o adolescente. Cualquier
+actuación contraria a estos principios podrá constituir infracción a la normativa educacional y dar lugar a
+las responsabilidades administrativas correspondientes.
+
+
+
+
+                                                                                                   Página 13
+TÍTULO VI
+REGULACIONES SOBRE PAGOS EN EL RÉGIMEN DE FINANCIAMIENTO
+COMPARTIDO
+Artículo 20° Gratuidad.
+
+El Establecimiento es gratuito. No se exigirán pagos por matrícula, mensualidad, acceso a clases,
+evaluación o permanencia. Aportes voluntarios (si existiesen) serán informados por escrito, sin coacción
+y sin condicionar derechos.
+
+
+TÍTULO VII
+REGULACIÓN SOBRE USO DE UNIFORME ESCOLAR
+Artículo 23° (Criterios generales).
+
+El uso de uniforme se regula considerando ruralidad, clima de altura, pertinencia intercultural y
+condiciones socioeconómicas. No se aplicarán medidas disciplinarias que afecten el derecho a la
+educación por incumplimiento de uniforme.
+
+Artículo 24° (Descripción y flexibilidades).
+Se autoriza el uso de prendas de abrigo adecuadas (parka, gorro, guantes), calzado apropiado y
+vestimenta tradicional, resguardando seguridad y actividades pedagógicas.
+
+
+TÍTULO VIII
+SEGURIDAD ESCOLAR Y RESGUARDO DE DERECHOS
+Artículo 25° (PISE y gestión del riesgo territorial).
+
+El Establecimiento contará con un PISE actualizado y difundido. Considerará riesgos propios de la
+comuna: clima de altura, tormentas estivales, sismos, radiación UV, aislamiento por rutas y emergencias
+sanitarias. Incluirá roles, rutas de evacuación, puntos de encuentro, simulacros, comunicación con
+familias y coordinación con organismos de emergencia.
+
+Artículo 26° (Resguardo de derechos y activación de protocolos).
+
+Ante cualquier hecho que implique sospecha, amenaza o vulneración de derechos de niños, niñas o
+adolescentes, incluyendo situaciones de maltrato, acoso escolar, violencia entre pares o hacia adultos,
+agresiones o hechos de connotación sexual, consumo o porte de alcohol y otras drogas, accidentes
+escolares u otras situaciones que afecten su integridad física o psíquica, el establecimiento deberá
+activar de manera inmediata los protocolos de actuación anexos al presente Reglamento Interno.
+
+Los protocolos institucionales se encuentran elaborados y actualizados conforme a la normativa vigente
+y a las instrucciones impartidas por la Superintendencia de Educación, integrando el enfoque de
+
+
+
+
+                                                                                                 Página 14
+protección integral establecido en la Ley N° 21.430, las disposiciones de la Ley N° 20.536, la Ley N°
+21.801 y demás normativa aplicable.
+
+El establecimiento deberá contar, a lo menos, con los siguientes protocolos obligatorios, debidamente
+formalizados, difundidos y conocidos por la comunidad educativa:
+
+    •   Protocolo frente a situaciones de maltrato, acoso y violencia escolar.
+
+    •   Protocolo frente a agresiones sexuales y hechos de connotación sexual.
+
+    •   Protocolo frente a la sospecha o detección de vulneración de derechos.
+
+    •   Protocolo frente a consumo, porte o tráfico de alcohol y otras drogas.
+
+    •   Protocolo de actuación frente a accidentes escolares
+
+    •   Protocolo frente a desregulaciones emocionales y conductuales.
+
+    •   Protocolo de actuación frente a desregulación emocional, crisis sensorial y sobrecarga en
+        estudiantes
+
+    •   Protocolo de retención y apoyo a estudiantes embarazadas, madres y padres adolescentes,
+        asegurando la continuidad de su trayectoria educativa y el resguardo de sus derechos.
+
+    •   Protocolo de regulación y/o prohibición del uso de dispositivos móviles electrónicos, conforme a
+        la Ley N° 21.801, incorporado al Reglamento Interno con enfoque formativo y preventivo.
+
+Cada protocolo establece con claridad: responsables, etapas del procedimiento, medidas de protección
+inmediatas, mecanismos de registro formal, comunicación con las familias y, cuando corresponda,
+derivación o denuncia ante organismos competentes.
+
+La activación de protocolos tendrá un carácter esencialmente protector y formativo, orientado a la
+restitución de derechos, prevención de nuevas vulneraciones y acompañamiento integral de las y los
+estudiantes involucrados, en estricto respeto al interés superior del niño, niña y adolescente y al debido
+proceso.
+
+Artículo 26.1. Protocolo de actuación frente a situaciones de riesgo suicida, ideación suicida,
+autolesiones e intento suicida.
+
+En conformidad con la Resolución Exenta N° 482 de 2018 de la Superintendencia de Educación, que
+aprueba la Circular que imparte instrucciones sobre Reglamentos Internos de los establecimientos
+educacionales, el establecimiento contará con un protocolo específico de actuación frente a situaciones
+que puedan afectar la integridad física y psíquica de los estudiantes, tales como riesgo suicida, ideación
+suicida, autolesiones e intento suicida. La incorporación del presente protocolo responde a las
+instrucciones establecidas por la Resolución Exenta N° 482 de 2018 de la Superintendencia de
+Educación, que aprueba la Circular sobre Reglamentos Internos de los establecimientos educacionales,
+la cual exige que dichos instrumentos contemplen protocolos de actuación frente a situaciones que
+afecten la integridad física y psíquica de los estudiantes, resguardando procedimientos claros,
+
+                                                                                                   Página 15
+oportunos y conocidos por la comunidad educativa.
+
+Dicho protocolo tendrá por finalidad establecer procedimientos claros para la prevención, detección,
+contención inicial, evaluación del riesgo, comunicación con la familia, derivación a la red de salud,
+seguimiento y acompañamiento del estudiante, resguardando en todo momento su dignidad,
+confidencialidad, interés superior, derecho a la vida, protección y bienestar integral.
+
+El protocolo deberá activarse de manera inmediata cuando un estudiante manifieste deseos de morir,
+exprese pensamientos suicidas, presente autolesiones, exista conocimiento de un intento suicida o se
+reciban antecedentes entregados por familiares, compañeros, miembros de la comunidad u otras
+personas que adviertan una situación de riesgo.
+
+La activación del protocolo será responsabilidad del Profesor(a) Encargado(a) del establecimiento o del
+funcionario designado en caso de ausencia, debiendo coordinar las acciones con la familia, la Posta
+Rural correspondiente, Carabineros de Chile cuando corresponda, el sostenedor y otras redes de apoyo
+pertinentes al territorio.
+
+Este protocolo se incorpora como Anexo 14 del presente Reglamento Interno y forma parte integrante
+del mismo, siendo de aplicación obligatoria para toda la comunidad educativa.
+
+
+
+Artículo 27° Salud escolar y primeros auxilios.
+
+El establecimiento resguardará la salud y seguridad de las y los estudiantes durante la jornada escolar,
+manteniendo registro actualizado de contactos de emergencia y antecedentes relevantes de salud
+informados por las familias.
+Contará con botiquín de primeros auxilios y actuará únicamente en el ámbito de atención básica
+inicial, gestionando la derivación inmediata a la red de salud comunal cuando sea necesario,
+conforme al Decreto Supremo N° 313 de 1972. Respecto del suministro de medicamentos, solo se
+administrarán aquellos que cuenten con prescripción médica vigente y autorización escrita del
+apoderado/a, debiendo quedar registro formal de dicha autorización y de cada administración. El
+establecimiento no realizará diagnósticos ni modificará tratamientos médicos.
+
+En contexto altiplánico, se adoptarán medidas preventivas asociadas a la altura geográfica, tales como
+regulación de actividad física, pausas e hidratación, resguardando siempre el interés superior del niño,
+niña y adolescente conforme a la Ley N° 21.430.
+
+Artículo 28° (Higiene, sanitización y seguridad de espacios).
+
+El establecimiento deberá garantizar condiciones adecuadas de higiene, sanitización y seguridad en
+todos sus espacios educativos, administrativos y de internado cuando corresponda. Para ello, velará
+limpieza y sanitización de salas de clases, servicios higiénicos, comedores, espacios comunes y
+dependencias de uso frecuente, estableciendo responsables, periodicidad y registros de cumplimiento.
+
+El sostenedor contará con un programa de mantenimiento preventivo de la infraestructura, incluyendo
+sistemas de calefacción, instalaciones eléctricas, red de agua potable, servicios sanitarios y cierre
+
+                                                                                                 Página 16
+perimetral del establecimiento, considerando especialmente las condiciones climáticas propias del
+territorio altiplánico. Cualquier desperfecto que implique riesgo para la comunidad educativa deberá ser
+informado oportunamente al sostenedor para su pronta reparación.
+
+El establecimiento adoptará medidas adecuadas para el manejo de residuos, promoviendo prácticas de
+disposición responsable y prevención de focos de insalubridad, así como acciones de control de plagas
+cuando sea necesario, resguardando la salud de estudiantes y funcionarios.
+
+En relación con el uso de estufas u otros equipos de calefacción y equipamiento eléctrico, se deberán
+aplicar protocolos de uso seguro, asegurando supervisión adulta permanente, ventilación adecuada y
+revisión periódica de su funcionamiento, con el fin de prevenir accidentes, intoxicaciones o incendios.
+
+Todas estas acciones se desarrollarán bajo el principio de deber de cuidado, garantizando espacios
+seguros y saludables para el desarrollo integral de niños, niñas y adolescentes.
+
+
+
+
+                                                                                                Página 17
+TÍTULO IX
+   GESTIÓN PEDAGÓGICA Y PROTECCIÓN A LA MATERNIDAD Y PATERNIDAD
+Artículo 29° Planificación y enseñanza multigrado.
+El establecimiento, en atención a su carácter rural multigrado, organizará el proceso de enseñanza y
+aprendizaje mediante una planificación flexible, articulada por objetivos de aprendizaje y progresiones
+curriculares, considerando la diversidad etaria y los distintos niveles presentes en una misma aula. La
+planificación deberá favorecer la integración de contenidos, el trabajo por ejes temáticos comunes y la
+diferenciación pedagógica, asegurando que cada estudiante avance conforme a su nivel de desarrollo y
+ritmo de aprendizaje.
+
+   En este marco, se promoverán metodologías activas, participativas y contextualizadas al territorio,
+   incorporando elementos propios de la cultura andina, el patrimonio local, la biodiversidad del entorno y
+   los saberes comunitarios como recursos pedagógicos significativos. Esta contextualización favorecerá el
+   desarrollo de aprendizajes pertinentes, fortaleciendo la identidad territorial, el sentido de pertenencia y
+   la valoración del entorno sociocultural.
+
+   Asimismo, se fomentará el trabajo colaborativo y las tutorías entre pares como estrategia pedagógica
+   central del aula multigrado, aprovechando la diversidad de edades y niveles como una oportunidad
+   formativa. En este contexto, los estudiantes de niveles superiores podrán apoyar los procesos de
+   aprendizaje de sus compañeros más pequeños, promoviendo el desarrollo de habilidades
+   socioemocionales, el liderazgo, la empatía y la responsabilidad compartida.
+
+   La planificación pedagógica considerará instancias de trabajo diferenciado, aprendizaje autónomo
+   guiado y actividades integradas, favoreciendo la optimización del tiempo pedagógico y la atención a la
+   diversidad. Del mismo modo, se incorporarán estrategias de evaluación formativa y continua, que
+   permitan monitorear el progreso de los estudiantes y retroalimentar oportunamente los procesos de
+   enseñanza y aprendizaje.
+
+   El establecimiento promoverá una enseñanza inclusiva, equitativa y pertinente, resguardando el derecho
+   a la educación de todos los estudiantes, en coherencia con el enfoque de derechos y la normativa
+   vigente, favoreciendo ambientes de aprendizaje respetuosos, colaborativos y culturalmente
+   significativos.
+
+   El establecimiento implementará adecuaciones curriculares y ajustes razonables cuando corresponda,
+   especialmente en el caso de estudiantes con necesidades educativas especiales o situaciones
+   particulares que requieran apoyos específicos, en coherencia con el principio de inclusión y el derecho a
+   la educación. Estas medidas deberán quedar registradas en la planificación y en los instrumentos
+   institucionales correspondientes, garantizando igualdad de oportunidades y participación efectiva de
+   todos y todas.
+        • Apoyos pedagógicos, PAEC y evaluación diversificada
+
+
+
+
+                                                                                                     Página 18
+El establecimiento educacional Escuela de Cosapilla garantizará una respuesta pedagógica inclusiva y
+pertinente para los estudiantes con condición del espectro autista (TEA), en coherencia con la Ley N°
+21.545 y la Circular N° 586, resguardando su acceso, participación, aprendizaje y bienestar.
+
+En este marco, se implementarán las siguientes medidas:
+
+a) Plan de Apoyo al Estudiante con Condición del Espectro Autista (PAEC)
+
+El establecimiento elaborará e implementará un PAEC, de carácter flexible y contextualizado, que oriente
+los apoyos pedagógicos y socioemocionales del estudiante.
+
+b) Estrategias pedagógicas inclusivas
+
+Se aplicarán metodologías activas, visuales y estructuradas, considerando ritmos de aprendizaje,
+intereses y necesidades individuales.
+
+c) Apoyos en aula multigrado
+
+Se promoverá el trabajo colaborativo, tutorías entre pares y adaptación de actividades según niveles
+presentes en el aula.
+
+d) Trabajo colaborativo con la familia
+
+Se mantendrá comunicación permanente con la familia, promoviendo coherencia en las estrategias de
+apoyo.
+
+e) Evaluación diversificada (DEC)
+
+Se implementarán procedimientos evaluativos flexibles, permitiendo distintas formas de demostrar
+aprendizajes.
+
+f) Adecuaciones de evaluación
+
+Se ajustarán tiempos, formatos e instrumentos evaluativos según las características del estudiante.
+
+g) Flexibilización pedagógica
+
+Se adaptarán actividades, tiempos y exigencias, resguardando el proceso de aprendizaje y bienestar.
+
+h) Uso de instrumentos variados
+
+Se utilizarán evaluaciones orales, visuales, prácticas y otras modalidades pertinentes.
+
+El establecimiento velará por una gestión pedagógica inclusiva, promoviendo aprendizajes significativos,
+el respeto a la diversidad y la continuidad de las trayectorias educativas.
+
+
+
+
+                                                                                                Página 19
+Artículo 30° (Evaluación y promoción).
+
+La evaluación de los aprendizajes se regirá por lo dispuesto en el Decreto Supremo N° 67 de 2018 del
+Ministerio de Educación, que establece normas mínimas nacionales sobre evaluación, calificación y
+promoción para estudiantes de educación básica y media. En este marco, el establecimiento
+comprenderá la evaluación como un proceso sistemático, continuo y formativo, orientado a recoger
+evidencias del aprendizaje para retroalimentar la enseñanza y favorecer el progreso de todos y todas las
+estudiantes.
+
+Se privilegiará la evaluación formativa, entendida como aquella que permite monitorear avances,
+identificar brechas y ajustar oportunamente las estrategias pedagógicas. Para ello, el establecimiento
+deberá definir criterios de evaluación claros, conocidos por las y los estudiantes, coherentes con los
+objetivos de aprendizaje y comunicados oportunamente a las familias. La retroalimentación deberá ser
+pertinente, específica y orientada a la mejora, promoviendo la reflexión del estudiante sobre su propio
+proceso de aprendizaje.
+
+Las decisiones de calificación y promoción deberán sustentarse en evidencias suficientes y variadas del
+desempeño estudiantil, evitando que una única instancia evaluativa determine resultados finales. Antes
+de adoptar decisiones de repitencia, el establecimiento deberá implementar medidas de
+acompañamiento y apoyo pedagógico, tales como planes de refuerzo, tutorías, adecuaciones
+metodológicas u otras estrategias pertinentes, conforme a lo establecido en el citado decreto.
+
+El establecimiento mantendrá registros actualizados de las evaluaciones aplicadas, evidencias de
+aprendizaje y planes de apoyo implementados, asegurando trazabilidad y transparencia en los procesos
+evaluativos. En el caso de estudiantes con necesidades educativas especiales, se aplicarán adecuaciones
+curriculares y evaluativas acordes a su situación, garantizando el principio de equidad e inclusión.
+
+La promoción escolar será una decisión de carácter técnico-pedagógico, adoptada por el equipo docente
+en base a criterios objetivos, análisis integral del proceso formativo y consideración del desarrollo
+personal y social del estudiante, resguardando siempre su derecho a la educación y la continuidad de su
+trayectoria educativa.
+
+Artículo 31° Salidas pedagógicas.
+
+Las salidas pedagógicas se organizarán conforme al Anexo 5, con autorizaciones escritas, plan de riesgos
+y medidas especiales para rutas altiplánicas.
+
+Artículo 32° (Protección a la maternidad y paternidad).
+
+Se resguardará la continuidad educativa de estudiantes embarazadas, madres y padres, con flexibilidad
+razonable, apoyo académico, y medidas contra discriminación, según normativa vigente.
+
+(Se anexa Protocolo de retención y apoyo a estudiantes embarazadas, madres y padres adolescentes,
+asegurando la continuidad de su trayectoria educativa y el resguardo de sus derechos).
+
+
+
+
+                                                                                                Página 20
+TÍTULO X
+NORMAS, FALTAS, MEDIDAS DISCIPLINARIAS Y PROCEDIMIENTOS
+Artículo 33° Enfoque formativo-restaurativo y prohibiciones.
+
+Las medidas disciplinarias tendrán finalidad formativa, preventiva y restaurativa. Se prohíben castigos
+humillantes o degradantes, castigos colectivos, negar evaluación, alimentación o acceso a clases, y
+cualquier medida contraria a la dignidad.
+
+Artículo 34° Normas generales de convivencia.
+
+•   Buen trato en todo momento; lenguaje respetuoso.
+•   Prohibición de violencia física, psicológica, sexual y digital.
+•   Respeto a diversidad cultural y no discriminación.
+•   Cuidado del entorno natural y del patrimonio cultural.
+•   Cumplimiento de normas de seguridad (PISE, recreos, traslados).
+
+Artículo 35° Regulación de dispositivos tecnológicos - uso formativo.
+
+El uso de dispositivos tecnológicos personales por parte de estudiantes, tales como teléfonos móviles u
+otros equipos de comunicación electrónica, se regulará conforme a un enfoque formativo, preventivo y
+de seguridad, priorizando la protección de la convivencia escolar, la concentración en el proceso de
+enseñanza-aprendizaje y la prevención de riesgos digitales, tales como ciberacoso, exposición a
+contenidos inapropiados o vulneración de la privacidad.
+
+La Dirección del establecimiento podrá establecer normas específicas sobre su uso durante la jornada
+escolar, incluyendo restricciones totales o parciales, horarios definidos, resguardo en espacios
+determinados o utilización exclusivamente con fines pedagógicos bajo supervisión docente, en
+coherencia con la Ley N° 21.801.
+
+Se resguardarán excepciones debidamente acreditadas por razones de salud, necesidades educativas
+especiales u otras situaciones fundadas, previa presentación de antecedentes formales por parte del
+apoderado/a y evaluación del equipo directivo.
+
+El establecimiento incorpora como anexo al presente Reglamento Interno el Protocolo de Regulación y/o
+Prohibición del Uso de Dispositivos Móviles, exigido por la Ley N° 21.801, el cual establece
+procedimientos, medidas formativas, gradualidad y acciones preventivas asociadas a su implementación.
+Dicho protocolo forma parte integrante del Reglamento y deberá ser socializado con toda la comunidad
+educativa.
+
+Artículo 36° Clasificación y criterios.
+
+Las conductas contrarias a la convivencia se clasifican en leves, graves y gravísimas, considerando: edad y
+desarrollo, intencionalidad, reiteración, daño causado, contexto territorial, medidas previas y eventuales
+condiciones de vulnerabilidad.
+
+
+
+                                                                                                 Página 21
+Tabla 1. Gradualidad de faltas, medidas y procedimientos (referencial y ajustable al PEI)
+
+
+                                                                                                  Medidas formativas       Medidas disciplinarias
+Categoría    Conducta                      Ejemplos                   Criterios de gravedad                                                                Registros/Plazos
+                                                                                                  (prioritarias)           (posibles)
+
+
+                                                                                                  Recordatorio de
+                                           Conversar en clases; no                                                                                         Registro en libro/clase;
+                                                                                                  norma; diálogo           Amonestación verbal o
+                                           traer materiales;          Primera vez; sin                                                                     comunicación a
+             Incumplimientos que                                                                  pedagógico; acuerdos     escrita; citación apoderado
+                                           retrasos ocasionales;      intencionalidad de                                                                   apoderado según
+Leve         afectan el orden o el clima                                                          breves; apoyo en         por reiteración; tareas
+                                           descuido menor del         dañar; sin afectación a                                                              reiteración; seguimiento
+             de aula sin daño relevante.                                                          organización;            reparatorias acordes (no
+                                           aseo; lenguaje             terceros.                                                                            docente. Plazo sugerido:
+                                                                                                  mediación breve;         humillantes).
+                                           inadecuado aislado.                                                                                             5 días para revisión.
+                                                                                                  modelamiento.
+
+
+
+                                            Insultos reiterados;                                  Plan de apoyo
+                                            amenazas; daño a                                      individual; mediación    Amonestación escrita;           Acta de hechos;
+                                                                      Reiteración; daño a
+             Conductas que afectan          material; desobediencia                               formal si procede;       suspensión excepcional y        notificación a apoderado;
+                                                                      terceros;
+             significativamente la          grave a normas de                                     medidas restaurativas;   fundada; restricción temporal   derecho a descargos;
+Grave                                                                 intencionalidad; riesgo
+             convivencia o implican daño seguridad;                                               derivación a apoyo       de actividad no esencial;       resolución fundada. Plazo
+                                                                      para seguridad;
+             o reiteración de faltas leves. discriminación verbal;                                psicosocial;             citación a entrevista           sugerido: 10 días hábiles
+                                                                      asimetría de poder.
+                                            difusión de contenido                                 compromiso escrito       obligatoria.                    para cierre.
+                                            inadecuado.                                           con familia.
+
+
+
+
+                                                                                                                                                           Activación de protocolo;
+                                                                                                  Medidas inmediatas de    Suspensión fundada como
+                                           Agresión física grave;                                                                                          denuncia cuando
+             Conductas de alta gravedad                               Riesgo a integridad;        protección; activación   medida excepcional;
+                                           violencia sexual; portar                                                                                        corresponda; informe
+             que vulneran derechos,                                   vulneración de              de protocolos; apoyo a   condicionalidad; cancelación
+Gravísima                                  arma; consumo/porte                                                                                             fundado; recurso. Plazos:
+             comprometen integridad o                                 derechos; posible delito;   víctimas; coordinación   de matrícula/expulsión solo
+                                           de drogas; acoso grave;                                                                                         inmediatos para
+             constituyen delito.                                      reiteración grave.          con redes; evaluación    conforme ley y debido
+                                           amenazas graves.                                                                                                resguardo y 24h denuncia
+                                                                                                  de riesgo.               proceso.
+                                                                                                                                                           si delito.
+
+
+
+
+                                                                                                                                                                       Página 22
+Artículo 37° Procedimiento disciplinario y recursos.
+
+El establecimiento garantizará que toda medida disciplinaria se adopte mediante un procedimiento racional y
+justo, respetando el debido proceso, la presunción de inocencia, el principio de proporcionalidad y el interés
+superior del niño, niña o adolescente, en coherencia con la Ley N° 21.430 y la Ley N° 20.536. Las medidas
+disciplinarias tendrán carácter preferentemente formativo y se aplicarán conforme a la gradualidad establecida
+en el presente Reglamento.
+
+El procedimiento disciplinario se desarrollará de la siguiente manera:
+
+    1. Registro inicial del hecho: Toda situación que pueda constituir infracción al Reglamento Interno
+       deberá ser registrada formalmente, consignando fecha, hora, lugar, descripción objetiva de los hechos
+       y eventuales testigos, evitando juicios de valor o calificaciones anticipadas.
+
+    2. Comunicación y medidas de resguardo: El hecho será informado a la Dirección y/o al equipo de
+       Convivencia Educativa, quienes evaluarán la adopción de medidas inmediatas de protección,
+       especialmente cuando existan riesgos para la integridad física o psíquica de algún integrante de la
+       comunidad.
+
+    3. Notificación a la familia: El padre, madre o apoderado/a será informado oportunamente de la
+       situación y citado cuando la gravedad del hecho lo amerite, garantizando acceso a la información
+       pertinente.
+
+    4. Derecho a ser oído: El estudiante tendrá derecho a exponer su versión de los hechos, presentar
+       descargos y aportar antecedentes, pudiendo estar acompañado por su apoderado/a cuando
+       corresponda. Este proceso deberá realizarse en un ambiente respetuoso, evitando cualquier forma de
+       revictimización o presión indebida.
+
+    5. Resolución fundada: La Dirección emitirá una resolución escrita y fundada, señalando la norma
+       eventualmente infringida, los hechos acreditados, la medida adoptada, su fundamentación, plazos de
+       cumplimiento y, cuando proceda, los apoyos pedagógicos o formativos asociados. La medida deberá
+       ser proporcional a la falta y coherente con la tabla de gradualidad vigente.
+
+    6. Recurso de reconsideración: El estudiante o su apoderado/a podrá interponer recurso de
+       reconsideración por escrito dentro del plazo de cinco días hábiles contados desde la notificación de la
+       resolución. La Dirección deberá emitir respuesta fundada dentro de un plazo razonable, dejando
+       registro formal del pronunciamiento.
+
+En casos de faltas gravísimas que puedan derivar en cancelación de matrícula o expulsión, el procedimiento
+deberá ajustarse estrictamente a las disposiciones legales vigentes, garantizando todas las etapas del debido
+proceso y el derecho a apelación ante el sostenedor cuando corresponda.
+
+
+
+
+                                                                                                      Página 23
+TÍTULO XI
+REGULACIONES REFERIDAS AL ÁMBITO DE LA CONVIVENCIA ESCOLAR
+Artículo 38° (Instancias de participación).
+
+El establecimiento educacional promoverá y garantizará la participación de los distintos actores de la
+comunidad educativa, en coherencia con los principios de la educación pública, el enfoque de derechos
+consagrado en la Ley N°21.430 y las orientaciones de la Política Nacional de Convivencia Educativa.
+
+En consideración al carácter rural multigrado del establecimiento, y a la existencia de cursos atendidos por
+un/a docente encargado/a, las instancias de participación se organizarán de manera flexible, pertinente al
+contexto territorial y acorde al número de integrantes de la comunidad educativa.
+
+1. Consejo Escolar
+El establecimiento contará con un Consejo Escolar, como instancia formal de participación y consulta de la
+comunidad educativa. Este estará integrado, a lo menos, por el/la docente encargado/a del establecimiento,
+un/a representante de los apoderados/as y un/a representante de los estudiantes de los niveles superiores.
+
+El Consejo Escolar tendrá carácter consultivo y se reunirá al menos 4 veces durante el año escolar, pudiendo
+convocarse sesiones extraordinarias cuando las necesidades del establecimiento así lo requieran. En estas
+instancias se abordarán materias relativas a la convivencia educativa, el funcionamiento del establecimiento, la
+implementación de instrumentos de gestión institucional y otras temáticas relevantes para la comunidad
+escolar.
+
+2. Participación de estudiantes
+El establecimiento promoverá espacios de participación estudiantil acordes a la edad y nivel de desarrollo de
+los niños, niñas y adolescentes. En el contexto de escuelas rurales multigrado, esta participación podrá
+desarrollarse mediante:
+
+    •   Asambleas o conversaciones de curso guiadas por el/la docente encargado/a.
+
+    •   Construcción colectiva de acuerdos y normas de aula.
+
+    •   Espacios de diálogo para la resolución de conflictos y fortalecimiento del buen trato.
+
+    •   Actividades colaborativas que promuevan la responsabilidad compartida en el cuidado del entorno
+        escolar.
+
+3. Participación de madres, padres y apoderados
+El establecimiento promoverá la participación de madres, padres y apoderados mediante instancias como
+reuniones de apoderados, encuentros comunitarios, jornadas informativas o espacios de diálogo convocados
+por el/la docente encargado/a.
+
+En el caso de comunidades rurales con dispersión territorial o dificultades de conectividad, se podrán
+implementar mecanismos flexibles de comunicación y participación, tales como reuniones comunitarias en el
+territorio, coordinación con dirigentes locales u otras estrategias que faciliten la participación efectiva de las
+familias.
+
+
+                                                                                                           Página 24
+Estas instancias tendrán como propósito fortalecer la corresponsabilidad educativa entre familia y escuela,
+promover el bienestar de los estudiantes y favorecer la construcción de una comunidad educativa basada en el
+respeto, la colaboración y el buen trato.
+
+Artículo 39° (Encargado/a de Convivencia Educativa).
+
+Será el mismo docente encargado/a quien asuma el rol de encargado/a de convivencia educativa de su
+Establecimiento Educacional contando con un número (x) de horas asignadas para el cargo, quien coordinará el
+PGCE, actualización del Reglamento Interno, registros, acciones preventivas, y protocolos de actuación.
+
+Artículo 40° (Plan de Gestión de Convivencia Escolar - PGCE).
+
+•   Diagnóstico anual (clima, bienestar, riesgos).
+•   Objetivos y metas formativas (buen trato, participación, prevención violencia, ciudadanía digital).
+•   Acciones de aula y comunitarias (talleres, jornadas, actividades interculturales).
+•   Rutas de derivación y coordinación con redes.
+•   Articulación con OLN Comunal.
+•   Seguimiento trimestral e informe anual al Consejo Escolar.
+
+Artículo 41° (Prevención, mediación y prácticas restaurativas).
+
+Se implementarán estrategias preventivas y restaurativas: normas de aula co-construidas, círculos de diálogo,
+mediación escolar, acuerdos reparatorios y planes de apoyo individual, considerando convivencia multigrado.
+
+Inclusión, respeto a la diversidad y prevención de la estigmatización
+
+El establecimiento educacional Escuela de Cosapilla promoverá una convivencia escolar basada en el respeto,
+la inclusión, la participación y el buen trato, resguardando el bienestar de todos los integrantes de la
+comunidad educativa, en coherencia con el enfoque de derechos y la normativa vigente, especialmente la Ley
+N° 21.545 y la Circular N° 586.
+
+En este marco, se implementarán las siguientes acciones:
+
+a) Estrategias de inclusión
+
+Se promoverán prácticas que favorezcan la participación de todos los estudiantes, mediante actividades
+colaborativas, trabajo entre pares y adaptación de dinámicas de aula.
+
+b) Prevención de la estigmatización
+
+Se resguardará el trato digno, evitando etiquetas, burlas o exclusión, promoviendo el respeto por las
+diferencias individuales.
+
+c) Formación en diversidad
+
+Se desarrollarán instancias formativas que fomenten la empatía, el reconocimiento de la diversidad y la
+convivencia respetuosa.
+
+
+
+                                                                                                          Página 25
+El establecimiento velará por generar un clima escolar seguro, acogedor e inclusivo, promoviendo relaciones
+basadas en el respeto mutuo y la valoración de la diversidad como un elemento enriquecedor de la comunidad
+educativa.
+
+
+TÍTULO XII
+APROBACIÓN, MODIFICACIONES, ACTUALIZACIÓN Y DIFUSIÓN DEL REGLAMENTO
+Artículo 42° (Aprobación).
+
+El Reglamento y sus modificaciones serán aprobados por el Consejo Escolar, conforme a normativa. Las
+decisiones se registrarán en acta y se comunicarán a la comunidad.
+
+Artículo 43° (Difusión).
+
+•   Entrega de copia al momento de matrícula.
+•   Disponibilidad en Dirección y en lugar visible del Establecimiento.
+•   Socialización anual y firma de constancia.
+•   Publicación digital si existiese acceso (página web/repositorio SLEPCH).
+
+Artículo 44° (Actualización).
+
+Se revisará al menos una vez al año o ante cambio normativo relevante. La actualización considerará
+evaluación de aplicación, sugerencias de la comunidad y exigencias fiscalizadoras.
+
+
+TÍTULO XIII
+ENTRADA EN VIGENCIA
+Artículo 45° (Vigencia).
+
+El Reglamento entrará en vigencia a contar del 31/03/2026 y permanecerá vigente hasta su modificación o
+reemplazo.
+
+
+TÍTULO XIV
+SANCIONES APLICABLES
+Artículo 46° (Fiscalización y documentación).
+
+El Establecimiento mantendrá documentación de respaldo sobre aprobación, difusión, aplicación del
+Reglamento y activación de protocolos. El incumplimiento puede originar observaciones o medidas de la
+Superintendencia, conforme a sus atribuciones.
+
+
+
+
+                                                                                                      Página 26
+                               ANEXOS
+           PROTOCOLOS OBLIGATORIOS Y FORMULARIOS (PLANTILLAS)
+
+
+•   Anexo 1. Protocolo frente a situaciones de maltrato, acoso y violencia escolar.
+•   Anexo 2. Protocolo frente a agresiones sexuales y hechos de connotación sexual.
+•   Anexo 3. Protocolo frente a la sospecha o detección de vulneración de derechos.
+•   Anexo 4. Protocolo frente a consumo, porte o tráfico de alcohol y otras drogas.
+•   Anexo 5. Protocolo de actuación frente a accidentes escolares.
+•   Anexo 6. Protocolo frente a desregulaciones emocionales y conductuales.
+
+•   Anexo 7 Protocolo de retención y apoyo a estudiantes embarazadas, madres y padres
+    adolescentes, asegurando la continuidad de su trayectoria educativa y el resguardo de sus
+    derechos.
+
+•   Anexo 8 Protocolo de regulación y/o prohibición del uso de dispositivos móviles electrónicos,
+    conforme a la Ley N° 21.801, incorporado al Reglamento Interno con enfoque formativo y
+    preventivo.
+•   Anexo 9. Formulario de alertas territoriales de General Lagos.
+•   Anexo 10. Evaluación diversificada (DEC).
+•   Anexo 10.1. Registro de evaluación diversificada.
+•   Anexo 11. Protocolo de actuación frente a desregulación emocional TEA.
+•   Anexo 12. Plan de acompañamiento emocional y conductual (PAEC).
+•   Anexo 13. DEC establecido por el Ministerio de Educación.
+
+•   Anexo 14. Protocolo de actuación frente a situaciones de riesgo suicida, ideación suicida, autolesiones
+    e intento suicida.
+
+
+
+
+                                                                                          Página 27
+ANEXO 1. PROTOCOLO FRENTE A SITUACIONES DE MALTRATO, ACOSO Y VIOLENCIA ESCOLAR
+
+
+1. Objetivo del Protocolo
+
+El presente protocolo tiene por objetivo prevenir, abordar y erradicar situaciones de acoso, maltrato y violencia
+escolar en el contexto de una escuela rural multigrado, resguardando la integridad física y psicológica de todos
+los integrantes de la comunidad educativa, garantizando el ejercicio de los derechos de niños, niñas y
+adolescentes, y promoviendo una convivencia educativa basada en el respeto, la inclusión, la empatía, la
+interculturalidad y la resolución pacífica de conflictos.
+
+Asimismo, busca establecer un procedimiento claro, oportuno y ajustado a la realidad territorial rural, conforme
+a la normativa vigente, para la recepción, análisis, adopción de medidas de resguardo, derivación, reparación,
+seguimiento y cierre de situaciones de violencia escolar.
+
+
+
+2. Marco Normativo
+
+Este protocolo se rige, entre otros, por los siguientes cuerpos normativos:
+
+    •   Ley N°20.370, Ley General de Educación.
+
+    •   Ley N°20.536, sobre Violencia Escolar.
+
+    •   Ley N°21.430, sobre Garantías y Protección Integral de los Derechos de la Niñez y Adolescencia.
+
+    •   Circular Exenta N°781 de la Superintendencia de Educación.
+
+    •   Reglamento Interno del establecimiento.
+
+    •   Reglamento Interno de Orden, Higiene y Seguridad del sostenedor (en lo pertinente).
+
+
+
+3. Ámbito de Aplicación
+
+Este protocolo se aplica a todas las situaciones de acoso, maltrato o violencia escolar ocurridas:
+
+    •   Dentro de la escuela rural multigrado.
+
+    •   Durante actividades pedagógicas, comunitarias o extracurriculares organizadas por la escuela.
+
+    •   A través de medios digitales u otros, cuando los hechos afecten la convivencia escolar.
+
+Las situaciones pueden involucrar a:
+
+    •   Estudiantes.
+
+    •   Docente Encargado/a.
+
+    •   Profesores/as itinerantes (inglés, Lengua Aymara, Religión, otros).
+
+                                                                                                        Página 28
+    •   Padres, madres, apoderados y/o adultos responsables.
+
+    •   Otros miembros de la comunidad educativa local.
+
+
+
+  4. Tipos de violencia escolar
+
+Se consideran, entre otras, las siguientes manifestaciones:
+
+    •   Violencia física.
+
+    •   Violencia psicológica o emocional.
+
+    •   Acoso escolar.
+    •   Violencia de género.
+
+    •   Violencia sexual.
+
+    •   Ciberacoso.
+
+    •   Violencia comunitaria o social.
+
+    •   Daños a la infraestructura escolar.
+
+Reviste especial gravedad toda violencia ejercida por personas adultas de la comunidad educativa en contra de
+estudiantes.
+
+
+
+4. Responsables del Protocolo
+
+4.1 Responsable de Activación y Ejecución
+    • Docente Encargado/a del establecimiento, quien ejerce las funciones de dirección, gestión
+        de la convivencia escolar y coordinación pedagógica.
+4.2 Apoyo en la Ejecución
+
+    •   Profesores/as itinerantes, en lo que corresponda a su presencia en el establecimiento.
+
+    •   Apoyo técnico del sostenedor Asesor Pedagógico (cuando sea requerido).
+
+5. Procedimiento Paso a Paso
+
+
+ ETAPA 1: TOMA DE CONOCIMIENTO DEL HECHO
+
+ Paso 1:
+ Cualquier integrante de la comunidad educativa que tome conocimiento de una situación de
+ violencia escolar deberá informar de inmediato al Docente Encargado/a.
+ Paso 2:
+ El Docente Encargado/a registrará el hecho por escrito, consignando:
+     • Fecha y hora.
+
+
+
+
+                                                                                                    Página 29
+       •   Personas involucradas.
+       •   Relato preliminar.
+       •   Forma en que se tomó conocimiento del hecho.
+
+    ETAPA 2: ACTIVACIÓN DEL PROTOCOLO
+
+    Paso 3:
+    El Docente Encargado/a evaluará los antecedentes y activará formalmente el protocolo dentro
+    de un plazo máximo de 24 horas, dejando registro escrito.
+
+    ETAPA 3: MEDIDAS INMEDIATAS DE RESGUARDO
+
+    Paso 4:
+    De manera inmediata, el Docente Encargado/a adoptará medidas de resguardo físico y
+    psicológico, tales como:
+        • Acompañamiento permanente del estudiante afectado.
+        • Organización diferenciada de actividades dentro del aula multigrado.
+        • Ajustes pedagógicos temporales.
+        • Coordinación con la familia para apoyo y contención.
+    Estas medidas serán excepcionales, proporcionales, temporales y fundadas, respetando el
+    derecho a la educación.
+
+    ETAPA 4: COMUNICACIÓN A FAMILIAS
+
+    Paso 5:
+    Dentro de un plazo máximo de 24 horas, el Docente Encargado/a informará a los padres,
+    madres o apoderados:
+        • La activación del protocolo.
+        • Los motivos generales.
+        • Las medidas de resguardo adoptadas.
+    La comunicación deberá ser clara, respetuosa y culturalmente pertinente.
+
+    ETAPA 5: INVESTIGACIÓN Y ANÁLISIS DEL HECHO
+
+    Paso 6:
+    El Docente Encargado/a recopilará antecedentes, respetando el debido proceso, considerando:
+        • Entrevistas breves y cuidadosas.
+        • Análisis del contexto comunitario y familiar.
+•   Edad, desarrollo y condiciones culturales del estudiantado.
+    Paso 7:
+    Se distinguirá el procedimiento según los actores involucrados:
+        • Entre estudiantes.
+        • Entre estudiantes y adultos.
+        • Entre adultos de la comunidad educativa.
+
+    ETAPA 6: DENUNCIA A ORGANISMOS COMPETENTES
+
+    Paso 8:
+    Cuando existan antecedentes que hagan presumir la existencia de un delito, el Docente
+    Encargado/a deberá denunciar dentro de las 24 horas ante:
+
+                                                                                                  Página 30
+     •   Ministerio Público.
+     •   Carabineros de Chile.
+     •   Policía de Investigaciones.
+     •   Tribunal competente.
+ Si no procede denunciar, se dejará constancia escrita y fundada.
+
+ ETAPA 7: DERIVACIÓN A REDES EXTERNAS
+
+ Paso 9:
+ El Docente Encargado/a analizará la pertinencia de derivación, dejando registro.
+ Paso                                                                                            10:
+ De ser necesario, se coordinará derivación a:
+     • Oficina Local de la Niñez correspondiente.
+     • Servicio Nacional de Protección Especializada.
+     • Postas rurales, CESFAM o servicios de salud.
+     • Otros organismos pertinentes del territorio.
+
+ ETAPA 8: MEDIDAS FORMATIVAS, REPARATORIAS Y DISCIPLINARIAS
+
+ Paso 11:
+ Se adoptarán medidas formativas, reparatorias y, excepcionalmente, disciplinarias, respetando
+ el debido proceso y el principio de gradualidad, priorizando siempre el enfoque pedagógico y
+ restaurativo, considerando la realidad multigrado y comunitaria.
+ (Se mantienen las medidas previamente definidas, ajustadas a la escala rural y supervisadas
+ directamente por el Docente Encargado/a, con apoyo del sostenedor cuando corresponda).
+
+ ETAPA 9: SEGUIMIENTO Y CIERRE
+
+ Paso 12:
+ El Docente Encargado/a realizará seguimiento del caso, en coordinación con la familia y las
+ redes externas, si existiesen.
+ Paso 13:
+ Una vez restablecida la convivencia, se realizará el cierre formal del caso, dejando registro
+ escrito.
+
+
+
+6. Casos de Violencia de Género
+
+En situaciones que puedan constituir violencia de género, el Docente Encargado/a deberá:
+
+a) Adoptar medidas inmediatas de protección.
+b) Informar a la familia.
+c) Derivar oportunamente a organismos especializados.
+d) Asegurar acompañamiento continuo del estudiante.
+
+PROCEDIMIENTO ESPECIAL
+
+Maltrato, Acoso o Violencia Ejercida por el Docente Encargado/a del Establecimiento hacia un Estudiante
+
+
+                                                                                                       Página 31
+1. Principio General
+
+Cuando el presunto maltrato, acoso o violencia escolar sea ejercido por el Docente Encargado/a del
+establecimiento, el procedimiento deberá regirse por un estándar reforzado de protección, garantizando:
+
+    •   El interés superior del niño, niña o adolescente.
+
+    •   La separación inmediata de funciones entre la persona denunciada y la gestión del caso.
+
+    •   La intervención directa del sostenedor, como órgano imparcial.
+
+En estos casos, el Docente Encargado/a no podrá intervenir en ninguna etapa del procedimiento, ni adoptar
+decisiones asociadas al caso.
+
+2. Toma de Conocimiento del Hecho
+
+Paso 1:
+La situación podrá ser informada por:
+
+    •   El propio estudiante.
+
+    •   Un padre, madre o apoderado.
+
+    •   Un profesor/a itinerante.
+
+    •   Un miembro de la comunidad educativa.
+    •   Un organismo externo.
+Paso 2:
+La persona que tome conocimiento del hecho deberá informar de manera inmediata al sostenedor (Asesor/a
+técnico pedagógico) del establecimiento, a través de los canales formales definidos (correo institucional, oficio,
+llamada registrada).
+
+Paso 3:
+Se deberá dejar registro escrito inmediato del hecho, consignando:
+
+    •   Fecha y hora.
+
+    •   Identificación del estudiante afectado.
+
+    •   Relato preliminar.
+
+    •   Persona que informa.
+
+
+
+
+3. Activación del Protocolo y Subrogancia
+
+Paso 4:
+El asesor/a técnico pedagógico activará formalmente el Protocolo de Abordaje del Acoso, Maltrato y Violencia
+Escolar, asumiendo de manera directa la conducción del procedimiento.
+
+
+                                                                                                         Página 32
+Paso 5:
+El sostenedor designará un/a funcionario/a subrogante al establecimiento, quien actuará como responsable del
+procedimiento educativo, mientras se resuelve la situación.
+
+4. Medidas Inmediatas de Resguardo del Estudiante
+
+Paso 6:
+De manera inmediata, el sostenedor deberá adoptar medidas urgentes de protección, tales como:
+
+   •    Separación funcional y física entre el estudiante afectado y el Docente Encargado/a denunciado/a.
+
+   •    Reorganización temporal de las actividades pedagógicas.
+
+   •    Designación de otro adulto responsable (Reemplazo) para el acompañamiento educativo del estudiante.
+
+   •    Coordinación directa con la familia del estudiante para contención y apoyo.
+
+Estas medidas serán preventivas, temporales y no sancionatorias, y deberán quedar registradas por escrito.
+
+5. Comunicación a la Familia
+
+Paso 7:
+El sostenedor informará a los padres, madres o apoderados del estudiante, dentro de un plazo máximo de 24
+horas, respecto de:
+
+   •    La activación del protocolo.
+
+   •    Las medidas de resguardo adoptadas.
+
+   •    Los derechos del estudiante y de la familia.
+
+   •    Las etapas generales del procedimiento.
+
+La comunicación deberá realizarse de manera clara, respetuosa, confidencial y culturalmente pertinente.
+
+6. Denuncia a Organismos Competentes
+
+Paso 8:
+Cuando existan antecedentes que hagan presumir la comisión de un delito, el asesor/a técnico pedagógico
+deberá efectuar la denuncia dentro de las 24 horas ante:
+
+   •    Ministerio Público.
+
+   •    Carabineros de Chile.
+
+   •    Policía de Investigaciones.
+
+
+
+Si se determina que no procede denunciar, se deberá dejar constancia escrita y fundada.
+
+7. Investigación y Procedimiento Laboral
+
+
+
+                                                                                                     Página 33
+Paso 9:
+El sostenedor, en su calidad de empleador, será el único órgano competente para:
+
+    •   Instruir investigación administrativa o sumario.
+
+    •   Adoptar medidas de resguardo laboral.
+
+    •   Resolver responsabilidades administrativas, si corresponde.
+
+El procedimiento laboral se desarrollará de manera independiente, sin interferir con las medidas de protección
+del estudiante.
+
+
+
+8. Medidas Educativas y Psicosociales Complementarias
+
+Paso 10:
+Independientemente del procedimiento laboral, el sostenedor deberá asegurar:
+
+    •   Acompañamiento psicosocial del estudiante afectado, a través de la coordinación con la Oficina Local de
+        la Niñez de la comuna.
+
+    •   Seguimiento del proceso educativo.
+
+    •   Acciones de resguardo del clima escolar, considerando la realidad comunitaria rural.
+
+9. Registro, Seguimiento y Cierre
+
+Paso 11:
+Todas las actuaciones deberán quedar debidamente registradas, asegurando la trazabilidad del caso.
+
+Paso 12:
+El cierre del procedimiento educativo se realizará una vez:
+
+    •   Garantizado el resguardo del estudiante.
+
+    •   Ejecutadas las medidas educativas correspondientes.
+
+    •   Adoptadas las decisiones del sostenedor en el ámbito laboral.
+
+
+
+ANEXO 2. PROTOCOLO FRENTE A AGRESIONES SEXUALES Y HECHOS DE CONNOTACIÓN SEXUAL
+
+
+1. Fundamentación
+
+El presente Protocolo de Actuación tiene por finalidad establecer un procedimiento claro, oportuno y garantista
+frente a situaciones de abuso sexual, agresiones sexuales y otros hechos de connotación sexual que atenten
+contra la integridad física, psicológica y emocional de niños, niñas y adolescentes que asisten a establecimientos
+educacionales rurales multigrado de las comunas de Putre, Camarones y General Lagos.
+
+
+
+                                                                                                        Página 34
+Este protocolo se rige por la Resolución Exenta N° 482 y considera aspectos pertinentes de la Resolución Exenta
+N° 781 de la Superintendencia de Educación, el principio del interés superior del niño, niña y adolescente, el
+enfoque de derechos, la confidencialidad, la no revictimización y el deber de protección que recae sobre los
+establecimientos educacionales, considerando la particularidad territorial, cultural y organizacional de escuelas
+unidocentes y multigrado.
+
+Las acciones descritas no tienen por objeto determinar responsabilidades penales, sino resguardar la integridad
+del estudiante, activar redes de protección y restituir derechos.
+
+2. Ámbito de aplicación
+
+Este protocolo se aplicará cuando:
+
+    •       El hecho haya ocurrido dentro o fuera del establecimiento.
+
+    •       El presunto agresor pertenezca o no a la comunidad educativa.
+
+    •       Se trate de hechos recientes o antiguos.
+
+    •       Exista relato directo, información de un tercero o sospecha fundada.
+
+    •       Las situaciones se den entre estudiantes, entre adultos y estudiantes, o involucren a terceros externos.
+
+3. Responsable del protocolo
+
+3.1 Responsable único
+
+    •       Docente Encargado/a del establecimiento, quien ejerce funciones pedagógicas, directivas y
+            administrativas.
+
+3.2 Apoyo externo
+
+Dada la inexistencia de equipos internos, el Docente Encargado/a actuará con apoyo de:
+
+    •       Asesor/A Técnico Pedagógico SLEPCH
+
+    •       Profesional de Convivencia Educativa y Apoyo Psicosocial del SLEP correspondiente.
+
+    •       Redes comunales y territoriales de protección.
+    •       Profesores/as itinerantes, solo en acciones preventivas o pedagógicas, no investigativas.
+
+
+
+4. Procedimiento de actuación paso a paso
+
+ ETAPA 1: Toma de conocimiento del hecho o sospecha
+ El protocolo se activa cuando el Docente Encargado/a o funcionario itinerante:
+
+        •    Recibe un relato espontáneo del estudiante.
+        •    Es informado por un apoderado, profesor itinerante u otro adulto.
+
+
+
+
+                                                                                                           Página 35
+    •   Observa indicadores físicos, emocionales o conductuales compatibles con una posible
+        vulneración.
+
+Acciones inmediatas:
+
+    •   Escuchar al estudiante con respeto, sin interrogar ni emitir juicios.
+
+    •   No solicitar detalles innecesarios ni confrontar versiones.
+
+    •   Registrar por escrito los antecedentes (fecha, hora, relato textual).
+
+    •   Resguardar la confidencialidad de la información.
+
+ETAPA 2: Medidas inmediatas de resguardo
+
+Dentro de las primeras 24 horas, el Docente Encargado/a deberá:
+
+    •   Proteger la integridad física y emocional del estudiante.
+
+    •   Evitar cualquier contacto con el presunto agresor, si este pertenece a la comunidad
+        educativa.
+
+    •   Asegurar acompañamiento emocional inmediato.
+
+    •   Ajustar rutinas escolares si es necesario.
+
+    •   Garantizar que el estudiante no sea expuesto ni revictimizado.
+
+En caso de que el presunto agresor sea una persona adulta vinculada al establecimiento, se
+deberá informar de inmediato al SLEP, solicitando orientación y medidas administrativas
+pertinentes.
+
+ETAPA 3: Análisis inicial del caso
+
+El Docente Encargado/a realizará un análisis fundado, dejando constancia escrita, para
+determinar si:
+
+    •   Se trata de una conducta acorde a la etapa de desarrollo y consentida, o
+
+    •   Existen indicios de vulneración a la integridad sexual del estudiante.
+
+Este análisis no constituye investigación penal ni prejuzgamiento.
+
+
+
+ETAPA 4: Comunicación a madres, padres o apoderados
+
+Dentro de un plazo máximo de 24 horas, el Docente Encargado/a deberá:
+
+    •   Informar a los padres, madres o apoderados del estudiante afectado.
+
+    •   Comunicar la activación del protocolo y las acciones iniciales adoptadas.
+
+    •   Dejar registro escrito de dicha comunicación.
+
+ETAPA 5: Denuncia obligatoria
+
+
+
+
+                                                        36
+ Cuando existan antecedentes que hagan presumir la existencia de un delito, el Docente
+ Encargado/a deberá:
+       •    Realizar la denuncia dentro de las 24 horas ante el Ministerio Público, Carabineros de
+            Chile o Policía de Investigaciones.
+
+       •    Dejar constancia escrita de la denuncia efectuada.
+
+       •    Informar al jefe jurídico de SLEPCH y asesor técnico pedagógico correspondiente.
+
+ ETAPA 6: Derivación a redes de protección
+ El Docente Encargado/a deberá derivar la situación a las redes de protección correspondientes,
+ tales como:
+
+       •    Oficina Local de la Niñez de la comuna Putre, Camarones o General Lagos. (Se adjuntan
+            formularios)
+
+       •    Dispositivos de salud del territorio (posta rural, CESFAM).
+
+ ETAPA 7: Medidas de apoyo pedagógico y psicosocial
+
+ Con la orientación del asesor/a técnico pedagógico, el profesional de convivencia educativa y de
+ apoyo psicosocial SLEPCH y redes externas, se implementarán:
+
+       •    Adecuaciones pedagógicas temporales.
+
+       •    Flexibilización de evaluaciones y asistencia.
+       •    Acompañamiento emocional continuo (apoyo de OLN y Salud).
+       •    Acciones reparatorias orientadas a la restitución de derechos.
+
+ ETAPA 8: Seguimiento y coordinación
+ El Docente Encargado/a deberá:
+
+       •    Mantener coordinación con las instituciones derivadas.
+
+       •    Registrar orientaciones recibidas y acciones implementadas.
+       •    Ajustar las medidas internas según la evolución del caso.
+
+
+
+
+5. Consideraciones especiales del contexto rural multigrado
+
+   •       Se resguardará especialmente la confidencialidad, dada la cercanía comunitaria.
+
+   •       Se priorizará la articulación con redes comunales y provinciales ante la limitación de recursos locales.
+
+   •       Los profesores itinerantes no asumirán funciones investigativas, limitándose a informar oportunamente
+           al Docente Encargado/a o asesor pedagógico.
+
+
+
+
+                                                            37
+6. Principios rectores
+
+    •   Interés superior del niño, niña y adolescente.
+
+    •   Enfoque de derechos.
+
+    •   No revictimización.
+
+    •   Confidencialidad.
+
+    •   Pertinencia territorial y cultural.
+
+
+
+
+                                                         38
+39
+ANEXO 3. PROTOCOLO FRENTE A LA SOSPECHA O DETECCIÓN DE VULNERACIÓN DE DERECHOS
+
+
+1. Objetivo del Protocolo
+El presente protocolo tiene por objetivo establecer un procedimiento claro, oportuno y factible para la detección,
+abordaje, derivación, protección y seguimiento de situaciones de vulneración o amenaza de vulneración de
+derechos que afecten a niños, niñas y adolescentes estudiantes del establecimiento educacional rural
+multigrado. Su finalidad es resguardar la integridad física, psicológica y emocional de los estudiantes, conforme
+a la normativa vigente y, especialmente, a lo dispuesto en la Circular Exenta N° 482 y en las consideraciones de
+la Circular Exenta N° 781 de la Superintendencia de Educación, considerando las particularidades territoriales,
+culturales y de dotación del establecimiento.
+
+2. Marco normativo
+
+Este protocolo se rige por las siguientes disposiciones:
+
+    •   Constitución Política de la República de Chile.
+
+    •   Convención sobre los Derechos del Niño.
+    •   Ley N° 21.430, sobre Garantías y Protección Integral de los Derechos de la Niñez y Adolescencia.
+
+    •   Ley N°20.536 sobre Violencia Escolar.
+
+    •   Ley N°20.084 y normativa penal vigente.
+    •   Circular Exenta N° 482 de la Superintendencia de Educación.
+
+    •   Circular Exenta N°781 de la Superintendencia de Educación.
+
+3. Definición de vulneración de derechos
+
+Se entenderá por vulneración de derechos todo acto u omisión que transgreda, menoscabe o amenace los
+derechos reconocidos a niños, niñas y adolescentes por la legislación vigente, afectando su desarrollo integral.
+Estas situaciones pueden producirse dentro o fuera del establecimiento, incluyendo el contexto familiar,
+comunitario o territorial, lo que resulta especialmente relevante en zonas rurales y de alta dispersión geográfica.
+
+
+
+4. Ámbito de aplicación
+
+Este protocolo se aplicará ante:
+
+    •   Sospecha o detección directa de vulneración de derechos.
+
+    •   Amenaza de vulneración de derechos.
+
+    •   Relatos espontáneos de estudiantes.
+
+    •   Observaciones realizadas por el Docente Encargado/a o docentes itinerantes.
+
+    •   Información entregada por familias, redes comunitarias o servicios públicos.
+
+
+
+                                                           40
+5. Responsables de activar el protocolo
+
+La activación del protocolo será responsabilidad de:
+    • Docente Encargado/a del establecimiento, quien ejerce funciones directivas,
+         pedagógicas y de convivencia escolar.
+    • Docentes itinerantes —Inglés, Lengua Aymara, Religión u otros—, quienes deberán informar
+         inmediatamente al Docente Encargado/a ante cualquier antecedente conocido.
+    • Cualquier adulto responsable que, en el ejercicio de sus funciones, tome conocimiento directo del hecho.
+
+En este contexto no existe inspectoría, equipo de convivencia ni dupla psicosocial interna, por lo que el Docente
+Encargado/a centraliza la activación, registro y coordinación, con apoyo del SLEP Chinchorro cuando corresponda.
+
+
+
+
+                                                       41
+6. Procedimiento paso a paso
+
+ ETAPA 1: TOMA DE CONOCIMIENTO
+ Plazo: Inmediato
+
+    1. Cualquier integrante del establecimiento o docente itinerante que tome conocimiento
+       de una posible vulneración deberá informar de inmediato al Docente Encargado/a.
+
+    2. El Docente Encargado/a registrará los antecedentes en un acta o registro interno,
+       evitando juicios de valor o interrogatorios.
+
+    3. Frente a un relato de un/a estudiante:
+
+            o   Escuchar con atención y respeto.
+
+            o   No prometer confidencialidad absoluta.
+
+            o   Resguardar la dignidad, intimidad y seguridad del estudiante.
+
+ ETAPA 2: EVALUACIÓN INICIAL Y ACTIVACIÓN DEL PROTOCOLO
+
+ Plazo: Dentro de 24 horas
+
+    1. El Docente Encargado/a evaluará:
+
+            o   Tipo de vulneración o amenaza.
+
+            o   Nivel de riesgo.
+
+            o   Necesidad de medidas urgentes.
+
+    2. Se dejará constancia escrita de la activación del protocolo, fecha, descripción general del
+       hecho y primeras medidas adoptadas.
+
+    3. En caso de dudas técnicas, se solicitará orientación inmediata al SLEP Chinchorro o a
+       redes especializadas.
+
+ ETAPA 3: MEDIDAS INMEDIATAS DE RESGUARDO
+
+ Plazo: Inmediato
+
+ Considerando la escala del establecimiento, se podrán adoptar medidas como:
+
+    •   Acompañamiento cercano del Docente Encargado/a durante la jornada escolar.
+    •   Adecuaciones pedagógicas transitorias.
+
+
+
+
+                                                      42
+  •       Organización del espacio escolar para asegurar protección.
+  •       Coordinación con familia protectora o adulto significativo, si corresponde.
+  •       Activación de apoyo externo: salud, OLN, SLEP u otras redes pertinentes.
+
+Todas las medidas deberán centrarse en el interés superior del niño, niña o adolescente, resguardando su integridad,
+confidencialidad y continuidad educativa.
+
+ETAPA 4: COMUNICACIÓN A PADRES, MADRES O APODERADOS
+
+Plazo: 24
+
+      1. El Docente Encargado/a informará la activación del protocolo, resguardando
+         confidencialidad.
+
+      2. Se dejará registro escrito de la comunicación.
+
+      3. Si el presunto vulnerador es un familiar conviviente, esta comunicación se omitirá,
+         activando directamente redes de protección.
+
+ETAPA 5: DENUNCIA OBLIGATORIA
+
+Plazo: Dentro de 24 horas
+
+Cuando existan antecedentes de delito, el Docente Encargado/a deberá denunciar ante:
+
+      •    Ministerio Público
+
+      •    Carabineros de Chile
+
+      •    Policía de Investigaciones
+
+Esta obligación es indelegable.
+
+ETAPA 6: DERIVACIÓN A REDES DE APOYO (Territoriales)
+
+      •    Oficina Local de la Niñez correspondiente a la comuna.
+
+      •    Posta rural o CESFAM.
+
+      •    Juzgado de Familia competente.
+
+
+
+
+ETAPA 7: SEGUIMIENTO
+
+Plazo: Permanente
+
+El Docente Encargado/a realizará seguimiento del caso mediante:
+
+      •    Contacto periódico con redes externas.
+
+      •    Observación del bienestar del estudiante.
+
+      •    Registro continuo de acciones.
+
+
+
+
+                                                          43
+2. Apartado Especial: Violencia de Género
+
+Se aplicarán los mismos principios de denuncia, protección y derivación, reforzando:
+
+    •   Confidencialidad.
+
+    •   Derivación oportuna a redes especializadas.
+
+    •   Enfoque de género y derechos.
+
+3. Resguardo de la Confidencialidad
+
+Dada la alta exposición propia de comunidades pequeñas, el resguardo de identidad será estricto, evitando
+comentarios, registros visibles o difusión informal de información.
+
+4. Cierre del Protocolo
+
+El protocolo se cerrará cuando:
+
+    •   Existan pronunciamientos de organismos competentes.
+
+    •   Se hayan adoptado medidas de protección suficientes.
+
+    •   Se evalúe que los derechos del estudiante se encuentran resguardados.
+
+    •   Generar acta de cierre
+
+5. Casos en que el presunto vulnerador sea padre, madre o familiar conviviente
+
+Se omitirá la comunicación directa con dicha persona y se activarán de inmediato las denuncias y derivaciones
+correspondientes.
+
+
+
+CUANDO LA VULNERACIÓN DE DERECHOS ES COMETIDA POR UN/A FUNCIONARIO/A DEL ESTABLECIMIENTO
+
+En establecimientos rurales multigrado de baja dotación, el presunto vulnerador puede corresponder al Docente
+Encargado/a del establecimiento o a un docente itinerante (inglés, Lengua Aymara o Religión).
+Dado este escenario, se refuerza la intervención inmediata del SLEP Chinchorro, asegurando la separación de
+funciones, el resguardo del estudiante y el cumplimiento del deber de denuncia, sin que el establecimiento
+asuma funciones investigativas.
+
+    1. Etapas del Procedimiento Especial
+
+ ETAPA 1: TOMA DE CONOCIMIENTO
+
+
+
+
+                                                      44
+Plazo: Inmediato
+
+    1. Ante un relato, sospecha fundada, observación directa o información entregada por
+       terceros que involucre a un/a funcionario/a del establecimiento:
+
+            o   No se confronta al funcionario/a.
+
+            o   No se realizan entrevistas investigativas.
+
+            o   Se evita cualquier acción que exponga al estudiante.
+
+    2. Se resguarda inmediatamente al niño, niña o adolescente, priorizando su seguridad física
+       y emocional.
+
+    3. Se registra la información básica de manera reservada (fecha, forma de conocimiento,
+       relato general), evitando juicios de valor.
+
+ETAPA 2: ACTIVACIÓN DEL PROCEDIMIENTO ESPECIAL
+
+Plazo: Dentro de las primeras 24 horas
+
+Responsable:                               Docente                              Encargado/a
+(En caso de que el presunto involucrado sea el propio Docente Encargado/a, cualquier adulto
+responsable o docente itinerante deberá informar directamente al SLEP Chinchorro).
+
+Acciones obligatorias:
+
+    1. Clasificar el caso como ALTO RIESGO, dada la relación de poder existente.
+
+    2. Activar simultáneamente:
+
+            o   Protocolo de Vulneración de Derechos.
+
+            o   Procedimiento Especial por funcionario/a Involucrado.
+
+    3. Informar de manera inmediata y formal al SLEP Chinchorro (correo institucional y oficio
+       si corresponde), entregando los antecedentes disponibles.
+
+    4. El establecimiento no investiga, no califica responsabilidad ni archiva antecedentes.
+
+
+
+
+ETAPA 3: MEDIDAS INMEDIATAS DE PROTECCIÓN
+
+Plazo: Inmediato
+
+3.1 Medidas de Protección Respecto del Estudiante
+
+El establecimiento deberá adoptar medidas urgentes y proporcionales, tales como:
+
+    •   Garantizar la no exposición y no contacto con el presunto agresor.
+
+    •   Acompañamiento permanente por parte de un adulto protector designado.
+
+    •   Adecuaciones pedagógicas transitorias, si corresponde.
+
+
+
+                                                       45
+    •   Organización del espacio escolar para asegurar protección y privacidad.
+
+    •   Coordinación con redes externas (salud, OLN) si se requiere contención especializada.
+
+Estas medidas deberán mantenerse independientemente del avance de investigaciones externas.
+
+
+
+3.2 Medidas Respecto del funcionario/a Involucrado
+
+Rol del Establecimiento
+
+    •   Informar al SLEP Chinchorro.
+
+    •   Colaborar con las medidas de resguardo que se indiquen.
+
+    •   No adoptar sanciones disciplinarias definitivas.
+
+Rol del SLEP Chinchorro
+El SLEP es el único órgano competente para:
+
+    •   Disponer medidas administrativas preventivas (reorganización de funciones, separación
+        de funciones, suspensión preventiva si corresponde).
+
+    •   Instruir investigación administrativa o sumario.
+
+    •   Determinar eventuales sanciones administrativas.
+
+    •   Garantizar el cumplimiento del Estatuto Docente o Administrativo.
+
+ETAPA 4: DENUNCIA OBLIGATORIA POR POSIBLE DELITO
+
+Plazo: Dentro de las 24 horas desde la toma de conocimiento
+
+Cuando los antecedentes permitan presumir la existencia de un delito, el hecho deberá ser
+denunciado de manera obligatoria ante:
+
+    •   Ministerio Público.
+
+    •   Carabineros de Chile.
+
+    •   Policía de Investigaciones.
+
+
+
+ La denuncia es obligatoria e indelegable, y debe realizarse, aunque existan dudas, sin esperar
+confirmaciones ni investigaciones internas.
+La denuncia penal no reemplaza ni suspende la investigación administrativa que corresponde al
+SLEP.
+
+ETAPA 5: COMUNICACIÓN A PADRES, MADRES O APODERADOS
+
+Plazo: 24 a 48 horas
+
+    1. Se informará la activación del protocolo, resguardando:
+
+            o   Identidad del funcionario/a.
+
+
+
+                                                      46
+             o   Detalles sensibles del caso.
+     2. Si el presunto agresor es padre, madre, apoderado o familiar conviviente, se omitirá esta
+        comunicación, coordinándola con OLN, Fiscalía u organismo competente.
+
+     3. Toda comunicación deberá quedar debidamente registrada.
+
+ ETAPA 6: DERIVACIÓN A REDES EXTERNAS DE PROTECCIÓN
+
+ Según la evaluación del caso, se podrá derivar a:
+
+     •   Oficina Local de la Niñez correspondiente (Putre, Camarones o General Lagos).
+     •   Dispositivos de salud (CESFAM, posta rural).
+
+
+
+ ETAPA 7: SEGUIMIENTO Y COORDINACIÓN
+     •   El establecimiento realizará seguimiento del bienestar del estudiante.
+     •   SLEPCH realizará seguimiento del proceso administrativo.
+
+     •   Los registros del establecimiento y del sostenedor deberán mantenerse separados,
+         confidenciales y protegidos.
+
+
+
+
+ANEXO 4. PROTOCOLO FRENTE A CONSUMO, PORTE O TRÁFICO DE ALCOHOL Y OTRAS DROGAS
+
+
+1. Objetivo del Protocolo
+
+Establecer un procedimiento claro, oportuno y respetuoso de los derechos de niños, niñas y adolescentes para
+prevenir, abordar y derivar situaciones relacionadas con el consumo y/o porte de drogas, alcohol o tabaco que
+involucren a estudiantes de escuelas rurales multigrado, resguardando su integridad física y psicológica,
+asegurando la continuidad de su trayectoria educativa y promoviendo su desarrollo integral.
+
+
+
+
+                                                        47
+2. Alcance
+
+Este protocolo será aplicable a todas las situaciones de:
+
+    •   Consumo, porte, sospecha fundada o denuncia de drogas, alcohol o tabaco.
+
+    •   Ocurridas dentro del establecimiento o fuera de él, cuando se trate de actividades educativas
+        organizadas o supervisadas por la escuela (salidas pedagógicas, actividades comunitarias, celebraciones
+        culturales, etc.).
+
+    •   Se considera contexto de internado.
+
+
+
+3. Principios Rectores
+
+Las acciones que se adopten se regirán por los siguientes principios:
+
+    •   Interés superior del niño, niña y adolescente.
+
+    •   Enfoque de derechos y protección integral.
+
+    •   Confidencialidad y resguardo de la identidad.
+
+    •   Pertinencia territorial y cultural.
+
+    •   Proporcionalidad y no discriminación.
+
+    •   Enfoque preventivo, formativo y de apoyo psicosocial.
+
+Se prohíben expresamente medidas que vulneren derechos fundamentales, tales como revisión de mochilas,
+vestimentas, test de drogas o uso de detectores de sustancias.
+
+
+
+
+4. Responsables del Protocolo
+
+Dado el carácter rural y multigrado del establecimiento, los roles se organizan de la siguiente manera:
+
+    •   Docente Encargado/a del establecimiento
+
+             o   Responsable de activar, ejecutar, coordinar y supervisar el presente protocolo.
+
+             o   Ejerce funciones de dirección, convivencia escolar y coordinación con redes externas.
+
+    •   Profesores/as itinerantes (inglés, Lengua Aymara, Religión)
+
+             o   Apoyan en la detección oportuna de situaciones de riesgo.
+
+             o   Informan de inmediato al Docente Encargado/a ante cualquier antecedente o sospecha.
+
+    •   Apoyo externo
+
+
+                                                         48
+           o    Oficina Local de niñez y adolescencia (Putre, Camarones o General Lagos)
+
+           o    Asesores pedagógicos SLEPCH
+
+           o    Redes comunales y territoriales de salud.
+
+           o    Asesoría del Servicio Local de Educación Pública Chinchorro
+
+
+
+5. Procedimiento Paso a Paso
+
+ Paso 1: Detección o recepción de información
+
+ El protocolo se activa cuando:
+
+     •   Un estudiante solicita ayuda para sí o para un compañero/a.
+
+     •   El Docente Encargado/a o un profesor itinerante observa indicios de consumo.
+
+     •   Se recibe información de un apoderado, adulto de la comunidad o institución externa.
+
+ La información se recibe con enfoque de cuidado, evitando juicios, interrogatorios o exposición
+ del estudiante.
+
+ Paso 2: Activación del Protocolo
+
+ El Docente Encargado/a deberá activar el protocolo dentro de un plazo máximo de 24 horas desde
+ que toma conocimiento del hecho o sospecha, dejando registro escrito en el libro o formato
+ institucional correspondiente.
+
+ Paso 3: Medidas inmediatas de resguardo
+
+ De manera inmediata se adoptarán medidas de protección, tales como:
+
+     •   Acompañamiento permanente del estudiante por el Docente Encargado/a.
+
+     •   Evaluación inicial de su estado físico y emocional.
+
+     •   En caso de intoxicación o riesgo para la salud, activación del Protocolo de Accidentes
+         Escolares y derivación al centro de salud más cercano, considerando tiempos de traslado
+         propios del territorio rural.
+
+ Estas medidas tienen un carácter exclusivamente protector, no disciplinario.
+
+ Paso 4: Comunicación a padres, madres o apoderados
+
+ El Docente Encargado/a deberá informar a los padres, madres o apoderados:
+
+     •   Dentro de un plazo máximo de 24 horas.
+
+     •   De manera presencial, telefónica o por el medio más expedito disponible.
+
+     •   Explicando la activación del protocolo, las medidas adoptadas y los pasos a seguir.
+
+ Paso 5: Evaluación de la situación
+
+
+
+
+                                                        49
+ El Docente Encargado/a realizará una evaluación inicial para identificar:
+
+     •   Tipo de consumo (experimental, reiterado o problemático).
+
+     •   Factores de riesgo y de protección presentes en el entorno familiar y comunitario.
+
+     •   Necesidad de apoyo pedagógico, psicosocial o derivación externa.
+
+ Paso 6: Derivación a redes de apoyo
+
+ Cuando corresponda, el Docente Encargado/a gestionará la derivación del estudiante a redes
+ externas, tales como:
+
+     •   Oficina Local de la Niñez u OPD correspondiente.
+
+     •   Centro de Atención Primaria de Salud rural o comunal.
+
+     •   SENDA Previene, cuando exista cobertura territorial.
+
+ El establecimiento deberá contar con un listado actualizado de contactos comunales y regionales,
+ proporcionado o apoyado por el SLEPCH.
+
+ Paso 7: Denuncia obligatoria
+
+ Cuando existan antecedentes que hagan presumir la existencia de un delito (porte, suministro,
+ participación de adultos u otros):
+
+     •   El Docente Encargado/a deberá denunciar dentro de las 24 horas al Ministerio Público,
+         Carabineros, PDI o tribunal competente.
+
+     •   Esta obligación es legal y no depende del consentimiento del apoderado.
+
+ Paso 8: Medidas formativas y de apoyo
+
+ De manera complementaria, se podrán implementar:
+
+     •   Acciones formativas acordes a la edad y nivel del estudiante.
+
+     •   Adecuaciones pedagógicas temporales.
+
+     •   Estrategias de acompañamiento emocional y contención.
+
+ Estas medidas no reemplazan ni suspenden la aplicación del protocolo.
+
+ Paso 9: Seguimiento
+
+ El Docente Encargado/a realizará seguimiento periódico de la situación:
+
+     •   Manteniendo contacto con redes externas.
+
+     •   Evaluando la continuidad del bienestar del estudiante en el contexto escolar.
+
+     •   Registrando los apoyos brindados y avances observados.
+
+
+
+
+6. Registro y confidencialidad
+
+
+                                                       50
+Todo el proceso deberá quedar registrado de forma reservada, resguardando la confidencialidad, la vida privada
+y los datos personales del estudiante y su familia.
+
+7. Articulación con acciones preventivas
+
+Este protocolo se articula con el Plan de Gestión de la Convivencia Educativa, incorporando acciones de:
+
+    •   Promoción de estilos de vida saludable.
+
+    •   Prevención del consumo de drogas, alcohol y tabaco.
+
+    •   Fortalecimiento del vínculo escuela–familia–comunidad, con pertinencia cultural y territorial.
+
+
+
+
+              ANEXO 5. PROTOCOLO DE ACTUCIÓN FRENTE A ACCIDENTES ESCOLARES
+
+
+1. Objetivo
+
+El presente Protocolo de Accidentes Escolares tiene por objetivo resguardar la integridad física y el bienestar de
+los y las estudiantes de la escuela rural multigrado, asegurando una respuesta inmediata, oportuna y organizada
+ante la ocurrencia de cualquier accidente escolar, conforme a la Circular Exenta N°781 de la Superintendencia
+de Educación y al principio del interés superior del niño, niña y adolescente.
+
+Este protocolo considera las particularidades territoriales, geográficas y organizacionales propias de
+establecimientos rurales unidocentes o bidocentes, con dotación limitada y cursos multigrado.
+
+                                                       51
+2. Marco Normativo
+
+    •   Circular Exenta N°781 de la Superintendencia de Educación.
+
+    •   Decreto Supremo N°313/1972 (Seguro Escolar).
+
+    •   Ley General de Educación N°20.370.
+
+    •   Ley N°21.430 sobre Garantías y Protección Integral de los Derechos de la Niñez y Adolescencia.
+
+
+
+3. Definición de Accidente Escolar
+
+Se entenderá por accidente escolar toda lesión, visible o no, que un o una estudiante sufra:
+
+    •   A causa o con ocasión de sus estudios.
+
+    •   Durante la realización de actividades educativas presenciales, extracurriculares o comunitarias
+        organizadas por la escuela.
+
+    •   En el trayecto directo de ida o regreso entre su domicilio y el establecimiento educacional.
+
+El protocolo deberá activarse en todos los casos, independiente de la gravedad del accidente, de su causa o del
+lugar donde ocurra, siempre que el estudiante se encuentre bajo la responsabilidad del establecimiento.
+
+
+
+4. Ámbito de Aplicación
+
+Este protocolo se aplicará en:
+
+    •   Dependencias de la escuela rural.
+
+    •   Actividades pedagógicas dentro y fuera del aula.
+
+    •   Actividades comunitarias, salidas pedagógicas o culturales autorizadas.
+
+    •   Trayectos directos de ida y regreso entre el domicilio del estudiante y la escuela.
+
+En casos de accidentes asociados a hechos de violencia escolar, este protocolo se articulará con el Protocolo de
+Acoso, Maltrato y Violencia Escolar, considerando la escala y contexto rural.
+
+
+
+5. Responsables del Protocolo
+
+Dada la estructura organizacional de la escuela rural multigrado, los roles se definen de la siguiente manera:
+
+    •   Docente Encargado/a del Establecimiento
+
+            o   Responsable general del Protocolo de Accidentes Escolares.
+
+
+
+                                                        52
+          o   Evalúa la situación, adopta decisiones inmediatas y gestiona la derivación a salud.
+
+          o   Completa y entrega el Formulario de Declaración Individual de Accidente Escolar.
+
+  •   Profesor/a Itinerante (inglés, Lengua Aymara, Religión)
+
+          o   En caso de encontrarse presente al momento del accidente, deberá prestar primera respuesta,
+              resguardar al estudiante afectado y avisar de inmediato al Docente Encargado/a.
+
+
+
+  5. Procedimiento Paso a Paso
+
+
+Paso 1: Ocurrencia del Accidente
+Ante la ocurrencia de cualquier accidente escolar:
+   • El adulto responsable presente (Docente Encargado/a o profesor/a itinerante) deberá
+        detener la actividad si es necesario.
+   • Resguardar al estudiante afectado y al resto del grupo.
+   • Informar de inmediato al Docente Encargado/a, si no se encontrara presente.
+Paso 2: Evaluación Inicial y Primeros Auxilios
+   • El Docente Encargado/a evaluará la situación y determinará la gravedad del accidente.
+   • Se otorgarán primeros auxilios básicos, de acuerdo con las competencias del personal,
+        evitando maniobras que excedan su formación.
+   • La evaluación será realizada por el funcionario mejor capacitado disponible, conforme a
+        lo indicado en la Circular N°781.
+
+Paso 3: Determinación de Gravedad y Derivación
+Según la evaluación:
+   • Accidente leve
+            o Atención básica en el establecimiento.
+            o Registro del hecho.
+            o Comunicación inmediata a la familia.
+   • Accidente moderado o grave
+            o Gestión inmediata de derivación a un centro asistencial de salud.
+            o Solicitud de ambulancia, posta rural, SAPU o apoyo municipal, según
+                disponibilidad territorial.
+
+Paso 4: Comunicación con la Familia
+   • El Docente Encargado/a informará de forma inmediata a padres, madres, apoderados o
+        adulto responsable designado.
+   • La comunicación se realizará según el medio previamente definido por la familia (llamada
+        telefónica, mensaje u otro).
+   • El establecimiento mantendrá un registro actualizado de datos de contacto, accesible al
+        Docente Encargado/a.
+
+Paso 5: Traslado a Centro Asistencial
+   • El traslado se realizará al centro de salud más cercano disponible, considerando la
+        realidad rural:
+            o Posta de salud rural.
+            o CESFAM de referencia.
+            o Hospital de la red asistencial correspondiente.
+
+
+                                                     53
+        •    El estudiante será acompañado por el Docente Encargado/a o adulto responsable del
+             establecimiento, hasta la llegada del apoderado, cuando las condiciones lo permitan.
+
+ Paso 6: Activación del Seguro Escolar
+    • Todo accidente escolar será cubierto por el Seguro Escolar Estatal.
+    • El Docente Encargado/a deberá completar, firmar y entregar el Formulario de
+         Declaración Individual de Accidente Escolar, sin excepción.
+    • El establecimiento no calificará si el accidente está cubierto o no por el seguro.
+
+
+
+
+Paso 7: Registro del Accidente
+
+    •       El accidente será registrado en:
+
+                o   Libro de Novedades o Registro Interno de la Escuela.
+
+    •       Se dejará constancia de:
+
+                o   Fecha, hora y lugar.
+
+                o   Descripción del accidente.
+
+                o   Medidas adoptadas.
+
+                o   Comunicación con la familia y derivaciones realizadas.
+
+
+
+Paso 8: Articulación con Otros Protocolos
+
+    •       Si el accidente se vincula a situaciones de violencia escolar, se activará el protocolo correspondiente.
+
+
+
+7. Seguros Privados
+
+    •       La escuela mantendrá un registro simple de estudiantes con seguros privados, cuando corresponda.
+
+    •       La existencia de seguros privados no reemplaza la activación del Seguro Escolar Estatal.
+
+
+
+8. Seguimiento y Prevención
+
+    •       El Docente Encargado/a realizará seguimiento del estado del estudiante.
+
+    •       Se adoptarán medidas preventivas para evitar la repetición del accidente, considerando el entorno rural
+            y las condiciones del establecimiento.
+
+
+
+9. Difusión y Revisión
+
+
+
+                                                            54
+Este protocolo será socializado con estudiantes, familias y profesores itinerantes, y revisado periódicamente,
+considerando actualizaciones normativas y las particularidades del territorio.
+
+
+
+
+     ANEXO 6. PROTOCOLO FRENTE A DESREGULACIONES EMOCIONALES Y CONDUCTUALES.
+
+
+1. Objetivo
+
+Establecer un procedimiento claro, oportuno y respetuoso de los derechos de niños, niñas y adolescentes para
+abordar situaciones de desregulación emocional y conductual que se presenten en el contexto educativo rural
+multigrado, resguardando la integridad física, emocional y la dignidad del estudiantado, conforme a la normativa
+vigente y a las particularidades territoriales.
+
+
+
+2. Definición
+
+Se entenderá por desregulación emocional y conductual toda situación excepcional en que un/a estudiante
+manifiesta conductas de tal intensidad, duración o frecuencia que requieren la intervención directa de una
+persona adulta, con el fin de prevenir riesgos para sí mismo/a o para terceros, sin que ello implique
+necesariamente una condición permanente.
+
+
+                                                      55
+3. Principios Orientadores
+
+El presente protocolo se rige por los siguientes principios:
+
+    •       Interés superior del niño, niña o adolescente.
+
+    •       Enfoque de derechos y no discriminación arbitraria.
+
+    •       Respeto a la dignidad humana.
+
+    •       Proporcionalidad y excepcionalidad de las medidas.
+
+    •       Pertinencia territorial y cultural.
+
+
+
+4. Responsables del Protocolo
+
+Dada la estructura de la escuela rural multigrado, los roles se ajustan de la siguiente manera:
+
+    •       Docente Encargado/a del establecimiento
+
+                o   Responsable de activar, coordinar y ejecutar el protocolo.
+
+                o   Ejerce funciones de gestión, convivencia escolar y resguardo integral.
+
+    •       Docentes Itinerantes (inglés, Lengua Aymara, Religión)
+
+                o   Responsables de activar el protocolo cuando la situación ocurra durante su jornada.
+
+                o   Deben informar de manera inmediata al Docente Encargado/a.
+
+
+
+5. Procedimiento de Actuación Paso a Paso
+
+
+
+ Paso 1: Detección y activación inmediata
+
+ Ante la presencia de una desregulación emocional y conductual:
+
+        •    El adulto presente (Docente Encargado/a o docente itinerante) activa de inmediato el
+             protocolo.
+
+        •    Se prioriza el resguardo del estudiante afectado y del resto del curso multigrado.
+
+        •    La intervención inicial la realiza el adulto más cercano, evitando la sobreexposición del
+             estudiante.
+
+
+
+ Paso 2: Medidas inmediatas de resguardo
+
+
+
+
+                                                             56
+Se adoptarán medidas proporcionales y respetuosas, tales como:
+
+    •   Acompañamiento individual del estudiante en un espacio seguro.
+
+    •   Reducción de estímulos ambientales.
+
+    •   Contención emocional verbal y conductual, acorde a la edad y contexto cultural.
+
+No se permite la contención física, salvo de forma excepcional y tutelada, únicamente para evitar
+daños graves a la integridad física, activando de inmediato el Protocolo de Accidentes Escolares
+y notificando a la familia.
+
+
+
+Paso 3: Evaluación de riesgos y lesiones
+
+    •   El Docente Encargado/a evalúa si existen lesiones físicas.
+
+    •   De existir lesiones, se activa el Protocolo de Accidentes Escolares, considerando las
+        distancias y tiempos de traslado propios del territorio rural.
+
+Paso 4: Comunicación con el padre, madre o apoderado
+
+    •   El Docente Encargado/a es responsable de contactar al padre, madre o apoderado.
+
+    •   La comunicación se realiza por el medio más expedito disponible (llamada telefónica,
+        mensajería).
+
+    •   Se deja registro de:
+
+            o   Hora del contacto.
+
+            o   Medio utilizado.
+
+            o   Persona contactada.
+
+    •   En todos los casos, la familia debe ser informada a más tardar al término de la jornada
+        escolar.
+
+
+
+Paso 5: Registro de la situación
+
+El Docente Encargado/a registra lo ocurrido en una Ficha de Registro Anecdótico, que debe
+contener:
+
+    •   Identificación del estudiante.
+
+    •   Fecha y hora del episodio.
+
+    •   Adultos intervinientes.
+
+    •   Descripción objetiva del hecho y su contexto.
+
+    •   Medidas adoptadas.
+
+    •   Evaluación preliminar de la respuesta.
+
+
+
+                                                        57
+       •    Constancia de comunicación con la familia.
+
+ Se deja referencia de este registro en el Libro de Clases, en el apartado de convivencia escolar.
+
+
+
+ Paso 6: Medidas de acompañamiento posterior
+
+ Finalizado el episodio:
+
+       •    Se implementan acciones de acompañamiento emocional para:
+
+                o   El estudiante que presentó la desregulación.
+
+                o   Los demás estudiantes del curso multigrado que pudieron verse afectados.
+
+       •    Estas medidas se ajustan a la realidad del establecimiento y pueden contar con asesoría
+            remoto o presencial del SLEP.
+
+
+
+ Paso 7: Derivación y articulación territorial
+
+ Cuando existan sospechas fundadas de afectación de salud mental:
+
+       •    El Docente Encargado/a orienta a la familia respecto a la derivación al centro de salud
+            correspondiente.
+
+       •    Derivación a OLN (Putre, Camarones o General Lagos).
+
+       •    Se activa la articulación con redes territoriales disponibles, considerando la ruralidad y
+            pertinencia cultural.
+
+
+
+ Paso 8: Seguimiento y evaluación
+
+       •    El Docente Encargado/a realiza seguimiento del caso, evaluando:
+
+                o   La efectividad de las medidas adoptadas.
+
+                o   La necesidad de definir indicaciones individuales de respuesta.
+
+       •    Cuando la situación lo amerite, se informa al SLEP Chinchorro para apoyo y
+            acompañamiento técnico.
+
+
+
+
+6. Prohibiciones expresas
+
+Se considerarán no escritas y deberán ser eliminadas de inmediato todas aquellas medidas que:
+
+   •       Constituyan discriminación arbitraria.
+
+
+
+                                                           58
+    •   Afecten la dignidad del estudiante.
+
+    •   Impliquen suspensión, reducción permanente de jornada, retiro obligatorio del establecimiento o
+        permanencia diferenciada prolongada como respuesta a una desregulación.
+
+
+
+7. Enfoque de Derechos
+
+El abordaje de estas situaciones deberá resguardar en todo momento la garantía y protección integral de los
+derechos de niños, niñas y adolescentes, considerando el contexto rural, cultural y territorial del establecimiento.
+
+
+
+
+                                                         59
+ANEXO 7. PROTOCOLO QUE REGULA LAS SALIDAS PEDAGÓGICAS Y GIRAS DE ESTUDIO
+
+
+1. Objetivo del Protocolo
+
+Establecer un procedimiento claro, seguro y pedagógicamente fundamentado para la planificación,
+autorización, ejecución y seguimiento de salidas pedagógicas y giras de estudio, resguardando la integridad
+física, emocional y el interés superior de niños, niñas y adolescentes de escuelas rurales multigrado.
+
+Este protocolo busca asegurar que dichas actividades se desarrollen con medidas adecuadas de seguridad,
+responsabilidad adulta y coherencia curricular, garantizando además la continuidad del proceso educativo y el
+cumplimiento de la normativa vigente.
+
+2. Alcance
+
+El presente protocolo se aplicará a todas las actividades educativas desarrolladas fuera del establecimiento,
+tales como:
+
+    •   Salidas pedagógicas vinculadas al currículum.
+
+
+
+
+                                                        60
+    •   Actividades culturales o comunitarias.
+
+    •   Visitas a museos, centros culturales o naturales.
+
+    •   Actividades deportivas o recreativas.
+
+    •   Giras de estudio autorizadas por el establecimiento.
+
+Estas actividades podrán realizarse dentro o fuera de la comuna, siempre que cuenten con las autorizaciones
+correspondientes.
+
+3. Principios Rectores
+
+Las acciones relacionadas con la organización de salidas pedagógicas se regirán por los siguientes principios:
+
+    •   Interés superior del niño, niña y adolescente.
+
+    •   Derecho a la educación y experiencias pedagógicas significativas.
+
+    •   Seguridad y prevención de riesgos.
+
+    •   Responsabilidad adulta y supervisión permanente.
+
+    •   Pertinencia territorial y cultural del contexto rural.
+
+    •   Inclusión y participación equitativa.
+
+Las actividades deberán garantizar condiciones de seguridad que resguarden la integridad física y emocional de
+los estudiantes.
+
+4. Responsables del Protocolo
+
+Dado el carácter rural y multigrado de los establecimientos, los roles se organizan de la siguiente manera:
+
+Docente Encargado/a del establecimiento
+
+    •   Responsable de autorizar, coordinar y supervisar la actividad.
+
+    •   Gestiona la comunicación con el sostenedor y redes territoriales.
+
+    •   Asegura el cumplimiento de las medidas de seguridad.
+
+    •   Mantiene contacto permanente con los apoderados.
+
+Docentes o profesionales participantes
+
+    •   Apoyan la supervisión directa de los estudiantes.
+
+    •   Ejecutan la planificación pedagógica de la actividad.
+
+    •   Colaboran en la gestión de seguridad y acompañamiento.
+
+
+
+
+                                                          61
+Madres, padres o apoderados acompañantes
+
+    •   Apoyan la supervisión del grupo de estudiantes.
+
+    •   Colaboran en el cuidado y desplazamiento del grupo.
+
+    •   Actúan bajo la coordinación del Docente Encargado/a.
+
+Sostenedor (SLEP Chinchorro)
+
+    •   Recibe información previa de la actividad.
+
+    •   Apoya la gestión administrativa y preventiva.
+
+    •   Supervisa el cumplimiento de la normativa.
+
+5. Procedimiento Paso a Paso
+
+Paso 1: Planificación pedagógica de la actividad
+
+La salida pedagógica deberá contar con una planificación técnico pedagógica, la cual debe incluir:
+
+    •   Objetivos de aprendizaje asociados al currículum.
+
+    •   Actividades pedagógicas para desarrollar.
+
+    •   Diseño de enseñanza de la actividad.
+
+    •   Temas transversales que se fortalecerán (convivencia, cultura, medio ambiente, identidad territorial,
+        entre otros).
+
+Paso 2: Autorización de padres, madres o apoderados
+
+Cada estudiante deberá contar con autorización escrita firmada por su apoderado antes de participar en la
+actividad.
+
+El documento deberá incluir:
+
+    •   Nombre del estudiante.
+
+    •   Fecha y lugar de la actividad.
+
+    •   Medio de transporte.
+
+    •   Horario estimado de salida y regreso.
+
+    •   Firma del apoderado.
+
+Ningún estudiante podrá participar sin dicha autorización.
+
+Paso 3: Comunicación al Departamento Provincial de Educación
+
+
+
+
+                                                        62
+La actividad deberá ser informada al Departamento Provincial de Educación correspondiente, con al menos 10
+días de anticipación, mediante un formulario que incluya:
+
+    •   Fecha y horario de la actividad.
+
+    •   Lugar de destino.
+
+    •   Curso o nivel participante.
+
+    •   Personal responsable.
+
+    •   Listado de estudiantes, docentes y apoderados acompañantes.
+
+    •   Autorizaciones firmadas.
+
+    •   Planificación pedagógica.
+
+    •   Información del transporte.
+
+    •   Beneficio de seguro escolar.
+
+Paso 4: Medidas de seguridad previas
+
+Previo a la actividad se deberán implementar las siguientes medidas:
+
+    •   Determinar el número suficiente de adultos responsables para resguardar la seguridad del grupo.
+
+    •   Definir claramente las responsabilidades de cada adulto.
+
+    •   Elaborar una hoja de ruta de la actividad, la cual será entregada al sostenedor.
+
+    •   Verificar condiciones del transporte y conductor.
+
+    •   Contar con teléfonos de contacto de emergencia.
+
+    •   Informar a estudiantes sobre normas de seguridad y comportamiento.
+
+Paso 5: Identificación de participantes
+
+Durante la actividad se deberá asegurar que todos los participantes estén correctamente identificados:
+
+Estudiantes
+
+Cada estudiante deberá portar una tarjeta de identificación que incluya:
+
+    •   Nombre del estudiante.
+
+    •   Nombre del establecimiento educacional.
+
+    •   Dirección del establecimiento.
+
+    •   Nombre y teléfono del docente responsable.
+
+
+
+                                                       63
+    •   Nombre y teléfono del apoderado.
+
+Adultos acompañantes
+
+El personal del establecimiento y apoderados acompañantes deberán portar credenciales visibles, que
+indiquen:
+
+    •   Nombre y apellido.
+
+    •   Rol dentro de la actividad.
+
+    •   Nombre del establecimiento educacional.
+
+Paso 6: Desarrollo de la actividad
+
+Durante la salida pedagógica se deberán adoptar las siguientes medidas:
+
+    •   Supervisión permanente de los estudiantes.
+
+    •   Desplazamiento en grupo.
+
+    •   Cumplimiento de horarios establecidos.
+
+    •   Comunicación constante entre los adultos responsables.
+
+    •   Aplicación de medidas preventivas ante situaciones de riesgo.
+
+Ante cualquier accidente o emergencia se deberá activar el Protocolo de Accidentes Escolares, considerando el
+beneficio del seguro escolar.
+
+Paso 7: Regreso al establecimiento
+
+Una vez finalizada la actividad se deberán adoptar las siguientes medidas:
+
+    •   Verificar la presencia de todos los estudiantes antes del retorno.
+
+    •   Informar a los apoderados sobre la llegada al establecimiento.
+
+    •   Registrar el término de la actividad en el libro correspondiente.
+
+    •   Informar al sostenedor sobre el desarrollo de la actividad.
+
+Paso 8: Evaluación de la actividad
+
+Posterior a la actividad se realizará una evaluación que considere:
+
+    •   Cumplimiento de los objetivos pedagógicos.
+
+    •   Evaluación de medidas de seguridad.
+
+    •   Participación de estudiantes.
+
+
+
+
+                                                        64
+    •   Registro de aprendizajes y experiencias significativas.
+
+Esta evaluación podrá incorporarse al Plan de Gestión de Convivencia Educativa o a los instrumentos
+pedagógicos del establecimiento.
+
+6. Registro y confidencialidad
+
+Toda la información relacionada con la actividad deberá quedar registrada en los documentos institucionales
+del establecimiento, tales como:
+
+    •   Libro de clases o registro institucional.
+
+    •   Planificación pedagógica.
+
+    •   Autorizaciones firmadas.
+
+    •   Listado de participantes.
+
+Los datos personales de estudiantes y familias deberán resguardarse conforme a los principios de
+confidencialidad y protección de datos personales.
+
+
+
+
+                                                        65
+ANEXO 8. PROTOCOLO DE RETENCIÓN Y APOYO A ESTUDIANTES EMBARAZADAS, MADRES Y
+PADRES ADOLESCENTES.
+
+
+1. Objetivo del Protocolo
+
+Establecer un procedimiento claro, oportuno y respetuoso de los derechos de estudiantes embarazadas,
+madres y padres adolescentes, que permita asegurar su permanencia en el sistema educativo, evitando toda
+forma de discriminación, garantizando condiciones de resguardo y promoviendo la continuidad de su
+trayectoria educativa en contextos rurales multigrado.
+
+
+
+2. Alcance
+
+El presente protocolo será aplicable a:
+
+    •   Estudiantes embarazadas.
+
+    •   Estudiantes madres.
+
+    •   Estudiantes padres adolescentes.
+
+
+
+
+                                                    66
+Desde el momento en que el establecimiento toma conocimiento de la situación, independientemente del
+nivel educativo.
+
+
+
+3. Principios Rectores
+
+Las acciones se regirán por:
+
+    •   Interés superior del niño, niña y adolescente.
+
+    •   Derecho a la educación y permanencia en el sistema escolar.
+
+    •   No discriminación ni exclusión.
+
+    •   Protección de la maternidad y paternidad adolescente.
+
+    •   Confidencialidad y respeto a la vida privada.
+
+    •   Enfoque de derechos y protección integral.
+
+    •   Pertinencia territorial y cultural.
+
+Se prohíbe expresamente:
+
+    •   Cancelar matrícula por embarazo o maternidad/paternidad.
+
+    •   Condicionar la permanencia a cambios de establecimiento.
+
+    •   Exigir certificados médicos como requisito de permanencia.
+
+
+
+4. Derechos de las y los estudiantes
+
+De acuerdo a la normativa vigente, los estudiantes tienen derecho a:
+
+    •   Continuar sus estudios en el mismo establecimiento.
+
+    •   No ser discriminados ni sancionados por su condición.
+
+    •   Recibir facilidades académicas y administrativas.
+
+    •   Asistir a controles médicos sin sanción.
+
+    •   Participar en actividades educativas según sus condiciones.
+
+    •   Recibir apoyo pedagógico y psicosocial.
+
+
+
+5. Responsables del Protocolo
+
+
+
+                                                         67
+Docente Encargado/a del establecimiento
+
+    •   Activa, coordina y supervisa el protocolo.
+
+    •   Lidera la elaboración del plan de apoyo.
+
+    •   Coordina con redes externas.
+
+Docentes y profesores/as itinerantes
+
+    •   Detectan situaciones y derivan oportunamente.
+
+    •   Implementan adecuaciones pedagógicas.
+
+    •   Apoyan el seguimiento del estudiante.
+
+Apoderados y familia
+
+    •   Colaboran con el proceso educativo.
+
+    •   Participan en acuerdos de apoyo.
+
+Redes externas
+
+    •   Centro de salud (controles prenatales y postnatales).
+
+    •   Oficina Local de la Niñez.
+
+    •   Programas de apoyo territorial.
+
+
+
+6. Procedimiento Paso a Paso
+
+Paso 1: Detección o comunicación
+
+El protocolo se activa cuando:
+
+    •   El/la estudiante informa su situación.
+
+    •   La familia o red externa comunica el embarazo o maternidad/paternidad.
+
+    •   El establecimiento toma conocimiento por otros medios.
+
+La información debe ser abordada con respeto, confidencialidad y enfoque de cuidado.
+
+
+
+Paso 2: Activación del protocolo
+
+El Docente Encargado/a deberá:
+
+    •   Activar el protocolo dentro de un plazo máximo de 24 horas.
+
+
+                                                       68
+    •   Registrar la situación en un formato institucional reservado.
+
+
+
+Paso 3: Entrevista de acogida
+
+Se realizará una entrevista con el/la estudiante y su apoderado para:
+
+    •   Informar sus derechos.
+
+    •   Identificar necesidades académicas, emocionales y de salud.
+
+    •   Establecer acuerdos iniciales de apoyo.
+
+
+
+Paso 4: Elaboración del Plan de Apoyo Individual
+
+Se diseñará un plan que incluya:
+
+    •   Flexibilización de asistencia.
+
+    •   Adecuación de evaluaciones y plazos.
+
+    •   Priorización curricular.
+
+    •   Estrategias de apoyo pedagógico.
+
+Este plan deberá ser conocido por todos los docentes involucrados.
+
+
+
+Paso 5: Medidas de apoyo y resguardo
+
+Se implementarán medidas tales como:
+
+    •   Justificación de inasistencias por controles médicos.
+
+    •   Facilidades para compatibilizar estudios y cuidado del hijo/a.
+
+    •   Apoyo emocional.
+
+    •   Adaptación de exigencias académicas.
+
+Estas medidas son de carácter formativo y protector, no sancionatorio.
+
+
+
+Paso 6: Coordinación con redes externas
+
+El establecimiento deberá articular con:
+
+    •   Centro de salud rural o comunal.
+
+
+                                                       69
+    •   Levantar Alerta y/o Alarma a Oficina Local de la Niñez comuna de General Lagos
+
+    •   Programas de apoyo a la maternidad adolescente.
+
+Considerando las condiciones geográficas del territorio rural.
+
+
+
+Paso 7: Seguimiento
+
+El Docente Encargado/a deberá:
+
+    •   Monitorear asistencia y desempeño.
+
+    •   Evaluar bienestar del estudiante.
+
+    •   Ajustar el plan de apoyo según necesidad.
+
+
+
+Paso 8: Reintegro y continuidad
+
+Posterior al parto:
+
+    •   Se facilitará el reintegro progresivo.
+
+    •   Se implementarán estrategias de nivelación.
+
+    •   Se garantizará la continuidad educativa.
+
+
+
+7. Registro y confidencialidad
+
+Todo el proceso deberá:
+
+    •   Quedar registrado en formato reservado.
+
+    •   Resguardar la identidad del estudiante.
+
+    •   Limitar el acceso a la información.
+
+
+
+8. Articulación con acciones preventivas
+
+Este protocolo se vincula con el Plan de Gestión de la Convivencia Educativa, incorporando:
+
+    •   Educación en sexualidad y afectividad.
+
+    •   Promoción de derechos.
+
+    •   Prevención del embarazo adolescente.
+
+
+                                                        70
+•   Fortalecimiento del vínculo escuela–familia–comunidad.
+
+
+
+
+                                                71
+ANEXO 8. PROTOCOLO DE REGULACÓN Y/O PROHIBICIÓN DEL USO DE DISPOSITIVOS MÓVILES
+ELECTRÓNICOS.
+
+
+1. Objetivo del Protocolo
+
+Regular el uso de dispositivos móviles personales dentro del establecimiento educacional rural multigrado,
+estableciendo una prohibición general con excepciones justificadas, con el fin de:
+
+    •   Resguardar el aprendizaje y la concentración en contextos multigrado.
+
+    •   Fortalecer la convivencia educativa y el bienestar socioemocional.
+
+    •   Promover el uso responsable, formativo y contextualizado de la tecnología.
+
+    •   Asegurar condiciones de seguridad en territorios rurales con conectividad limitada.
+
+
+
+2. Alcance
+
+Este protocolo aplica a:
+
+    •   Estudiantes.
+
+    •   Docente Encargado/a.
+
+    •   Profesores/as itinerantes.
+
+    •   Asistentes de la educación.
+
+
+
+
+                                                       72
+    •   Apoderados/as y visitantes.
+
+En coherencia con la normativa vigente, la prohibición constituye la regla general durante la jornada educativa.
+
+
+
+3. Definición de dispositivos móviles
+
+Se entenderá por dispositivos móviles:
+
+    •   Teléfonos celulares.
+
+    •   Relojes inteligentes.
+
+    •   Tablets personales.
+
+    •   Otros dispositivos con conexión a internet o telecomunicación.
+
+No incluye dispositivos institucionales con fines pedagógicos.
+
+
+
+4. Principio general de prohibición
+
+4.1 Regla general
+
+El uso de dispositivos móviles personales está prohibido:
+
+    •   Durante actividades pedagógicas multigrado.
+
+    •   Durante evaluaciones.
+
+    •   En actividades comunitarias o culturales organizadas por la escuela.
+
+    •   En cualquier espacio donde afecte la convivencia o seguridad.
+
+4.2 Medidas operativas en contexto rural
+
+El establecimiento podrá implementar:
+
+    •   Dispositivos apagados y guardados en mochilas.
+
+    •   Resguardo temporal en cajas o espacios definidos.
+
+    •   Adaptaciones según condiciones del establecimiento (escuelas unidocentes o bidocentes).
+
+
+
+5. Regulación en recreos y espacios comunitarios
+
+Considerando el contexto rural:
+
+    •   Se promoverán juegos tradicionales, interacción social y actividades comunitarias.
+
+
+                                                       73
+    •   Se desincentivará el uso individual de dispositivos.
+
+    •   Se podrá restringir completamente su uso en recreos, según definición del establecimiento.
+
+
+
+6. Excepciones autorizadas para estudiantes
+
+El uso será permitido SOLO cuando exista autorización del Docente Encargado/a:
+
+a) Condiciones de conectividad rural o emergencia familiar
+
+    •   Comunicación con familia por distancias geográficas.
+
+    •   Coordinación de traslados o emergencias.
+
+b) Necesidades Educativas Especiales (NEE)
+
+    •   Uso como apoyo técnico acreditado.
+
+c) Condición de salud
+
+    •   Monitoreo médico debidamente acreditado.
+
+d) Uso pedagógico planificado
+
+    •   Actividades con objetivos claros y supervisión directa.
+
+e) Situaciones de emergencia territorial
+
+    •   Eventos climáticos, aislamiento o contingencias propias del territorio.
+
+Todas las excepciones deberán:
+
+    •   Ser evaluadas caso a caso.
+
+    •   Quedar registradas.
+
+    •   Definir condiciones claras de uso.
+
+
+
+7. Regulación del uso por docentes y asistentes de la educación
+
+7.1 Principio orientador
+
+En escuelas rurales multigrado, el uso de dispositivos por adultos es funcional a:
+
+    •   Coordinación institucional.
+
+    •   Gestión de emergencias.
+
+    •   Comunicación con redes territoriales (salud, transporte, familia).
+
+
+                                                        74
+7.2 Uso en aula
+
+Permitido cuando:
+
+    •   Sea estrictamente pedagógico o laboral.
+
+    •   Se utilice para:
+
+            o     Coordinación ante emergencias.
+
+            o     Comunicación con redes externas.
+
+            o     Apoyo a estudiantes.
+
+No permitido:
+
+    •   Uso personal prolongado.
+
+    •   Distracción durante la enseñanza.
+
+Principio clave: uso breve, funcional y pertinente.
+
+7.3 Uso en patios y espacios abiertos
+
+Permitido cuando:
+
+    •   Sea necesario para seguridad o coordinación.
+
+    •   Exista comunicación con redes externas.
+
+Se debe privilegiar:
+
+    •   Supervisión activa de estudiantes.
+
+    •   Presencia educativa.
+
+
+
+7.4 Uso de plataformas de comunicación
+
+Se reconoce el uso de:
+
+    •   WhatsApp u otros medios para coordinación rápida.
+
+    •   Comunicación con familias en territorios aislados.
+
+El establecimiento deberá:
+
+    •   Definir canales oficiales.
+
+    •   Regular horarios de uso.
+
+    •   Evitar sobrecarga laboral digital.
+
+
+                                                       75
+8. Procedimiento ante incumplimiento
+
+8.1 Abordaje con estudiantes
+
+a) Advertencia pedagógica
+
+    •   Señalamiento respetuoso de la conducta.
+
+    •   Explicación del sentido de la norma.
+
+    •   Solicitud de guardar el dispositivo.
+
+b) Reflexión guiada
+
+    •   Diálogo individual breve.
+
+    •   Preguntas orientadoras:
+
+            o   ¿Qué ocurrió?
+
+            o   ¿Cómo afectó al grupo?
+
+            o   ¿Cómo mejorar?
+
+c) Medidas formativas
+
+Ejemplos:
+
+    •   Actividades sobre ciudadanía digital.
+
+    •   Compromisos de uso responsable.
+
+    •   Talleres socioemocionales.
+
+
+
+8.2 Abordaje con adultos
+
+a) Retroalimentación formativa
+
+    •   Conversación privada.
+
+    •   Enfoque en mejora profesional.
+
+b) Orientación institucional
+
+    •   Recordatorio de lineamientos.
+
+    •   Formación interna.
+
+c) Medidas administrativas (si corresponde)
+
+
+                                                  76
+    •   Aplicadas con debido proceso.
+
+    •   Proporcionales y progresivas.
+
+
+
+9. Enfoque formativo
+
+Este protocolo:
+
+    •   No busca sancionar, sino educar.
+
+    •   Promueve ciudadanía digital responsable.
+
+    •   Resguarda el bienestar y la convivencia.
+
+    •   Considera el contexto rural como factor clave.
+
+
+
+
+10. Difusión e implementación
+
+El establecimiento deberá:
+
+Socialización
+
+    •   Presentar el protocolo a toda la comunidad educativa.
+
+    •   Explicar su sentido pedagógico.
+
+    •   Clarificar:
+
+            o     Prohibición general.
+
+            o     Excepciones.
+
+            o     Procedimientos.
+
+Formación
+
+    •   Talleres con estudiantes.
+
+    •   Espacios de reflexión docente.
+
+    •   Trabajo con familias.
+
+Validación institucional
+
+    •   Revisión en Consejo Escolar.
+
+    •   Acta de aprobación.
+
+
+                                                         77
+    •   Incorporación al Reglamento Interno antes del 30 de junio.
+
+Evaluación
+
+    •   Revisión periódica del protocolo.
+
+    •   Ajustes según contexto territorial y evaluación institucional.
+
+
+
+11. Consideraciones para el contexto rural multigrado
+
+Se deberá considerar:
+
+    •   Conectividad limitada o intermitente.
+
+    •   Distancias geográficas y aislamiento.
+
+    •   Rol del dispositivo como herramienta de seguridad.
+
+    •   Coordinación con familias en zonas apartadas.
+
+Por lo tanto, la regulación deberá ser:
+
+    •   Flexible.
+
+    •   Contextualizada.
+
+    •   Basada en el equilibrio entre seguridad y aprendizaje.
+
+
+
+
+                                                        78
+                                                  ANEXO 8.1
+
+
+
+
+              SOLICITUD FORMAL DE EXCEPCIONALIDAD PARA EL USO DE DISPOSITIVO MÓVIL
+
+
+
+I. ANTECEDENTES GENERALES DEL ESTABLECIMIENTO
+
+   •   Nombre del establecimiento:
+
+   •   RBD:
+
+   •   Comuna:
+
+
+
+II. IDENTIFICACIÓN DEL ESTUDIANTE
+
+   •   Nombre completo:
+
+   •   RUN:
+
+   •   Curso / Nivel:
+
+   •   Profesor(a) jefe / Docente encargado(a):
+
+
+
+III. IDENTIFICACIÓN DEL PADRE, MADRE O APODERADO/A
+
+   •   Nombre completo:
+
+   •   RUN:
+
+   •   Teléfono de contacto:
+
+   •   Dirección Actual:
+
+   •   Correo electrónico:
+
+
+
+IV. TIPO DE EXCEPCIONALIDAD SOLICITADA
+
+(Marque con X según corresponda)
+
+☐ Uso de dispositivo como ayuda técnica para estudiante con Necesidades Educativas Especiales (NEE).
+
+☐ Condición de salud que requiere monitoreo periódico mediante dispositivo móvil.
+
+
+                                                     79
+☐ Razones de seguridad personal o familiar del estudiante.
+
+V. FUNDAMENTO DE LA SOLICITUD
+
+Describa claramente el motivo que origina esta solicitud:
+
+
+
+
+VI. DURACIÓN ESTIMADA DE LA EXCEPCIÓN
+
+    •   Fecha inicio:        /       /
+
+    •   Fecha término:           /       /
+
+Sujeta a evaluación periódica por el establecimiento.
+
+VII. FORMA ESPECÍFICA DE USO DEL DISPOSITIVO
+
+El dispositivo será utilizado:
+
+(Marque con X según corresponda)
+
+☐ Exclusivamente para monitoreo de salud.
+☐ Como ayuda técnica pedagógica.
+☐ Solo para comunicación por razones de seguridad.
+☐ Otro (especificar):
+
+Condiciones específicas de uso:
+
+
+
+
+El dispositivo utilizado será:
+
+
+                                                        80
+VIII. DOCUMENTACIÓN ADJUNTA
+
+(Marque con X según corresponda)
+
+☐ Certificado médico.
+☐ Informe profesional competente (NEE).
+☐ Antecedentes de seguridad/protección.
+☐ Otros documentos:
+
+IX. DECLARACIÓN DEL APODERADO/A
+
+Declaro conocer la normativa institucional y acepto que:
+
+    •   La solicitud será evaluada caso a caso por la Dirección.
+
+    •   La autorización no es automática ni permanente.
+
+    •   El uso del dispositivo se limitará estrictamente a lo autorizado.
+
+    •   Asumo corresponsabilidad en el cumplimiento de las condiciones establecidas.
+
+Firma apoderada/o:
+Nombre:
+Fecha:     /     /
+
+
+
+X. RESOLUCIÓN DIRECCIÓN DEL ESTABLECIMIENTO
+
+☐ Aprobada
+☐ Aprobada con condiciones
+☐ Rechazada (fundamentar)
+
+Observaciones:
+
+
+
+
+Duración autorizada:
+
+Desde       /      /         hasta       /      /
+
+
+
+
+                                             Firma Docente Encargado
+
+
+
+
+                                                        81
+Anexo 9
+
+FORMULARIO DE ALERTAS TERRITORIALES (GENERAL LAGOS)
+
+
+
+    I - IDENTIFICACIÓN DEL USUARIO1
+
+    Especificar información sobre el usuario que está generando la alerta territorial para su derivación a la OLN. Indicar datos
+    tales como:
+
+    Nombre, institución, programa o servicio
+
+    Dirección
+
+    Nombre de usuario/a que detectó alerta
+    territorial
+
+    Teléfono
+
+    RUN
+
+    Cargo
+
+
+
+    II - IDENTIFICACIÓN DEL NIÑO, NIÑA, ADOLESCENTE O GESTANTE MAYOR A 18 AÑOS
+
+    El/la usuario/a debe completar los siguientes datos:
+
+    RUN
+
+    Nombre
+
+    Fecha de nacimiento
+
+    Edad (años y meses)
+
+    Sexo
+
+    Región
+
+    Comuna
+
+    Dirección
+
+    Cuidador/a del NNA
+
+
+
+1
+    Las secciones I y II son obligatorias.
+
+
+
+                                                                82
+    Parentesco o relación
+
+    Teléfono del/la cuidador/a
+
+    III - OTROS CONTACTOS DEL NNA
+
+    Esta sección sólo se debe llenar si es que el/la usuario/a cuenta con más información acerca de otros contactos para
+    ubicar al NNA distinto al que se registró en la sección anterior:
+
+    Nombre
+
+    Parentesco o relación
+
+    Teléfono
+
+    Dirección
+
+
+
+    IV - ALERTAS Y ALARMAS DETECTADAS2
+
+    A continuación, se presentan diferentes alternativas para reportar situaciones de riesgo y/o vulneración de derechos que
+    se relacionan con los niños, niñas y adolescentes.
+
+
+
+    Para facilitar la derivación, la OLN ha dispuesto una serie de alertas (situaciones de riesgo) y alarmas (situaciones de
+    vulneraciones de derecho), por las cuales se puede derivar un niño, niña o adolescente a la Oficina Local de la Niñez.
+
+
+
+    Es importante que seleccione las alternativas que más se asemejen a la situación en que se encuentra el NNA y su familia,
+    pues de su selección, dependerá el grado de urgencia con el que serán atendidas según características del caso y del
+    grupo familiar. Sólo si la situación no se encuentra contenida en ninguna de las opciones, utilice la casilla “otros”.
+
+
+
+    Al finalizar la selección, podrá describir brevemente la situación, aportando todos los antecedentes relevantes. Esta
+    descripción debe ser coherente con las alertas y/o alarmas seleccionadas.
+
+
+
+    Debe recordar que la derivación a la OLN no exime la responsabilidad de denunciar en sede penal ante situaciones
+    constitutivas de delito.
+
+                                    NNA sin RUN
+    GENERAL
+                                    Cuidador/a principal fallecido
+
+
+
+
+2
+ Cada riesgo y/o vulneración de derechos tiene una definición cuya explicación detallada puede encontrarse en Centro de
+Recursos OLN: www.recursosoln.cl
+
+
+
+                                                               83
+              Niño/a con madre adolescente
+
+              Gestante menor de 18 años
+
+              Conflictos con la maternidad
+
+              Otras alertas distintas a las incorporadas en matriz
+
+              NNA sin trayectoria educativa formal
+
+              NNA sin matrícula educacional
+
+              Desvinculación escolar
+EDUCACIÓN
+              Inasistencias reiteradas
+
+              Inasistencia grave
+
+              Dificultad de acceso a la educación (incluye educación especial)
+
+              NNA sin afiliación a salud
+
+              NNA con discapacidad permanente
+
+              Gestante - abuso de sustancias
+
+              NNA con consumo o sospecha de consumo problemático de alcohol y/o drogas
+
+              Consumo problemático de alcohol y/o drogas del adulto responsable
+SALUD
+              Intento o ideación suicida
+
+              Dificultad de acceso a atenciones de salud
+
+              NNA con necesidad de apoyo en salud mental
+
+              Diagnóstico y/o sospecha de enfermedad de salud mental del cuidador/a no tratada
+
+              Enfermedad grave/crónica del cuidador principal que afecta su rol
+
+              Dificultad del padre, madre o cuidadores en el establecimiento de normas y límites
+
+RELACIONES    Dinámica familiar conflictuada y roles difusos
+
+FAMILIARES    NNA que vive en familia monoparental sin red de apoyo familiar/social
+
+              NNA con adulto/s significativos en situación de privación de libertad
+
+              Cuidado inadecuado de la alimentación del NNA
+
+NEGLIGENCIA   Cuidado inadecuado de la higiene del NNA
+
+              NNA en situación de calle sin familiares adultos
+
+
+
+
+                                           84
+                           NNA sin cuidadores responsables, permanentes o ausentes de control frente a otras
+                          personas, lugares o elementos de riesgo
+
+                          NNA está en situación de calle acompañado con familiares adultos
+
+                          NNA no recibe pensión de alimentos (cuando corresponda)
+
+                          Cuidador/a no acredita vínculo o legalidad del cuidado personal
+ABANDONO
+                          NNA en situación de calle no acompañado por adultos
+
+                          Sospecha de maltrato físico
+
+                          Sospecha de maltrato psicológico
+
+                          Sospecha de maltrato prenatal
+
+                          Sospecha de tortura
+
+                          NNA es víctima de bullying, ciberacoso, intimidación escolar
+MALTRATO
+                          NNA ejerce bullying o acoso escolar
+
+                           Violencia psicológica en razón de identidad y/o expresión de género al interior de la
+                          familia
+
+                          NNA Víctima de discriminación
+
+                          Exhibición o divulgación de información que estigmatice al NNA
+
+                          NNA Víctima de VIF
+
+VIOLENCIA INTRAFAMILIAR   Gestante - Violencia de género
+
+                          NNA Víctima indirecta de femicidio
+
+                          Sospecha de violación y/o abuso sexual
+
+                          Sospecha de estupro
+VIOLENCIA SEXUAL
+                          Sospecha de explotación sexual
+
+                          NNA con prácticas abusivas sexualmente hacia otro/a NNA
+
+                          Situación de refugiado
+
+                          NNA en contexto de movilidad no acompañado/a
+MIGRACIÓN
+                          NNA en contexto de movilidad separado/a
+
+                          Familia con NNA en situación migratoria no regularizada
+
+                          NNA con discapacidad no inscrito en el registro nacional de discapacidad
+
+
+
+
+                                                    85
+                                 Cuidador/a principal con discapacidad no inscrito en registro nacional de discapacidad
+
+ ACCESO A BENEFICIOS Y           Cuidador/a principal no inscrito en el registro nacional de cuidadores
+ SERVICIOS
+                                  No accede a ofertas recreativas (priorizada desde la atención en salud mental u otro
+                                 profesional)
+
+                                 Peores formas de trabajo infantil
+
+ TRABAJO INFANTIL                Trabajo infantil
+
+                                 Trabajo adolescente no protegido
+
+                                 NNA que presenta conducta transgresora
+
+ RELACIÓN CON LA JUSTICIA        Niño/a presenta conducta constitutiva de delito y es inimputable
+
+                                 Adolescente presenta conducta constitutiva de delito y es imputable
+
+
+
+ V - OBSERVACIÓN DEL PROFESIONAL
+
+ Mencionar antecedentes relevantes, además de indicar o sugerir las acciones que se espera que sean contempladas en
+ el proceso de la OLN.
+
+ Descripción
+
+
+
+
+ Marque la casilla que corresponda:
+
+ La familia y el NNA fue informada de la derivación a la   Sí        No
+ Oficina Local de la Niñez
+
+
+
+
+ENVIAR FORMULARIO A: olngenerallagos@portalvisviri.cl
+
+
+
+
+                                                            86
+                                  ANEXOS: Protocolos y formularios
+
+Los siguientes anexos forman parte integrante del Reglamento Interno y son de aplicación obligatoria
+para toda la comunidad educativa de la Escuela Cosapilla, en coherencia con el enfoque de derechos,
+la educación inclusiva y la normativa vigente, especialmente la Ley N° 21.545 y la Circular N° 586.
+
+ANEXO 10.- Evaluación Diversificada (DEC)
+
+1. Definición
+
+La evaluación diversificada corresponde a un conjunto de procedimientos e instrumentos flexibles
+que permiten a los estudiantes demostrar sus aprendizajes considerando sus características, ritmos,
+estilos de aprendizaje y necesidades educativas.
+
+2. Marco normativo
+
+Este anexo se fundamenta en el enfoque de educación inclusiva establecido en la Ley N° 21.545 y la
+Circular N° 586, resguardando el derecho a una evaluación pertinente y no discriminatoria.
+
+3. Principios de la evaluación diversificada
+
+   •   Equidad en el acceso a la evaluación
+   •   Flexibilidad en tiempos y formas
+   •   Pertinencia cultural y contextual
+   •   Enfoque en el proceso de aprendizaje
+   •   Respeto por la diversidad
+
+4. Tipos de adecuaciones evaluativas
+
+a) Adecuaciones de acceso
+
+   •   Uso de apoyos visuales (pictogramas, imágenes)
+   •   Lectura asistida de instrucciones
+   •   Espacios con menor distractor
+   •   Uso de tecnología
+
+b) Adecuaciones de tiempo
+
+   •   Tiempo adicional para responder
+   •   Evaluaciones en etapas
+   •   Pausas durante la evaluación
+
+c) Adecuaciones de formato
+
+   •   Pruebas orales en lugar de escritas
+   •   Uso de alternativas (selección múltiple, imágenes)
+
+
+                                                 87
+   •   Respuestas guiadas
+
+d) Adecuaciones en la exigencia
+
+   •   Priorización de objetivos de aprendizaje
+   •   Reducción de ítems
+   •   Evaluación de habilidades clave
+
+5. Instrumentos de evaluación sugeridos
+
+   •   Evaluaciones orales
+   •   Rúbricas de desempeño
+   •   Listas de cotejo
+   •   Observación directa
+   •   Portafolios
+   •   Trabajos prácticos
+   •   Producciones visuales
+
+6. Estrategias para aula multigrado
+
+   •   Evaluaciones diferenciadas por nivel
+   •   Actividades comunes con distintos niveles de complejidad
+   •   Tutorías entre pares
+   •   Evaluación por proceso
+
+
+
+
+                                                  88
+Anexo 10.1
+
+
+
+
+                              Registro de evaluación diversificada
+
+  Nombre del estudiante:
+  Curso:
+  Fecha:
+  Asignatura:
+  OA n° :
+
+
+
+
+     •   Tipo de adecuación aplicada:
+
+
+
+     •   Instrumento utilizado:
+
+
+
+     •   Resultado observado:
+
+
+
+     •   Observaciones:
+
+
+
+
+     •   Nombre del docente que aplico la evaluación:
+
+
+
+
+                                                89
+ANEXO 11: Protocolo de actuación frente a desregulación emocional TEA
+
+1. Objetivo:
+Resguardar el bienestar físico y emocional del estudiante ante situaciones de desregulación.
+
+2. Actuación:
+
+   •   Mantener calma y lenguaje simple
+
+   •   Disminuir estímulos
+
+   •   No confrontar
+
+   •   Acompañar respetuosamente
+
+3. Medidas de resguardo:
+
+   •   Evitar riesgos físicos
+
+   •   Proteger al estudiante y al grupo
+
+   •   No utilizar castigos
+
+4. Posterior:
+
+   •   Registrar situación
+
+   •   Informar a la familia
+
+   •   Ajustar estrategias
+
+
+
+
+                                                  90
+Anexo 12.- PLAN DE ACOMPAÑAMIENTO EMOCIONAL Y CONDUCTUAL (PAEC)
+
+1. Identificación del estudiante
+
+Ítem                                   Información
+
+Nombre (civil y social)
+
+Edad
+
+Fecha de nacimiento
+
+Curso/Nivel
+
+Establecimiento                        Escuela Cosapilla
+
+2. Datos del apoderado/a
+
+Ítem                                    Información
+
+Nombre
+
+Parentesco
+
+Teléfono 1
+
+Teléfono 2 (emergencia)
+
+3. Equipo de apoyo
+
+Nombre       Rol                            Función dentro del PAEC
+
+
+             Docente                        Implementación de estrategias pedagógicas
+
+
+             Personal del establecimiento   Apoyo emocional y contención
+
+
+
+
+                                                 91
+4. EJE PREVENTIVO
+
+4.1 Habilidades y necesidades de apoyo
+
+ Área                                           Descripción
+
+
+ Habilidades del estudiante
+
+
+ Necesidades de apoyo
+
+
+ Apoyos visuales requeridos
+
+
+ Rutinas necesarias
+
+
+ Espacios de calma
+
+
+ Ajustes pedagógicos
+
+
+ Objetivos de bienestar
+
+
+
+
+4.2 Intereses y experiencias de disfrute
+
+ Ítem                                              Descripción
+
+ Intereses del estudiante
+
+ Actividades que disfruta
+
+ Estímulos que favorecen bienestar
+
+ Objetos de apego
+
+ Actividades que reducen estrés
+
+
+
+
+                                           92
+4.3 Factores de riesgo y gatillantes
+
+ Ítem                                                     Descripción
+
+ Estresores identificados
+
+ Gatillantes de desregulación
+
+ Señales previas (alerta)
+
+5. EJE REACTIVO
+
+5.1 Manifestación del malestar
+
+ Ítem                                       Descripción
+
+ Conductas observadas
+
+ Nivel de intensidad
+
+
+
+5.2 Estrategias de respuesta
+
+ Estrategia                                    Descripción
+
+ Contención emocional
+
+ Reducción de estímulos
+
+ Espacio de calma
+
+ Apoyo adulto
+
+
+
+5.3 Medidas de resguardo
+
+ Ítem                                             Descripción
+
+ Acciones de protección
+
+ Prevención de riesgos
+
+
+
+
+                                       93
+6. Evaluación inicial (equipo + familia)
+
+ Área                                                      APLICA           Descripción
+
+ Aspectos sensoriales
+
+ Aspectos emocionales
+
+ Aspectos psicomotrices
+
+ Otros antecedentes relevantes
+
+
+
+7. Seguimiento del PAEC
+
+ Fecha         Observación                 Ajustes realizados         Responsable
+
+
+
+
+8. Fechas del plan
+
+ Ítem                                                               Fecha
+
+ Fecha de elaboración
+
+ Fecha de revisión 1
+
+ Fecha de revisión 2
+
+
+
+
+9. Comunicación
+
+ Ítem                                                                 Registro
+
+ Forma de comunicación con familia
+
+ Ajustes informados
+
+
+
+
+                                                      94
+10. Firmas
+
+Nombre                                   Cargo   Firma
+
+Representante del establecimiento
+
+Apoderado/a titular
+
+Apoderado/a suplente
+
+
+
+
+                                    95
+Anexo 13.- DEC establecido por el ministerio de educación.
+
+
+
+
+                                                 96
+97
+98
+Anexo 14.- PROTOCOLO DE ACTUACIÓN FRENTE A SITUACIONES DE RIESGO SUICIDA, IDEACIÓN SUICIDA,
+AUTOLESIONES E INTENTO SUICIDA
+
+I. FUNDAMENTACIÓN
+La Escuela reconoce que la salud mental constituye un elemento esencial para el desarrollo integral de
+niños, niñas y adolescentes. En consecuencia, toda manifestación de ideación suicida, autolesiones,
+intento suicida o conducta suicida deberá ser abordada de manera inmediata, resguardando el interés
+superior del estudiante, su derecho a la vida, a la protección y a recibir apoyo oportuno.
+El presente protocolo tiene por finalidad establecer procedimientos de actuación frente a situaciones
+de riesgo suicida que afecten a estudiantes del establecimiento, considerando las características
+territoriales y organizacionales de las escuelas rurales multigrado unidocentes.
+
+II. OBJETIVO
+Establecer acciones de detección, contención, evaluación inicial, derivación, comunicación,
+seguimiento y acompañamiento frente a situaciones de riesgo suicida, ideación suicida, autolesiones e
+intento suicida de estudiantes, resguardando su integridad física y psicológica y asegurando la
+activación oportuna de las redes de apoyo disponibles.
+
+III. ALCANCE
+El presente protocolo será aplicable a todos los estudiantes del establecimiento y deberá activarse
+cuando:
+a) Un estudiante manifieste deseos de morir.
+b) Un estudiante exprese pensamientos suicidas.
+c) Se detecten autolesiones.
+d) Se tome conocimiento de un intento suicida.
+e) Existan antecedentes que permitan presumir riesgo suicida.
+f) La información sea entregada por familiares, compañeros, miembros de la comunidad o cualquier
+persona que tenga conocimiento de la situación.
+
+IV. RESPONSABLE DE LA ACTIVACIÓN DEL PROTOCOLO
+La activación y ejecución del presente protocolo será responsabilidad del Profesor(a) Encargado(a) del
+establecimiento.
+En caso de ausencia, asumirá el funcionario previamente designado mediante acto administrativo
+interno.
+Serán funciones del responsable:
+    • Recibir antecedentes.
+    • Activar el protocolo.
+    • Brindar contención inicial.
+    • Aplicar la Escala Columbia de Severidad del Riesgo Suicida (C-SSRS).
+    • Informar al apoderado.
+    • Coordinar con la red de salud.
+    • Contactar a Carabineros cuando corresponda.
+    • Registrar las actuaciones realizadas.
+    • Realizar seguimiento del caso.
+
+
+
+                                               99
+V. PRINCIPIOS DE ACTUACIÓN
+Durante todo el procedimiento se deberá:
+a) Actuar con rapidez y prudencia.
+b) Proteger la integridad física y emocional del estudiante.
+c) Mantener la confidencialidad de la información.
+d) Evitar la exposición pública del estudiante.
+e) Garantizar un trato respetuoso y libre de estigmatización.
+f) Mantener coordinación con la familia y las redes de apoyo.
+
+VI. PROCEDIMIENTO DE ACTUACIÓN
+ETAPA 1: DETECCIÓN Y CONTENCIÓN INICIAL
+Al tomar conocimiento de una situación de riesgo suicida, el Profesor(a) Encargado(a):
+1) Entrevistará al estudiante en un espacio privado y seguro.
+2) Escuchará activamente sus necesidades y preocupaciones.
+3) Evitará emitir juicios, críticas o minimizar la situación.
+4) Mantendrá una actitud acogedora y de contención emocional.
+5) No dejará al estudiante sin supervisión adulta.
+6) Procurará mantener la continuidad de las actividades del resto del curso resguardando la
+    privacidad del estudiante.
+
+ETAPA 2: EVALUACIÓN INICIAL DEL RIESGO
+El Profesor(a) Encargado(a) aplicará la Escala Columbia de Severidad de Riesgo Suicida (C-SSRS), de
+acuerdo con las orientaciones entregadas por el Ministerio de Salud y el Ministerio de Educación.
+La aplicación de esta escala tendrá carácter de pesquisa inicial y no constituye diagnóstico clínico.
+La información obtenida deberá registrarse por escrito en el expediente reservado del caso.
+
+ESCALA DE COLUMBIA
+Pauta elaborada en base a COLUMBIA-ESCALA DE SEVERIDAD SUICIDA (C-SSRS). Versión para Chile –
+Pesquisa con puntos paraTriage. Kelly Posner, Ph.D © 2008. Revisada para Chile por Dra. Vania
+Martínez 2017. Versión completa en anexos.
+
+
+
+
+                                               100
+TOMA DE DECISIONES PARA EL PROFESOR(A) ENCARGADO(A)
+ENTREVISTADOR(A)
+La presente pauta orienta las acciones que deberá realizar el Profesor(a)
+Encargado(a) una vez aplicada la Escala Columbia de Severidad del Riesgo
+Suicida (C-SSRS).
+La finalidad de estas acciones es resguardar la vida e integridad del
+estudiante, activar oportunamente las redes de apoyo disponibles y
+asegurar la derivación al sistema de salud cuando corresponda.
+Importante: La aplicación de esta pauta no reemplaza la evaluación
+realizada por profesionales de salud. Su objetivo es orientar la toma de
+decisiones inmediatas dentro del ámbito educativo.
+
+SI EL ESTUDIANTE RESPONDE "NO" A TODAS LAS PREGUNTAS DE LA
+ESCALA
+Aun cuando no exista evidencia de ideación o conducta suicida, el
+estudiante puede presentar señales de alerta asociadas a dificultades
+emocionales o de salud mental.
+El Profesor(a) Encargado(a) deberá:
+1) Registrar la entrevista y los antecedentes observados.
+2) Informar al apoderado sobre la situación detectada.
+3) Recomendar evaluación en la Posta Rural o establecimiento de salud
+    correspondiente cuando existan señales de alerta relevantes.
+4) Mantener observación y seguimiento preventivo durante las semanas
+    siguientes.
+5) Registrar las acciones realizadas.
+
+RIESGO BAJO
+Si la respuesta fue "SÍ" únicamente en las preguntas 1 y/o 2
+• ¿Has deseado estar muerto(a) o poder dormirte y no despertar?
+• ¿Has tenido realmente la idea de suicidarte?
+El Profesor(a) Encargado(a) deberá:
+1) Informar al apoderado el mismo día en que se detecta la situación.
+2) Explicar la importancia de una evaluación de salud mental.
+3) Solicitar que el estudiante sea evaluado en la Posta Rural o
+     establecimiento de salud correspondiente.
+4) Registrar la derivación realizada.
+5) Mantener seguimiento periódico del estudiante.
+6) Fortalecer factores protectores dentro de la comunidad educativa,
+     promoviendo vínculos de apoyo y acompañamiento.
+
+RIESGO MEDIO
+Si la respuesta fue "SÍ" en la pregunta 3 o si la pregunta 6 corresponde a
+conductas ocurridas hace más de tres meses
+• ¿Has pensado en cómo llevarías esto a cabo?
+• ¿Alguna vez has hecho algo o te has preparado para terminar con tu
+     vida? (ocurrido hace más de tres meses)
+
+
+                                 101
+El Profesor(a) Encargado(a) deberá:
+1) Informar inmediatamente al apoderado o adulto responsable.
+2) Solicitar que el estudiante sea evaluado por el sistema de salud dentro
+    del plazo más breve posible.
+3) Coordinar comunicación con la Posta Rural correspondiente para
+    informar la situación y solicitar orientación.
+4) Entregar al apoderado los antecedentes necesarios para facilitar la
+    atención del estudiante.
+5) Mantener seguimiento activo hasta verificar que la evaluación de salud
+    se haya realizado.
+6) Recomendar medidas de protección mientras se concreta la atención,
+    tales como:
+7) Mantener supervisión adulta.
+8) Favorecer espacios de acompañamiento familiar.
+9) Limitar el acceso a elementos potencialmente peligrosos.
+10) Mantener comunicación frecuente con el estudiante.
+11) Registrar todas las actuaciones efectuadas.
+
+RIESGO ALTO
+Si la respuesta fue "SÍ" en las preguntas 4 o 5, o si la pregunta 6
+corresponde a conductas ocurridas durante los últimos tres meses
+• ¿Has tenido estas ideas y en cierto grado la intención de llevarlas a
+    cabo?
+• ¿Has elaborado un plan específico para suicidarte?
+• ¿Has realizado conductas preparatorias o intentos durante los últimos
+    tres meses?
+El Profesor(a) Encargado(a) deberá actuar de manera inmediata:
+1. Protección inmediata
+• No dejar solo al estudiante bajo ninguna circunstancia.
+• Mantener supervisión permanente.
+• Trasladar al estudiante a un espacio seguro y protegido.
+2. Comunicación inmediata
+• Contactar inmediatamente al apoderado o adulto responsable.
+• Solicitar su concurrencia inmediata al establecimiento.
+3. Activación de la Red de Salud
+• Contactar de forma inmediata a la Posta Rural correspondiente.
+• Solicitar orientación profesional respecto de las acciones a seguir.
+• Coordinar el traslado al establecimiento de salud que determine la red
+    sanitaria.
+4. Activación de Carabineros
+Cuando exista riesgo inminente para la vida del estudiante, dificultades
+para ubicar a la familia o necesidad de apoyo para el traslado y resguardo
+del estudiante, se deberá solicitar apoyo a Carabineros de Chile.
+5. Medidas de resguardo
+Mientras se concreta la atención de salud:
+• Mantener acompañamiento permanente.
+
+                                 102
+           •   Retirar elementos que pudieran facilitar una autolesión.
+           •   Favorecer un ambiente tranquilo y protector.
+           •   Evitar exponer al estudiante frente a otros miembros de la comunidad
+               educativa.
+           6. Registro e información institucional
+           • Registrar cronológicamente todas las actuaciones realizadas.
+           • Informar al sostenedor o a la unidad correspondiente según los
+               procedimientos institucionales vigentes.
+
+           7. Seguimiento posterior
+           Una vez atendido por la red de salud:
+           • Mantener contacto con la familia.
+           • Verificar la continuidad de la atención.
+           • Implementar medidas de acompañamiento durante el proceso de
+               reintegración escolar.
+           • Mantener seguimiento sistemático del caso.
+
+           PRINCIPIO GENERAL DE ACTUACIÓN
+           Ante cualquier nivel de riesgo identificado mediante la Escala Columbia, el
+           Profesor(a) Encargado(a) deberá priorizar siempre la protección de la vida
+           y la integridad del estudiante, actuando con celeridad, prudencia,
+           confidencialidad y coordinación permanente con la familia y las redes de
+           apoyo disponibles en el territorio.
+
+
+ETAPA 3: CLASIFICACIÓN DEL RIESGO
+A. Riesgo Bajo
+Se entenderá por riesgo bajo la presencia de ideas relacionadas con la muerte o deseos de
+desaparecer, sin planificación ni intención manifiesta de suicidio.
+Acciones
+1) Informar al apoderado el mismo día.
+2) Solicitar evaluación en la Posta Rural o establecimiento de salud correspondiente.
+3) Registrar las acciones realizadas.
+4) Mantener observación y seguimiento permanente.
+
+B. Riesgo Medio
+Se entenderá por riesgo medio la presencia de ideación suicida activa, con manifestación de
+intenciones o planificación incipiente.
+Acciones
+1) Informar inmediatamente al apoderado.
+2) Solicitar retiro inmediato del estudiante.
+3) Coordinar evaluación prioritaria con la Posta Rural correspondiente.
+4) Mantener supervisión permanente hasta la llegada del adulto responsable.
+5) Registrar todas las actuaciones.
+
+
+
+
+                                             103
+C. Riesgo Alto
+Se entenderá por riesgo alto la existencia de:
+• Plan suicida definido.
+• Acceso a medios para concretarlo.
+• Intento reciente.
+• Intención manifiesta de quitarse la vida.
+Acciones
+1) No dejar solo al estudiante bajo ninguna circunstancia.
+2) Informar inmediatamente al apoderado.
+3) Contactar de forma urgente a la Posta Rural correspondiente.
+4) Solicitar orientación inmediata al personal de salud.
+5) Contactar a Carabineros cuando la situación implique riesgo inminente para la vida o integridad del
+    estudiante.
+6) Gestionar el traslado al centro asistencial definido por la red de salud.
+7) Informar al sostenedor o unidad correspondiente.
+8) Mantener acompañamiento permanente hasta que el estudiante quede bajo responsabilidad de su
+    familia y/o del sistema de salud.
+
+VII. ACTUACIÓN FRENTE A AUTOLESIONES
+Cuando se detecten lesiones autoinfligidas:
+1) Brindar contención inmediata.
+2) Evaluar la necesidad de atención médica.
+3) Aplicar Escala Columbia.
+4) Informar al apoderado.
+5) Coordinar atención con la Posta Rural.
+6) Activar seguimiento del caso.
+
+VIII. ACTUACIÓN FRENTE A INTENTO SUICIDA
+Cuando ocurra un intento suicida dentro o fuera del establecimiento y la escuela tome conocimiento:
+1) Resguardar la vida e integridad física del estudiante.
+2) Aplicar primeros auxilios básicos dentro de las competencias del personal.
+3) Solicitar apoyo inmediato de la Posta Rural.
+4) Contactar al apoderado.
+5) Contactar a Carabineros cuando corresponda.
+6) Registrar cronológicamente los hechos.
+7) Mantener coordinación con la familia y el sistema de salud.
+
+IX. COMUNICACIÓN CON LA FAMILIA
+La familia deberá ser informada de manera inmediata ante cualquier situación de riesgo suicida.
+La comunicación deberá quedar registrada indicando:
+• Fecha.
+• Hora.
+• Medio utilizado.
+• Nombre del adulto contactado.
+• Acuerdos adoptados.
+
+                                              104
+Cuando no sea posible contactar al apoderado, se deberá dejar registro de todos los intentos
+realizados y coordinar apoyo con la red local de protección cuando corresponda.
+
+X. DENUNCIA DE POSIBLES VULNERACIONES DE DERECHOS
+Si durante la intervención surgen antecedentes de vulneración grave de derechos, maltrato, violencia
+intrafamiliar, abuso sexual, negligencia grave u otras situaciones que afecten al estudiante, el
+establecimiento deberá activar los protocolos específicos correspondientes y realizar las denuncias
+exigidas por la legislación vigente ante los organismos competentes.
+
+
+XI. SEGUIMIENTO Y ACOMPAÑAMIENTO
+El Profesor(a) Encargado(a) realizará seguimiento del caso mediante:
+• Entrevistas periódicas con el estudiante.
+• Entrevistas con el apoderado.
+• Coordinación con la red de salud.
+• Verificación de asistencia a controles.
+• Registro de acciones realizadas.
+El seguimiento deberá mantenerse mientras persistan factores de riesgo y, como mínimo, durante el
+período lectivo en que ocurrieron los hechos.
+
+XII. REINCORPORACIÓN DEL ESTUDIANTE
+Cuando el estudiante retorne a clases tras una crisis o intento suicida, el Profesor(a) Encargado(a):
+1) Sostendrá entrevista con el estudiante y su apoderado.
+2) Revisará las indicaciones emitidas por los profesionales de salud.
+3) Implementará medidas de apoyo pedagógico y socioemocional cuando corresponda.
+4) Mantendrá monitoreo permanente durante el proceso de reintegración.
+
+XIII. ACTUACIÓN FRENTE A SUICIDIO CONSUMADO
+Ante el fallecimiento de un estudiante por suicidio, el establecimiento deberá:
+1) Confirmar la información a través de fuentes oficiales.
+2) Informar al sostenedor.
+3) Coordinar acciones con la familia respetando su privacidad y decisiones.
+4) Solicitar apoyo a la red de salud para estudiantes y funcionarios que pudieran verse afectados.
+5) Evitar la difusión de detalles sobre el método utilizado.
+6) Implementar acciones de contención emocional para la comunidad educativa.
+7) Mantener registro de todas las actuaciones realizadas.
+
+
+XIV. REGISTRO Y CONFIDENCIALIDAD
+Toda actuación derivada de la aplicación de este protocolo deberá quedar registrada en actas,
+formularios o bitácoras institucionales resguardando la confidencialidad de los antecedentes y el
+interés superior del estudiante.
+La documentación tendrá carácter reservado y será utilizada exclusivamente para fines de protección y
+seguimiento.
+
+
+
+
+                                                105
+

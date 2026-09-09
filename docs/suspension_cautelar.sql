@@ -51,7 +51,7 @@ CREATE TABLE SUSPENSION_CAUTELAR (
   fundamento               text         NOT NULL,
 
   -- La notificación arranca los dos plazos. La ley exige que sea POR ESCRITO,
-  -- por eso el enum de medio_acuse va acá SIN 'telefono': una llamada no
+  -- por eso el enum de medio_notificacion va acá SIN 'telefono': una llamada no
   -- acredita notificación escrita.
   fecha_notificacion       datetime     NOT NULL,
   medio_notificacion       enum('presencial','correo','plataforma','carta') NOT NULL,
@@ -206,9 +206,18 @@ INSERT INTO ROL_PERMISOS (rol_id, permiso_id) VALUES
 -- ── PASO 5 ──────────────────────────────────────────────────────────────────
 -- Roles de los permisos nuevos.
 --
--- crear y resolver van SOLO al Director (más el admin del sistema): "El
--- director tendrá la facultad de suspender, como medida cautelar". No es una
--- decisión de producto, es quién puede firmarla.
+-- resolver va SOLO al Director (más el admin del sistema): la ley lo obliga a
+-- resolver el procedimiento previa consulta al Consejo de Profesores.
+--
+-- crear incluye además al Coordinador de convivencia (rol 3), por decisión
+-- expresa del usuario (31-ago-2026), porque en la práctica del establecimiento
+-- es quien carga la medida cuando el director no está.
+-- OJO — la ley dice "el director tendrá la facultad de suspender, como medida
+-- cautelar" (art. 6 letra d, DFL 2/1998): la facultad es nominativa del
+-- director. El permiso acá solo habilita a registrarla en el sistema; el acto
+-- notificado debe salir firmado por el director (o por quien lo subrogue
+-- formalmente), o la medida queda expuesta en fiscalización por incompetencia
+-- de quien la decretó.
 --
 -- registrar_reconsideracion incluye al Coordinador: la reconsideración se
 -- presenta ante el director, pero transcribir el acta del Consejo de
@@ -216,6 +225,6 @@ INSERT INTO ROL_PERMISOS (rol_id, permiso_id) VALUES
 
 INSERT INTO ROL_PERMISOS (rol_id, permiso_id) VALUES
   (1,110),(2,110),(3,110),(5,110),(15,110),(18,110),
-  (1,111),(2,111),
+  (1,111),(2,111),(3,111),
   (1,112),(2,112),(3,112),
   (1,113),(2,113);

@@ -27,8 +27,13 @@ const create = async (req, res) => {
 
   try {
     const [result] = await pool.query(
-      `INSERT INTO ESTUDIANTE (run, dv, nombre, apellido, sexo, id_curso, id_establecimiento)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      // `activo = 0` explícito y no heredado del DEFAULT de la columna: un alta
+      // no activa a nadie. Se activa cuando el estudiante entra a un registro
+      // de convivencia, que es cuando el sistema tiene algo que decir de él;
+      // hasta entonces la matrícula completa no tiene por qué figurar como
+      // gente con la que el establecimiento está trabajando.
+      `INSERT INTO ESTUDIANTE (run, dv, nombre, apellido, sexo, id_curso, id_establecimiento, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
       [run, dv, nombre, apellido, sexo, id_curso, req.id_establecimiento]
     );
     res.status(201).json({ id_estudiante: result.insertId, message: 'Estudiante creado' });
@@ -151,7 +156,8 @@ const consultarRut = async (req, res) => {
       // registros: desde la ficha del estudiante también se necesita ver si el
       // caso tiene un protocolo andando y poder entrar a seguirlo.
       `SELECT r.*, tf.nombre AS tipo_falta_nombre, tf.gravedad, re.rol_en_incidente,
-              u.correo AS autor_correo, um.correo AS editor_correo,
+              u.nombre AS autor_nombre, u.correo AS autor_correo,
+              um.nombre AS editor_nombre, um.correo AS editor_correo,
               ${COLUMNAS_ESTADO_PROTOCOLO}
        FROM REGISTRO_CONVIVENCIA r
        JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro

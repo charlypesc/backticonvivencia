@@ -86,7 +86,7 @@ CREATE TABLE CATALOGO_PROTOCOLO_PASO_CAMPO (
   id_paso        INT NOT NULL,
   codigo         VARCHAR(50) NOT NULL,   -- 'hubo_violencia_fisica' (lo que usa la condición)
   etiqueta       VARCHAR(150) NOT NULL,
-  tipo_campo     ENUM('texto','numero','fecha','seleccion','booleano') NOT NULL,
+  tipo_campo     ENUM('texto','numero','fecha','seleccion') NOT NULL,
   opciones       JSON DEFAULT NULL,      -- solo 'seleccion': ["leve","grave","gravisima"]
   es_obligatorio TINYINT(1) NOT NULL DEFAULT 0,
   orden          INT DEFAULT 0,
@@ -168,7 +168,7 @@ CREATE TABLE PROTOCOLO_ESTABLECIMIENTO_PASO_CAMPO (
   id_paso_estab  INT NOT NULL,
   codigo         VARCHAR(50) NOT NULL,
   etiqueta       VARCHAR(150) NOT NULL,
-  tipo_campo     ENUM('texto','numero','fecha','seleccion','booleano') NOT NULL,
+  tipo_campo     ENUM('texto','numero','fecha','seleccion') NOT NULL,
   opciones       JSON DEFAULT NULL,
   es_obligatorio TINYINT(1) NOT NULL DEFAULT 0,
   orden          INT DEFAULT 0,
@@ -295,7 +295,7 @@ CREATE TABLE PROTOCOLO_ACTIVADO_PASO_CAMPO (
   id_activado_paso  INT NOT NULL,
   codigo         VARCHAR(50) NOT NULL,
   etiqueta       VARCHAR(150) NOT NULL,
-  tipo_campo     ENUM('texto','numero','fecha','seleccion','booleano') NOT NULL,
+  tipo_campo     ENUM('texto','numero','fecha','seleccion') NOT NULL,
   opciones       JSON DEFAULT NULL,
   es_obligatorio TINYINT(1) NOT NULL DEFAULT 0,
   orden          INT DEFAULT 0,

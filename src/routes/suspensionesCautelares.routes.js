@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const {
-  registrarReconsideracion, resolver,
+  actualizar, registrarReconsideracion, resolver,
 } = require('../controllers/suspensionCautelar.controller');
 const { verifyToken, requirePermission } = require('../middleware/auth');
 const { resolverScope, requireEstablecimiento } = require('../middleware/scope');
@@ -11,6 +11,11 @@ const { Permiso } = require('../constants/permisos');
 // sancionatorio no existe. Acá van las acciones sobre una suspensión concreta,
 // que ya no necesitan saber de qué caso viene.
 router.use(verifyToken, resolverScope, requireEstablecimiento);
+
+// Corregir va con el permiso de crear: quien puede decretar la cautelar es
+// quien puede arreglar el error con que la cargó. El controller se encarga de
+// cerrar la ventana apenas hay reconsideración o resolución.
+router.put('/:id', requirePermission(Permiso.SuspensionCautelarCrear), actualizar);
 
 router.patch('/:id/reconsideracion',
   requirePermission(Permiso.SuspensionCautelarRegistrarReconsideracion), registrarReconsideracion);

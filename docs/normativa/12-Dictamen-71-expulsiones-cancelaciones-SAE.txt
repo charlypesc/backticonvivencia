@@ -1,0 +1,529 @@
+MATERIA:
+
+Sobre el efecto de las expulsiones y cancelaciones de matrícula en las asignaciones efectuadas por el
+Sistema de Admisión Escolar.
+
+ANTECEDENTES:
+
+1) Resolución Exenta N° 0413, del 09 de junio de 2017, que aprueba instrucciones que reglamentan la
+   potestad interpretativa de la Superintendencia de Educación, fijadas mediante Ordinario N° 504, del 24
+   de julio de 2014, del Superintendente de Educación.
+2) Memo Interno 8DPDE N° 3192, de fecha 22 de noviembre de 2024, de la Jefa de la División de
+   Protección de Derechos Educacionales de la Superintendencia de Educación.
+
+FUENTES:
+
+Constitución Política de la República de Chile; Ley N° 21.430; D.F.L. N° 2, de 2009; D.F.L. N° 2, de 1998;
+Decreto Supremo N°152, de 2016, todos del Ministerio de Educación.
+
+CONCORDANCIAS: Dictamen N° 52, de 2020, de la Superintendencia de Educación.
+
+                                             ________________________________________
+
+                                             DIC.: Nº
+
+                                             SANTIAGO,
+
+
+
+DE:     MAURICIO FARÍAS ARENAS
+        SUPERINTENDENTE DE EDUCACIÓN
+
+
+A:      MARGGIE MUÑOZ VERÓN
+        JEFA DIVISIÓN DE PROTECCIÓN DE DERECHOS EDUCACIONALES
+        SUPERINTENDENCIA DE EDUCACIÓN
+
+
+Mediante el memo del antecedente 2), la Jefa de la División de Protección de Derechos Educacionales de
+la Superintendencia de Educación solicita aclarar el efecto que las medidas disciplinarias de expulsión y
+cancelación de matrícula tienen en la asignación de estudiantes en el Sistema de Admisión Escolar (SAE),
+respecto de los establecimientos en los que se aplicaron aquellas medidas.
+
+Según surge del tenor de la presentación, este Servicio ha tomado conocimiento en la tramitación de
+denuncias de casos en que estudiantes a los que se les dispuso la medida disciplinaria de expulsión o
+cancelación de matrícula el año escolar anterior, son asignados nuevamente, previa postulación voluntaria,
+en el mismo establecimiento que perpetró la sanción. Asimismo, se indica que la regulación expresa del
+Sistema de Admisión Escolar nada indica respecto del efecto de tales medidas disciplinarias en las
+asignaciones de cupos.
+
+Debido a ello, requiere se informe del procedimiento aplicable a estos casos, el efecto que tendrían estas
+asignaciones respecto del ejercicio de sus facultades disciplinarias y los límites temporales en que podrían
+operar estas sanciones respecto de futuras postulaciones que realicen los mismos estudiantes sancionados
+con este tipo de medidas.
+
+Sobre el particular, cumplo con informar lo siguiente:
+
+
+
+
+                                                                                                         1
+     1. MARCO GENERAL. PROTECCIÓN DE LAS TRAYECTORIAS EDUCATIVAS
+
+La Constitución Política de la República (CPR), en su artículo 19 N°10, consagra el derecho a la educación
+y define su objeto, orientándolo al pleno desarrollo de la persona en las distintas etapas de su vida.
+Correlativamente a este derecho, se establece la obligatoriedad de la educación básica y la educación
+media, estando a su vez el Estado compelido a financiar un sistema gratuito, destinado a asegurar el acceso
+a ellas de toda la población.
+
+En línea con lo anterior, el artículo 3 del Decreto con Fuerza de Ley N°2 de 2009, del Ministerio de
+Educación1 (Ley General de Educación o LGE) señala que “el sistema educativo chileno se construye sobre
+la base de los derechos garantizados en la Constitución, así como en los tratados internacionales
+ratificados por Chile y que se encuentren vigentes y, en especial, del derecho a la educación y la libertad
+de enseñanza”. Luego, se detallan los principios en los cuales se inspira el sistema educativo, destacando
+para el propósito de la consulta los de equidad del sistema educativo, educación permanente, diversidad2,
+integración e inclusión3.
+
+En el caso del principio de educación permanente, de raigambre constitucional4 y consustancial al concepto
+mismo de educación5, la define como un proceso que debe estar al alcance de todas las personas a lo
+largo de toda la vida.
+
+Si bien son múltiples y variadas las normas legales que explícitamente van dando contenido a este
+principio6, su expresión más clara se vincula con la continuidad del proceso educativo o, en términos más
+concretos, con la protección de las trayectorias educativas. En efecto, la misma LGE, al referirse a la
+educación formal en su artículo 2, dispone que “es aquella que está estructurada y se entrega de manera
+sistemática y secuencial. Está constituida por niveles y modalidades que aseguran la unidad del proceso
+educativo y facilitan la continuidad del mismo a lo largo de la vida de las personas”.
+
+Conforme a lo expuesto, el artículo 11 de la Ley General de Educación exige de todos los establecimientos
+educacionales que no se impida el ingreso y permanencia en el sistema educativo a los y las estudiantes
+por circunstancias como el embarazo, el cambio del estado civil de los padres, madres y/o apoderados, el
+rendimiento escolar del alumno, la repitencia, el no pago de obligaciones contraídas por los padres, entre
+otras, razones todas vinculadas con el principio de no discriminación arbitraria, que se recoge
+expresamente en el inciso final de dicho artículo, y que tiene múltiples manifestaciones en todo el sistema
+educativo7.
+
+Por su parte, la Ley N° 21.4308 (Ley de Garantías de la Niñez), en su artículo 41, referido al derecho a la
+educación, dispone que las medidas pedagógicas y disciplinarias que puedan adoptarse en conformidad a
+la ley y los reglamentos, respecto de los niños, niñas y adolescentes en el contexto de la actividad
+educacional, deberán siempre basarse en un procedimiento que garantice el pleno respeto de sus derechos
+y ser compatibles con los fines de la educación y con la dignidad del niño, niña o adolescente (inciso 8°).
+
+Luego, el mismo artículo 41 de la Ley de Garantías de la Niñez promueve, en su inciso 5°, una regla de
+clausura que impone a los órganos de la Administración del Estado competentes la obligación de tomar
+todas las medidas necesarias para que ningún niño, niña o adolescente sea excluido del sistema
+educacional o vea limitado su derecho a la educación por motivos que puedan ser constitutivos de
+discriminación arbitraria.
+
+
+1
+  Que fija texto refundido, coordinado y sistematizado de la ley Nº20.370 con las normas no derogadas del decreto con fuerza de ley
+Nº 1, de 2005. D.O. 02.07.2010.
+2
+  “El sistema debe promover y respetar la diversidad de procesos y proyectos educativos institucionales, así como la diversidad
+cultural, religiosa y social de las familias que han elegido un proyecto diverso y determinado, y que son atendidas por él, en
+conformidad a la Constitución y las leyes.
+En los establecimientos educacionales de propiedad o administración del Estado se promoverá la formación laica, esto es, respetuosa
+de toda expresión religiosa, y la formación ciudadana de los estudiantes, a fin de fomentar su participación en la sociedad”.
+3
+  “El sistema propenderá a eliminar todas las formas de discriminación arbitraria que impidan el aprendizaje y la participación de los
+y las estudiantes, y posibilitará la integración de quienes tengan necesidades educativas especiales.
+Asimismo, el sistema propiciará que los establecimientos educativos sean un lugar de encuentro entre los y las estudiantes de distintas
+condiciones socioeconómicas, culturales, étnicas, de género, de nacionalidad o de religión”.
+4
+  “La educación tiene por objeto el pleno desarrollo de la persona en las distintas etapas de su vida”, artículo 19, N° 10, inciso 2°, de
+la Constitución Política de la República.
+5
+  “La educación es un proceso de aprendizaje permanente que abarca las distintas etapas de la vida de las personas (…)”, artículo 2,
+inciso 1°, de la Ley General de Educación.
+6
+  Por ejemplo, la normativa educacional impone al sostenedor de establecimientos educacionales reconocidos por el Estado, el deber
+de garantizar la continuidad del servicio educativo y crear en los años sucesivos los cursos necesarios para completar el nivel, cuando
+el reconocimiento del establecimiento no alcanza a todos sus cursos.
+7
+  Sobre el particular, ver la Resolución Exenta N° 707, de 2022, de la Superintendencia de Educación que aprueba Circular sobre la
+aplicación de los principios de no discriminación e igualdad de trato en el ámbito educativo.
+8
+  Sobre garantías y protección integral de los derechos de la niñez y adolescencia. D.O. 15.03.2022.
+
+                                                                                                                                       2
+En síntesis, es de importancia cardinal para el legislador educacional resguardar la permanencia y
+progresión de las y los estudiantes en el sistema escolar, desde la educación parvularia hasta la enseñanza
+media, cuyo tránsito debe estar exento de toda forma de discriminación arbitraria.
+
+
+
+     2. SISTEMA DE ADMISIÓN ESCOLAR
+
+En el caso de los establecimientos que imparten educación regular y que reciben subvención o aportes del
+Estado, es necesario observar que la Ley N°20.8459 (Ley de Inclusión Escolar o LIE), entre otras acciones,
+modificó los artículos 12 y 13 de la Ley General de Educación, estableciendo que el proceso de admisión
+se realizará por medio de un sistema que garantice la transparencia, equidad e igualdad de oportunidades,
+y que vele por el derecho preferente de los padres, madres o apoderados de elegir el establecimiento
+educacional para sus hijos10. Asimismo, consagra que “en ningún caso se podrán implementar procesos
+que impliquen discriminaciones arbitrarias, debiendo asegurarse el respeto a la dignidad de los alumnos,
+alumnas y sus familias, de conformidad con las garantías reconocidas en la Constitución y en los tratados
+internacionales sobre derechos humanos ratificados por Chile, en especial aquellos que versen sobre
+derechos de los niños y que se encuentren vigentes”11.
+
+Del mismo modo, la Ley de Inclusión Escolar introdujo los artículos 7 bis y siguientes al Decreto con Fuerza
+de Ley N°2, de 1998, del Ministerio de Educación 12 (Ley de Subvenciones o LS), mediante los cuales se
+establecen las bases del sistema de admisión escolar, y posteriormente se dicta el Decreto Supremo N°152,
+de 2016, de la misma cartera ministerial13, que aprueba el reglamento de dicho proceso de admisión y
+organiza el procedimiento de postulación y admisión de los y las estudiantes, la determinación de los cupos
+dentro del establecimiento y la información que deberán entregar las entidades sostenedoras al Ministerio
+de Educación y a los padres, madres y apoderados del establecimiento educacional.
+
+En concreto, de acuerdo a lo dispuesto en dichos cuerpos normativos, el Sistema de Admisión Escolar
+(SAE) se materializa a través de una plataforma de registro en línea que se encuentra a disposición del
+público y que es administrada por el Ministerio de Educación. En ella, en la oportunidad establecida en el
+calendario correspondiente, los apoderados podrán postular a todos los establecimientos de su interés,
+manifestando el orden de sus preferencias de forma descendente 14. Si el establecimiento cuenta con cupos
+suficientes para las postulaciones recibidas, todos los estudiantes serán admitidos; si ello no ocurre, se
+aplica un mecanismo de asignación aleatorio, en virtud del cual los postulantes serán asignados en su más
+alta preferencia posible considerando las reglas de acceso –especialmente los criterios de prioridad- y las
+vacantes de cada establecimiento15.
+
+A continuación, aquellos apoderados que rechazaron la asignación y quienes no postularon por cualquier
+causa, podrán volver a postular, o hacerlo por primera vez en su caso, mediante el mecanismo
+complementario de asignación, regulado en los artículos 48 y siguientes del Decreto N°152.
+
+Finalmente, respecto de los apoderados que, participando en los mecanismos principal o complementario
+de asignación, o no habiendo participado de aquellos, requieran cambio de establecimiento, el Decreto
+N°152 en los artículos 54 y siguientes instaura el procedimiento de regularización de acuerdo al cual
+deberán inscribirse en un registro público, denominado comunicacionalmente como “anótate en la lista”, e
+ingresar solicitudes de matrícula en los establecimientos de su preferencia, las que serán asignadas por
+orden de ingreso a medida que se generen cupos en el nivel correspondiente.
+
+Con la implementación de este sistema se materializan los principios declarados en la Ley General de
+Educación, y los contenidos en las modificaciones introducidas por la Ley de Inclusión Escolar, así como
+con lo dispuesto en el artículo 7 ter inciso 2° de la Ley de Subvenciones que prescribe que “todos los
+estudiantes que postulen a un establecimiento educacional deberán ser admitidos, en caso de que los
+cupos disponibles sean suficientes en relación al número de postulaciones”. Igual precepto se reitera tanto
+
+
+
+9
+   De inclusión escolar que regula la admisión de los y las estudiantes, elimina el financiamiento compartido y prohíbe el lucro en
+establecimientos educacionales que reciben aportes del Estado. D.O. 08.06.2015.
+10
+   Artículo 12 inciso 2° de la Ley General de Educación.
+11
+   Artículo 13 inciso 1° de la Ley General de Educación.
+12
+    Fija texto refundido, coordinado y sistematizado del decreto con fuerza de ley Nº 2, de 1996, sobre subvención del Estado a
+establecimientos educacionales. D.O. 28.11.1998.
+13
+    Que aprueba reglamento del proceso de admisión de los y las estudiantes de establecimientos educacionales que reciben
+subvención a la educación gratuita o aportes del Estado. D.O. 09.08.2016
+14
+   Artículo 20 Decreto N°152.
+15
+   Artículo 40 Decreto N°152.
+
+                                                                                                                                 3
+en el artículo 32, respecto del procedimiento principal de admisión, como en el artículo 56, para el de
+regularización, ambos del Decreto N°152.
+
+De esta forma, la normativa educacional busca garantizar el acceso a la educación eliminando cualquier
+límite y prohibición - que no sea la disponibilidad de cupos suficientes para matrícula- que impida el ingreso
+de un estudiante a un establecimiento educacional.
+
+Sin embargo, este principio presenta una colisión aparente con el efecto natural de la aplicación de las
+medidas disciplinarias de expulsión y cancelación de matrícula a los estudiantes, el que debe ser
+considerado en la asignación de cupos a los postulantes.
+
+
+
+     3. EXPULSIÓN Y CANCELACIÓN DE MATRÍCULA COMO MEDIDAS DISCIPLINARIAS POR FALTAS A LA
+          CONVIVENCIA ESCOLAR
+
+La Ley General de Educación indica que el propósito compartido de la comunidad educativa se expresa en
+la adhesión tanto al proyecto educativo del establecimiento como a sus reglas de convivencia, establecidas
+en el reglamento interno. Este último instrumento es fruto de las atribuciones organizacionales que detentan
+las entidades sostenedoras en virtud de la libertad de enseñanza 16, y contar con él se constituye como un
+requisito para obtener y mantener el reconocimiento oficial del Estado.
+
+En concreto, el reglamento interno debe regular las relaciones entre el establecimiento y los distintos
+miembros de la comunidad escolar, describiendo, entre otras materias, las conductas que constituyan faltas
+a la convivencia escolar, así como las medidas disciplinarias que pudieren ser decretadas, las que pueden
+ir desde la amonestación hasta la expulsión o cancelación de matrícula 17-18.
+
+Estas últimas sanciones importan una separación permanente de la o el estudiante respecto de su
+comunidad educativa, restringiendo el ejercicio del derecho a la educación19, por lo que revisten una
+especial gravedad y sólo pueden ser aplicadas excepcionalmente, como medidas de última ratio -o de
+último recurso- ante situaciones que afecten gravemente la convivencia escolar 20 y habiendo agotado las
+instancias previas21. En el caso de la expulsión, la exclusión del establecimiento se materializa al momento
+en que la decisión queda firme; mientras que la cancelación de matrícula se aplica con un carácter
+suspensivo que se concreta en el periodo escolar siguiente, en el que el estudiante no podrá volver al
+establecimiento.
+
+En la regulación expresa del Sistema de Admisión Escolar se hace referencia a estas medidas a propósito
+de lo dispuesto en el artículo 7 ter inciso 3° de la Ley de Subvenciones, que instaura criterios de prioridad
+que debe considerar el sistema al momento de efectuar la asignación de cupos en aquellos casos en que
+exista una demanda de estudiantes mayor a la cantidad de cupos reportados por la entidad sostenedora.
+Entre ellos, el cuarto criterio lo constituye la circunstancia de haber estado matriculado anteriormente en el
+establecimiento educacional al que se postula, “salvo que el mismo postulante hubiere sido expulsado con
+anterioridad del mismo”. La misma disposición se reitera en el artículo 27 letra d), del Decreto N°15222. No
+obstante, en ninguna de ellas existe una exclusión de los estudiantes expulsados, sino que representan
+sólo una pérdida de prioridad, pudiendo ingresar al establecimiento si los cupos son suficientes para todos
+los postulantes, o bien por aplicación del procedimiento aleatorio.
+
+Por otra parte, el inciso 11° del artículo 7 ter de la Ley de Subvenciones, indica que en caso de que un
+postulante no haya sido admitido en ninguna de sus opciones escogidas, se procederá a registrar a dicho
+estudiante en el establecimiento educacional más cercano a su domicilio que cuente con cupos disponibles,
+
+16
+   Estima el Tribunal Constitucional que el derecho de organizar establecimientos educacionales incluye la determinación de reglas
+pertinentes al orden y disciplina en la convivencia interna. Sentencia Tribunal Constitucional rol 410, considerando 10°.
+17
+   Artículo 46, letra f) de la Ley General de Educación.
+18
+   Cabe acotar que, aun cuando el Sistema de Admisión Escolar aplica desde el primer nivel de transición, al estar prohibida la
+aplicación de medidas disciplinarias a párvulos, en los términos indicados en el artículo 8, inciso cuarto, del Decreto Supremo N° 315,
+de 2010, del Ministerio de Educación, el criterio que aquí se desarrolla sólo tiene aplicación en los niveles básico y medio.
+19
+   En efecto, como expresión del principio general y básico del derecho constitucional chileno de “reserva legal” en la regulación del
+ejercicio de los derechos fundamentales, esta restricción sólo es tolerable al encontrarse regulada por ley (STC Rol N° 3.028-16,
+considerando 17°), y su aplicación debe obedecer a su necesariedad y proporcionalidad en relación con los derechos que pretenden
+proteger (art. 3, inciso tercero de la Ley N° 21.430).
+20
+   Ver a este respecto el acápite 1 del Dictamen N° 52, de 2020, de la Superintendencia de Educación, especialmente en lo relativo
+al principio de proporcionalidad.
+21
+   Salvo que se sancione una conducta que atente directamente contra la integridad física o psicológica de alguno de los miembros
+de la comunidad escolar, en los términos indicados en el párrafo 9 del artículo 6, letra d) de la Ley de Subvenciones.
+22
+   “El procedimiento de admisión debe considerar los siguientes criterios de prioridad, en orden sucesivo: […] d) La circunstancia de
+haber estado matriculado anteriormente en el establecimiento al que postula, en un curso que haya recibido subvención, y que
+corresponda a la misma modalidad educacional, salvo que el postulante hubiere sido expulsado con anterioridad del mismo”.
+
+                                                                                                                                     4
+“salvo que hubiere sido expulsado de aquel”, caso en el cual será registrado en el siguiente más cercano
+a su domicilio. Dicha norma se replica en el artículo 51 del Decreto N°15223.
+
+Como es posible observar, tales preceptos no se refieren a los efectos de la expulsión y la cancelación de
+matrícula en el proceso de admisión que se lleva a cabo a través del SAE o por el sistema “Anótate en la
+lista” cuando un postulante sea seleccionado por el sistema para matricularse en el mismo establecimiento
+educacional que haya decretado alguna de dichas medidas en su contra, ya sea porque existe una mayor
+disponibilidad de cupos que postulantes, o porque su registro en el sistema de regularización corresponde
+a los primeros lugares de la lista, según corresponda.
+
+En tales casos, de acuerdo a la regla general prevista en el artículo 32 del Decreto N°152 ya revisada, el
+establecimiento educacional estaría obligado a proceder a su matrícula. La misma situación ocurriría en el
+proceso de regularización, de acuerdo a lo previsto en el artículo 56 del mismo Decreto.
+
+No obstante, en el caso de que un estudiante haya sido expulsado, o se le haya cancelado la matrícula por
+infracciones a las normas de convivencia escolar, estamos en la presencia de sanciones por haber incurrido
+en las conductas de mayor trascendencia dentro de un espacio educativo, que necesariamente han
+afectado gravemente la convivencia escolar, por lo que su reingreso al establecimiento a través del Sistema
+de Admisión Escolar, al menos en el corto plazo, generará previsibles efectos negativos en el clima
+educativo.
+
+Por ello, y pese a que no se contempla una solución expresa ante tales situaciones, la normativa que rige
+el proceso de admisión no puede desconocer el espíritu de la Ley General de Educación, que entrega a
+las entidades sostenedoras el ejercicio de la potestad disciplinaria, permitiéndoles hacer valer las sanciones
+que se decretan. En la práctica, esto supone que aquella atribución, delegada a los Directores de
+establecimientos educacionales, de acuerdo a lo prescrito en el inciso 11° del literal d) del artículo 6 de la
+Ley de Subvenciones, necesariamente contiene la posibilidad de que éstos puedan oponerse a efectuar la
+matrícula de los estudiantes asignados por el SAE que hayan sido sancionados con su expulsión o
+cancelación de matrícula en el mismo establecimientos educativo, a fin de evitar la disolución del efecto de
+estas medidas disciplinarias.
+
+Como es posible advertir, la consecuencia natural de cada una de estas medidas admite no sólo que un
+estudiante sea excluido del establecimiento educacional al que asistía, sino además que no reingrese -a lo
+menos- en el período inmediatamente posterior, salvo que el propio establecimiento, en virtud de su
+autonomía, consienta en su reincorporación inmediata24.
+
+Sin embargo, el ejercicio de aquellas potestades particulares -tanto la disciplinaria como la negativa a la
+matrícula asignada por SAE- así como la interpretación sobre su delimitación que pudiere hacer la
+Administración, está circunscrita a la preeminencia del interés superior del niño, especificado en el artículo
+7 de la Ley de Garantías de la Niñez, que se consagra como principio estructural del corpus iuris y como
+norma de protección adaptada y reforzada de los derechos fundamentales de niños, niñas y adolescentes,
+y además como norma interpretativa esencial en toda decisión, medida y/o resolución que pueda afectar
+el ejercicio de tales derechos y que obliga a toda entidad, pública o privada, a ponderar las circunstancias
+específicas de cada niño, niña o adolescente, incluyendo los efectos probables que la decisión pueda
+causar en el futuro.
+
+Lo mismo ocurre con la concurrencia indispensable de los principios de legalidad, gradualidad,
+progresividad y proporcionalidad que nutren y dan contenido a la garantía del justo procedimiento en
+cualquier íter disciplinario -expresamente reconocida en el artículo 46, letra f), de la Ley General de
+Educación- y que exigen, como elemento integrante de un procedimiento previo, racional y justo, la
+demarcación del alcance material y temporal de toda sanción que implique la vulneración de un derecho
+fundamental. En este caso, tanto la expulsión como la cancelación de matrícula no sólo afectan el ejercicio
+del derecho a la educación, sino que su proyección en el tiempo -materializada en la imposibilidad de volver
+
+23
+   “Cuando un estudiante no sea asignado a ninguno de los establecimientos de su preferencia, y no sea posible aplicar lo dispuesto
+en el artículo 42 del presente reglamento, será asignado al establecimiento gratuito más cercano a su domicilio que cuente con
+vacantes y no se encuentre en la categoría de "Insuficiente" respecto del nivel postulado conforme a la última ordenación de
+desempeño que establezca la Agencia de Calidad de la Educación, ni se encuentre el establecimiento en la categoría denominada
+"en recuperación", conforme a la clasificación establecida en la Ley Nº 20.248, o aquel instrumento que las reemplace. Si hubiere sido
+expulsado con anterioridad del establecimiento al que fue asignado, lo será al siguiente más cercano que cumpla con las condiciones
+indicadas, y así sucesivamente.”.
+24
+   Con todo, el penúltimo inciso del artículo 6, letra d) de la Ley de Subvenciones, señala expresamente que “el Ministerio de
+Educación, a través de la Secretaría Regional Ministerial respectiva, velará por la reubicación del estudiante sancionado, en
+establecimientos que cuenten con profesionales que presten apoyo psicosocial, y adoptará las medidas para su adecuada inserción
+en la comunidad escolar. Además, informará de cada procedimiento sancionatorio que derive en una expulsión, a la Defensoría de
+los Derechos de la Niñez, cuando se trate de menores de edad”.
+
+                                                                                                                                    5
+a ingresar al mismo establecimiento- lesiona el derecho de los padres a escoger el establecimiento de
+enseñanza para sus hijos, consagrado en el artículo 19 N° 11, inciso 4°, de la Constitución.
+
+
+
+     4. EFECTOS TEMPORALES DE LA MEDIDA DE EXPULSIÓN Y CANCELACIÓN DE MATRÍCULA.
+
+Habida consideración de que la expulsión y la cancelación de matrícula son medidas adoptadas por
+particulares que restringen el ejercicio de derechos fundamentales, éstas tienen un carácter extraordinario
+y no pueden generar un efecto perpetuo que impida permanentemente que el estudiante retorne al
+establecimiento. A este respecto, es el propio artículo 3 de la Ley de Garantías de la Niñez el que dispone
+que las limitaciones de derechos deben ser excepcionales, aplicarse por el menor tiempo posible y tener
+una duración determinada.
+
+Asimismo, si se asumiera que el efecto de tales medidas pudiera extenderse por un periodo indefinido
+respecto del proceso de admisión, aquello atentaría no sólo en contra de las normas esenciales del justo
+procedimiento, sino que también en contra lo dispuesto en los artículos 12 y 13 de la Ley General de
+Educación, tornándolo en un proceso que no asegura el ingreso y permanencia en el sistema educativo a
+los y las estudiantes y, en consecuencia, atentatorio al derecho a la educación y, como se adelantó, al
+derecho preferente de los padres a elegir el establecimiento de sus hijos. Por lo demás, aquello implicaría
+obviar el carácter formativo que es connatural a la adopción de medidas disciplinarias en el sistema escolar,
+más aún si se considera que sus destinatarios son mayoritariamente niños, niñas y adolescentes.
+
+En el caso de la cancelación de matrícula, se trata de una medida disciplinaria que impide que el estudiante
+sancionado sea matriculado en el mismo establecimiento en el año escolar siguiente. Evidentemente, para
+que esta medida sea efectiva, su alcance debe considerar todo dicho año escolar, y no sólo el período
+inicial de éste, por lo que su efecto alcanza a toda la anualidad.
+
+En cuanto a la expulsión, supone el término de la matrícula y la salida inmediata del estudiante del
+establecimiento, lo que razonablemente excluye la posibilidad de que sea matriculado nuevamente durante
+el mismo año escolar en que se aplique esta sanción y durante el año escolar siguiente, de forma que en
+su materialización tiene una duración superior a la cancelación de matrícula.
+
+Sin embargo, por tratarse de la sanción de mayor entidad en el ámbito escolar, planteada como una
+respuesta drástica a una situación que afectó gravemente la convivencia escolar, al momento de aplicar la
+medida de expulsión los establecimientos pueden, en el ámbito de su autonomía y siempre que se
+encuentre expresamente regulado en su Reglamento Interno, ampliar excepcionalmente por hasta un año
+escolar el plazo en el cual el estudiante no se encontrará habilitado a ser matriculado en el mismo
+establecimiento, decisión que debe justificarse y materializarse en el acto que impone la medida
+disciplinaria25. Así, en consideración a criterios objetivos y a argumentos debidamente fundados, la
+expulsión de un estudiante habilita a los establecimientos educacionales a negarse a matricularlo en la
+misma institución en el año escolar en que se impone la medida y en los dos años escolares siguientes.
+
+Una vez concluidos los plazos expuestos en los párrafos anteriores, las entidades sostenedoras no podrán
+oponerse a matricular a los estudiantes que hubieren sido sancionados con la medida de expulsión o
+cancelación de matrícula, en el evento en que hubieren postulado y fueran asignados por el SAE, en
+cualquiera de sus etapas, en el mismo establecimiento educacional que impuso la sanción.
+
+Sin perjuicio de lo anterior, debe advertirse que la posibilidad de oponerse a la matrícula por parte de los
+establecimientos que hubieren decretado la medida de expulsión o cancelación de matrícula por cualquiera
+de las causales antedichas respecto de un estudiante no es absoluta, por cuanto jamás podrá afectar su
+derecho a la educación, especialmente si en la comuna o localidad donde reside el estudiante en cuestión,
+según el territorio que deba ser considerado para efectos del Sistema de Admisión en el caso concreto, no
+existe otro establecimiento de igual nivel o modalidad26. Si aquello sucediera, igualmente el estudiante
+sancionado podrá ser admitido en el establecimiento como consecuencia de la aplicación del Sistema de
+Admisión Escolar.
+
+
+
+
+25
+   Cabe aclarar que esta atribución no se extiende a la cancelación de matrícula, por cuanto, aunque se puede fundar en idénticas
+causales, si el propio establecimiento ha permitido que el estudiante finalice el año escolar en su contexto educativo, es razonable
+concluir que su reingreso tendría un efecto de menor entidad en la convivencia escolar.
+26
+   Siguiendo el criterio contenido en el artículo 11, inciso 12° de la Ley General de Educación.
+
+                                                                                                                                  6
+     5. CONSIDERACIONES PRÁCTICAS
+
+Para un adecuado cumplimiento de lo dispuesto en el presente Dictamen, corresponderá al Ministerio de
+Educación y a esta Superintendencia actuar en virtud del principio de coordinación de la Administración del
+Estado, a fin de contar con la información que permitirá operativizar las exclusiones correspondientes.
+
+Para ello, la Superintendencia de Educación entregará los datos correspondientes a las expulsiones y
+cancelaciones de matrícula que los directores de los establecimientos educacionales deben informarle
+dentro del plazo de 5 días desde que dichas medidas fueron aplicadas, de acuerdo con lo exigido en el
+párrafo 16 del artículo 6, letra d) de la Ley de Subvenciones. Dicha información considerará, en el caso de
+las expulsiones, el detalle de la extensión de tiempo de la medida, en los términos antedichos.
+
+Sólo corresponderá que se informen tales medidas cuando se encuentren firmes, esto es, habiendo
+finalizado la aplicación íntegra por parte del establecimiento del procedimiento dispuesto para ello en la
+ley27. En razón del efecto previsto en este instrumento, en caso de que un estudiante sea retirado del
+establecimiento durante la tramitación del procedimiento disciplinario, corresponderá que éste llegue a su
+conclusión definitiva, resguardando plenamente las exigencias del debido proceso y especialmente
+brindando todas las etapas para el ejercicio de la defensa del estudiante.
+
+Finalmente, en atención al trascendental rol que los establecimientos educacionales tienen en la buena
+convivencia educativa, especialmente en los casos en que reingrese al establecimiento un estudiante que
+fue expulsado o cuya matrícula fue cancelada, deben activar las derivaciones pertinentes a entidades
+proteccionales y/o a programas de intervención psicoemocional; efectuar la coordinación con las Oficinas
+Locales de la Niñez, para su garantizar su correcta reintegración y seguimiento del caso; y procurar la
+debida aplicación de un acompañamiento psicosocial al estudiante y al resto de su entorno educativo, en
+aras de construir ambientes bientratantes y saludables que permitan el pleno ejercicio de los derechos de
+todos los miembros de la comunidad educativa, con resguardo del interés superior de niños, niñas y
+adolescentes.
+
+
+
+     6. CONCLUSIONES
+
+En consecuencia, sobre la base de las disposiciones legales citadas y consideraciones expuestas, es
+posible concluir:
+
+1. Que, cualquier regulación en el ámbito educacional, debe considerar el resguardo a la permanencia y
+   progresión de las y los estudiantes en el sistema escolar, desde la educación parvularia hasta la
+   enseñanza media, exento de toda forma de discriminación.
+2. Que, los Directores de establecimientos educacionales se encuentran habilitados por ley para imponer
+   las medidas disciplinarias de expulsión o cancelación de matrícula a aquellos estudiantes que causen
+   daño a la integridad física o psíquica de cualquier miembro de las comunidades educativas o que afecten
+   gravemente la convivencia escolar, de acuerdo a lo dispuesto en sus Reglamentos Internos y a la
+   normativa educacional vigente.
+3. Que, la regulación actual del Sistema de Admisión Escolar aplicable a todos los establecimientos
+   adscritos al régimen de subvenciones no contempla una norma específica que excluya a los estudiantes
+   sancionados con la medida de expulsión o cancelación de matrícula de postular o ser asignados en el
+   mismo establecimiento educacional que aplicó dichas sanciones. Las normas vigentes sólo se refieren
+   al efecto que estas medidas tienen respecto de los criterios de prioridad que se promueven al momento
+   de efectuar la asignación de un estudiante en un determinado establecimiento, inhibiendo el alcance de
+   la causal de “haber estado matriculado anteriormente” en la misma institución.
+4. Que, la potestad disciplinaria de los Directores obtiene su reconocimiento en el resultado de las medidas
+   que se disponen en virtud de su correcto ejercicio, lo que los habilita a oponerse a concretar la matrícula
+   de los estudiantes que hayan sido expulsados o sancionados con la cancelación de su matrícula.
+5. Que, considerando que esta facultad de oponerse a reincorporar a un estudiante sancionado con este
+   tipo de medidas disciplinarias importa una afectación a su derecho a la educación, así como al derecho
+   de los padres a elegir libremente el establecimiento de enseñanza de sus hijos, su procedencia debe
+
+
+
+27
+  Se entiende que la medida ha quedado a firme cuando se interpuso una solicitud de reconsideración y ésta fue resuelta y notificada
+por el director, confirmando la medida disciplinaria –o si, acogiendo la reconsideración, sustituye la sanción de expulsión por la de
+cancelación de matrícula–, o bien cuando no se ejerza el derecho a solicitar la reconsideración dentro del plazo de 15 o 5 días, según
+corresponda.
+
+                                                                                                                                    7
+   ser excepcional y aplicarse por el menor tiempo posible, de acuerdo a los principios que garantizan el
+   debido proceso y al interés superior de los niños, niñas y adolescentes.
+6. Que, atendida la gravedad de ambas sanciones, los establecimientos educacionales podrán oponerse
+   a matricular, durante el año siguiente al de aplicación de la medida, respecto del estudiante al que se le
+   haya cancelado la matrícula (1 año) y, hasta por dos años -previa regulación en sus reglamentos
+   internos- al que se le hubiere expulsado, siempre que aquella extensión temporal sea debidamente
+   fundada por el Director del establecimiento en cuestión.
+
+
+
+
+                                                MAURICIO FARÍAS ARENAS
+                                             SUPERINTENDENTE DE EDUCACIÓN
+
+MZC/NBS/ASM/CCL
+Distribución:
+1. La indicada.
+2. Entidades sostenedoras de establecimientos educacionales.
+3. Subsecretaría de Educación
+4. Gabinete Superintendente.
+5. Fiscalía.
+6. División de Protección de Derechos Educacionales.
+7. División de Fiscalización.
+8. Direcciones Regionales del país.
+9. Departamento Jurídico de la Dirección de Educación Pública.
+10. División Jurídica de la Subsecretaría de Educación.
+11. Oficina de Partes.
+
+
+
+
+                                                                                                           8
+

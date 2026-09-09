@@ -18,7 +18,10 @@
 //     (`id_paso_actual` es uno solo): el primero en completarse arrastraría el
 //     caso al paso siguiente dejando a los otros dos sin hacer.
 const pool = require('../db/connection');
-const { ROLES_INVOLUCRADO, TIPOS_PERSONA, MEDIOS_ACUSE } = require('../utils/flujoProtocolo');
+const {
+  ROLES_INVOLUCRADO, TIPOS_PERSONA, MEDIOS_NOTIFICACION, SQL_ROL_ALCANZA_PASO,
+} = require('../utils/flujoProtocolo');
+const { comprimirArchivo } = require('../utils/comprimirArchivo');
 
 const buscarActivado = async (id, id_establecimiento) => {
   const [rows] = await pool.query(
@@ -56,9 +59,72 @@ const materializarPasos = (conn, { id_protocolo_activado, id_involucrado, rol })
      FROM PROTOCOLO_ACTIVADO_PASO p
      WHERE p.id_protocolo_activado = ?
        AND p.estado IN ('pendiente', 'en_curso')
-       AND (p.por_involucrado_rol = ? OR (p.por_involucrado_rol = 'todos' AND ? <> 'testigo'))`,
+       AND ${SQL_ROL_ALCANZA_PASO}`,
     [id_involucrado, id_protocolo_activado, rol, rol]
   );
+
+/**
+ * Refleja en el registro de origen lo que se cambió en los involucrados del
+ * caso.
+ *
+ * El caso nace copiando REGISTRO_ESTUDIANTE (ver `activar` en
+ * protocolosActivados.controller), pero después vivía suelto: quien descubría
+ * en una entrevista que había un cuarto participante, o que el testigo era en
+ * realidad el señalado, lo corregía en el caso y el registro seguía diciendo lo
+ * de antes. Dos pantallas del mismo hecho contando cosas distintas.
+ *
+ * Solo se sincronizan los involucrados **estudiante**: REGISTRO_ESTUDIANTE no
+ * tiene dónde guardar a un funcionario ni a un externo. Los roles son los
+ * mismos cuatro del enum de la columna, así que el valor viaja tal cual.
+ *
+ * El nombre/RUT congelado del involucrado NO se toca en el registro: el
+ * registro apunta al estudiante por id y lee su ficha viva; congelar es cosa
+ * del expediente del caso.
+ */
+const sincronizarRolEnRegistro = async (conn, { id_registro, id_estudiante, rol }) => {
+  if (!id_registro || !id_estudiante) return;
+  await conn.query(
+    `INSERT INTO REGISTRO_ESTUDIANTE (id_registro, id_estudiante, rol_en_incidente)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE rol_en_incidente = VALUES(rol_en_incidente)`,
+    [id_registro, id_estudiante, rol]
+  );
+};
+
+/**
+ * Saca al estudiante del registro cuando dejó de figurar en todos los casos que
+ * cuelgan de ese registro.
+ *
+ * No alcanza con mirar el caso actual: un mismo registro puede tener varios
+ * protocolos activados (maltrato y vulneración, por ejemplo), y borrar del
+ * registro a alguien que sigue siendo señalado en el otro caso dejaría al
+ * expediente sin el participante que aún se está tramitando. Un protocolo
+ * anulado no cuenta: ese caso quedó sin tramitar.
+ *
+ * El mismo estudiante puede figurar dos veces en un caso con roles distintos
+ * (la agresión mutua: es afectado y señalado a la vez); por eso se excluye solo
+ * la fila que se está quitando y, si queda otra, el registro se queda con el
+ * rol que sobrevive en vez de perder al participante.
+ */
+const sincronizarBajaEnRegistro = async (conn, { id_registro, id_estudiante, id_involucrado }) => {
+  if (!id_registro || !id_estudiante) return;
+  const [otros] = await conn.query(
+    `SELECT i.rol
+     FROM PROTOCOLO_ACTIVADO_INVOLUCRADO i
+     JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = i.id_protocolo_activado
+     WHERE pa.id_registro = ? AND pa.estado <> 'anulado'
+       AND i.id_estudiante = ? AND i.id_involucrado <> ?
+     ORDER BY FIELD(i.rol, 'senalado','afectado','denunciante','testigo')
+     LIMIT 1`,
+    [id_registro, id_estudiante, id_involucrado]
+  );
+  if (otros.length > 0)
+    return sincronizarRolEnRegistro(conn, { id_registro, id_estudiante, rol: otros[0].rol });
+
+  await conn.query('DELETE FROM REGISTRO_ESTUDIANTE WHERE id_registro = ? AND id_estudiante = ?', [
+    id_registro, id_estudiante,
+  ]);
+};
 
 const getByCaso = async (req, res) => {
   try {
@@ -71,8 +137,8 @@ const getByCaso = async (req, res) => {
                WHERE pi.id_involucrado = i.id_involucrado AND pi.estado = 'pendiente') AS pasos_pendientes,
               (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
                JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
-               WHERE pi.id_involucrado = i.id_involucrado AND p.requiere_acuse = 1
-                 AND pi.estado <> 'no_aplica' AND pi.fecha_acuse IS NULL) AS acuses_pendientes
+               WHERE pi.id_involucrado = i.id_involucrado AND p.requiere_notificacion = 1
+                 AND pi.estado <> 'no_aplica' AND pi.fecha_notificacion IS NULL) AS notificaciones_pendientes
        FROM PROTOCOLO_ACTIVADO_INVOLUCRADO i
        WHERE i.id_protocolo_activado = ?
        ORDER BY FIELD(i.rol, 'afectado','senalado','denunciante','testigo'), i.nombre`,
@@ -116,6 +182,14 @@ const agregar = async (req, res) => {
       );
       if (e.length === 0) return res.status(404).json({ message: 'Estudiante no encontrado en este establecimiento' });
       datos = { id_estudiante, id_usuario: null, ...e[0] };
+    } else if (tipo_persona === 'funcionario' && id_usuario == null) {
+      // Un funcionario sin cuenta en el sistema (un reemplazante, un asistente
+      // que nunca entró a la app). Se escribe a mano y queda igual como
+      // funcionario del caso, no como externo: el rol en el establecimiento es
+      // el que importa para el protocolo.
+      if (!nombre?.trim())
+        return res.status(400).json({ message: 'El nombre es requerido para un funcionario que no está en la lista' });
+      datos = { id_estudiante: null, id_usuario: null, nombre: nombre.trim(), rut: rut?.trim() || null, curso: null };
     } else if (tipo_persona === 'funcionario') {
       const [u] = await pool.query(
         'SELECT nombre FROM USUARIO WHERE id_usuario = ? AND id_establecimiento = ?',
@@ -143,6 +217,9 @@ const agregar = async (req, res) => {
       );
       await materializarPasos(conn, {
         id_protocolo_activado: req.params.id, id_involucrado: r.insertId, rol,
+      });
+      await sincronizarRolEnRegistro(conn, {
+        id_registro: activado.id_registro, id_estudiante: datos.id_estudiante, rol,
       });
       await registrarEvento(conn, {
         id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
@@ -198,11 +275,14 @@ const cambiarRol = async (req, res) => {
         `DELETE pi FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
          JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
          WHERE pi.id_involucrado = ? AND pi.estado = 'pendiente'
-           AND NOT (p.por_involucrado_rol = ? OR (p.por_involucrado_rol = 'todos' AND ? <> 'testigo'))`,
+           AND NOT ${SQL_ROL_ALCANZA_PASO}`,
         [req.params.id_involucrado, rol, rol]
       );
       await materializarPasos(conn, {
         id_protocolo_activado: req.params.id, id_involucrado: req.params.id_involucrado, rol,
+      });
+      await sincronizarRolEnRegistro(conn, {
+        id_registro: activado.id_registro, id_estudiante: inv[0].id_estudiante, rol,
       });
       await registrarEvento(conn, {
         id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
@@ -256,6 +336,13 @@ const quitar = async (req, res) => {
       await conn.query('DELETE FROM PROTOCOLO_ACTIVADO_INVOLUCRADO WHERE id_involucrado = ?', [
         req.params.id_involucrado,
       ]);
+      // Después del DELETE: la consulta que decide si sigue figurando en algún
+      // caso del registro no debe contar la fila que se acaba de quitar.
+      await sincronizarBajaEnRegistro(conn, {
+        id_registro: activado.id_registro,
+        id_estudiante: inv[0].id_estudiante,
+        id_involucrado: req.params.id_involucrado,
+      });
       await registrarEvento(conn, {
         id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
         tipo: 'involucrado_editado', id_usuario: req.user.id,
@@ -276,26 +363,28 @@ const quitar = async (req, res) => {
 };
 
 /**
- * Registra lo que se hizo con una persona en un paso: la notificación, la
- * entrega del documento, la firma.
+ * Registra lo que se hizo con una persona en un paso: la notificación o la
+ * entrega del documento.
  *
  * `fecha_gestion` es la fecha real del hecho y puede ser anterior a hoy — la
  * entrevista fue el martes y se digita el jueves. `fecha_registro` la estampa
  * la BD. Sin esa separación el sistema informa como atrasado algo que se hizo
  * a tiempo, que es el error caro.
  *
- * Que falte el acuse NO bloquea nada (fase 12.3): se guarda igual y la pantalla
- * lo muestra en rojo. La exigencia aparece al cerrar el caso.
+ * No se le pide firma a la persona: lo que se registra es que se le notificó,
+ * cuándo y por qué vía. Que falte esa constancia NO bloquea nada (fase 12.3):
+ * se guarda igual y la pantalla lo muestra en rojo. La exigencia aparece al
+ * cerrar el caso.
  */
 const registrarGestion = async (req, res) => {
-  const { estado, fecha_gestion, observacion, fecha_acuse, medio_acuse } = req.body;
+  const { estado, fecha_gestion, observacion, fecha_notificacion, medio_notificacion } = req.body;
 
   if (estado && !['pendiente', 'cumplido', 'no_aplica'].includes(estado))
     return res.status(400).json({ message: "estado debe ser 'pendiente', 'cumplido' o 'no_aplica'." });
-  if (medio_acuse && !MEDIOS_ACUSE.includes(medio_acuse))
-    return res.status(400).json({ message: `medio_acuse debe ser uno de: ${MEDIOS_ACUSE.join(', ')}.` });
-  if (fecha_acuse && !medio_acuse)
-    return res.status(400).json({ message: 'Si registras la firma, indica también por qué medio se obtuvo.' });
+  if (medio_notificacion && !MEDIOS_NOTIFICACION.includes(medio_notificacion))
+    return res.status(400).json({ message: `medio_notificacion debe ser uno de: ${MEDIOS_NOTIFICACION.join(', ')}.` });
+  if (fecha_notificacion && !medio_notificacion)
+    return res.status(400).json({ message: 'Si registras la notificación, indica también por qué vía se hizo.' });
 
   try {
     const activado = await buscarActivado(req.params.id, req.id_establecimiento);
@@ -322,19 +411,20 @@ const registrarGestion = async (req, res) => {
          SET estado = ?,
              fecha_cumplido = CASE WHEN ? = 'pendiente' THEN NULL ELSE COALESCE(fecha_cumplido, NOW()) END,
              fecha_gestion = ?, observacion = ?,
-             fecha_acuse = COALESCE(?, fecha_acuse), medio_acuse = COALESCE(?, medio_acuse),
+             fecha_notificacion = COALESCE(?, fecha_notificacion),
+             medio_notificacion = COALESCE(?, medio_notificacion),
              id_usuario = ?
          WHERE id_paso_involucrado = ?`,
         [nuevoEstado, nuevoEstado, fecha_gestion || null, observacion?.trim() || null,
-         fecha_acuse || null, medio_acuse || null, req.user.id, req.params.id_paso_involucrado]
+         fecha_notificacion || null, medio_notificacion || null, req.user.id, req.params.id_paso_involucrado]
       );
       await registrarEvento(conn, {
         id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
         paso: fila.id_activado_paso, tipo: 'gestion_involucrado', id_usuario: req.user.id,
         descripcion:
-          `'${fila.paso_nombre}' — ${fila.involucrado_nombre}: ${nuevoEstado}` +
+          `${fila.paso_nombre} — ${fila.involucrado_nombre}: ${nuevoEstado}` +
           (fecha_gestion ? ` (gestión del ${fecha_gestion})` : '') +
-          (fecha_acuse ? ` · firma ${medio_acuse}` : ''),
+          (fecha_notificacion ? ` · notificada por ${medio_notificacion}` : ''),
       });
       await conn.commit();
       res.json({ message: 'Gestión registrada' });
@@ -350,4 +440,109 @@ const registrarGestion = async (req, res) => {
   }
 };
 
-module.exports = { getByCaso, agregar, cambiarRol, quitar, registrarGestion };
+/**
+ * Busca una gestión del caso. Se usa antes de tocar su acta: el id del paso
+ * involucrado no basta como llave, tiene que pertenecer a este caso y a este
+ * establecimiento.
+ */
+const buscarGestion = async (id_caso, id_paso_involucrado) => {
+  const [filas] = await pool.query(
+    `SELECT pi.id_paso_involucrado, pi.id_activado_paso, i.nombre AS involucrado_nombre,
+            p.nombre AS paso_nombre
+     FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+     JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
+     JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
+     WHERE pi.id_paso_involucrado = ? AND p.id_protocolo_activado = ?`,
+    [id_paso_involucrado, id_caso]
+  );
+  return filas[0] ?? null;
+};
+
+/**
+ * PUT /:id/gestiones/:id_paso_involucrado/acta — el acta de notificación
+ * firmada, escaneada o fotografiada.
+ *
+ * La fecha y la vía prueban que se notificó según el sistema; el acta firmada
+ * es la prueba material, y es la que se exhibe ante la Superintendencia o el
+ * apoderado que dice que nunca se enteró. Una sola por gestión: si se vuelve a
+ * subir, reemplaza (ON DUPLICATE KEY), porque lo que vale es la última copia
+ * legible, no el historial de escaneos.
+ */
+const adjuntarActaFirmada = async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No se recibió archivo' });
+
+  try {
+    const activado = await buscarActivado(req.params.id, req.id_establecimiento);
+    if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
+
+    const gestion = await buscarGestion(req.params.id, req.params.id_paso_involucrado);
+    if (!gestion) return res.status(404).json({ message: 'Gestión no encontrada en este caso' });
+
+    // Mismo criterio que el resto de los adjuntos: entra cualquier foto pesada
+    // y el sistema la baja de peso, en vez de rechazarla y hacer que el
+    // usuario pelee con la cámara.
+    const archivo = await comprimirArchivo(req.file);
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query(
+        `INSERT INTO PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO_ARCHIVO
+           (id_paso_involucrado, nombre_archivo, mime_type, peso_bytes, contenido, fecha_subida)
+         VALUES (?, ?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+           nombre_archivo = VALUES(nombre_archivo), mime_type = VALUES(mime_type),
+           peso_bytes = VALUES(peso_bytes), contenido = VALUES(contenido),
+           fecha_subida = NOW()`,
+        [req.params.id_paso_involucrado, archivo.originalname, archivo.mimetype,
+         archivo.size, archivo.buffer]
+      );
+      await registrarEvento(conn, {
+        id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
+        paso: gestion.id_activado_paso, tipo: 'gestion_involucrado', id_usuario: req.user.id,
+        descripcion: `${gestion.paso_nombre} — ${gestion.involucrado_nombre}: se adjuntó el acta firmada`,
+      });
+      await conn.commit();
+      res.json({
+        message: 'Acta firmada adjuntada',
+        bytes: archivo.size,
+        bytes_originales: archivo.bytes_originales,
+      });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al adjuntar el acta firmada' });
+  }
+};
+
+// GET /:id/gestiones/:id_paso_involucrado/acta — se devuelve inline: quien la
+// abre normalmente la quiere mirar o imprimir, no bajarla otra vez.
+const descargarActaFirmada = async (req, res) => {
+  try {
+    const gestion = await buscarGestion(req.params.id, req.params.id_paso_involucrado);
+    if (!gestion) return res.status(404).json({ message: 'Gestión no encontrada en este caso' });
+
+    const [[archivo]] = await pool.query(
+      `SELECT nombre_archivo, mime_type, contenido
+       FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO_ARCHIVO WHERE id_paso_involucrado = ?`,
+      [req.params.id_paso_involucrado]
+    );
+    if (!archivo) return res.status(404).json({ message: 'Esta gestión no tiene acta firmada' });
+
+    res.setHeader('Content-Type', archivo.mime_type);
+    res.setHeader('Content-Disposition', `inline; filename="${archivo.nombre_archivo}"`);
+    res.send(archivo.contenido);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al descargar el acta firmada' });
+  }
+};
+
+module.exports = {
+  getByCaso, agregar, cambiarRol, quitar, registrarGestion,
+  adjuntarActaFirmada, descargarActaFirmada,
+};

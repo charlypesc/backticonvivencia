@@ -15,7 +15,7 @@
  */
 const COLUMNAS_ESTADO_PROTOCOLO = `
         -- Cuántos protocolos obligatorios de esta falta siguen sin activar.
-        -- > 0 es lo que impide validar el registro.
+        -- > 0 es lo que la Ley 21.809 obliga a activar y todavía nadie activó.
         (SELECT COUNT(*)
            FROM TIPO_FALTA_PROTOCOLO tfp
            LEFT JOIN PROTOCOLO_ACTIVADO pa

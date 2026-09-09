@@ -343,4 +343,13 @@ const setPermisos = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getPermisos, getCatalogoPermisos, create, update, setPermisos };
+// `derivarCodigo` y `permisosFueraDeAlcance` se exportan porque usuarios.controller
+// también convierte una selección de permisos en un rol ("guardar como rol
+// reutilizable"). Reescribir cualquiera de las dos del otro lado garantizaría que
+// las reglas se vayan separando: la derivación del código con acentos, y sobre
+// todo la guardia de "nadie otorga un permiso que no tiene", que es lo único que
+// impide que crear roles sea una escalada de privilegios.
+module.exports = {
+  getAll, getPermisos, getCatalogoPermisos, create, update, setPermisos,
+  derivarCodigo, permisosFueraDeAlcance,
+};
