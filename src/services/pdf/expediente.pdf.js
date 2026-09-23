@@ -61,16 +61,54 @@ const titulo = (e) => `${e.caso?.protocolo ?? 'Caso'} — versión ${e.caso?.ver
  * id de la gestión—, porque el acta escaneada trae nombre, RUT y firma:
  * anexarla sería deshacer la redacción con la fotocopia.
  */
-const anexos = (e) =>
-  (e.pasos ?? []).flatMap((p) =>
+const TITULO_DOCUMENTO = {
+  solicitud_reconsideracion: 'Solicitud de reconsideración',
+  acta_consejo: 'Acta del Consejo de Profesores',
+};
+
+// Cómo se nombra cada documento en la línea de la suspensión.
+const EN_EL_CUERPO = {
+  solicitud_reconsideracion: 'Solicitud de reconsideración firmada',
+  acta_consejo: 'Acta firmada del Consejo de Profesores',
+};
+
+/**
+ * Cada anexo trae `origen` (qué hay que leer de la base para pegarlo), su
+ * título y las líneas de su hoja separadora. Primero las actas de
+ * notificación, después los documentos de las suspensiones cautelares.
+ */
+const anexos = (e) => [
+  ...(e.pasos ?? []).flatMap((p) =>
     (p.gestiones ?? [])
       .filter((g) => g.adjunto?.id_paso_involucrado)
       .map((g) => ({
-        id: g.adjunto.id_paso_involucrado,
-        paso: plano(p.nombre),
-        persona: plano(g.involucrado?.nombre ?? g.involucrado?.iniciales ?? 'sin identificar'),
+        origen: { tipo: 'acta_notificacion', id_paso_involucrado: g.adjunto.id_paso_involucrado },
+        titulo: 'Acta de notificación firmada',
+        lineas: [
+          `Paso: ${plano(p.nombre)}`,
+          `Persona notificada: ${plano(g.involucrado?.nombre ?? g.involucrado?.iniciales ?? 'sin identificar')}`,
+        ],
       })),
-  );
+  ),
+  ...(e.suspensiones_cautelares ?? []).flatMap((sc) =>
+    (sc.documentos ?? [])
+      .filter((d) => d.id_suspension_cautelar)
+      .map((d) => ({
+        origen: { tipo: 'suspension_cautelar', id_suspension_cautelar: d.id_suspension_cautelar, documento: d.tipo },
+        titulo: TITULO_DOCUMENTO[d.tipo] ?? 'Documento de la suspensión cautelar',
+        lineas: [
+          'Suspensión cautelar (art. 6 letra d) del DFL 2 de 1998)',
+          `Estudiante: ${plano(sc.persona?.nombre ?? sc.persona?.iniciales ?? 'sin identificar')}`,
+        ],
+      })),
+  ),
+];
+
+/** El número de anexo de un origen, o null si no se anexa. */
+const numeroDeAnexo = (lista, coincide) => {
+  const i = lista.findIndex((a) => coincide(a.origen));
+  return i >= 0 ? i + 1 : null;
+};
 
 /** Estructura del expediente; es la fuente única del documento. */
 const secciones = (e) => {
@@ -97,10 +135,16 @@ const secciones = (e) => {
   // El número con que cada acta queda anexada: misma lista y mismo orden con
   // que después se pegan las páginas.
   const lista = anexos(e);
-  const anexoDe = (g) => {
-    const i = lista.findIndex((a) => a.id === g.adjunto?.id_paso_involucrado);
-    return i >= 0 ? i + 1 : null;
-  };
+  const anexoDe = (g) =>
+    numeroDeAnexo(lista, (o) => o.id_paso_involucrado === g.adjunto?.id_paso_involucrado);
+  // "Solicitud de reconsideración en anexo 3" / "(adjunta)" en modo redactado.
+  const documentosDe = (sc) =>
+    (sc.documentos ?? []).map((d) => {
+      const n = d.id_suspension_cautelar
+        ? numeroDeAnexo(lista, (o) => o.id_suspension_cautelar === d.id_suspension_cautelar && o.documento === d.tipo)
+        : null;
+      return `${EN_EL_CUERPO[d.tipo] ?? 'Documento firmado'} ${n ? `en anexo ${n}` : '(adjunta en el sistema)'}`;
+    });
 
   const salida = [
     {
@@ -280,6 +324,7 @@ const secciones = (e) => {
             ? [`Pronunciamiento del Consejo: ${t(s.consejo_profesores_acta)}`]
             : []),
           ...(s.decretada_por ? [`Decretada por: ${t(s.decretada_por)}`] : []),
+          ...documentosDe(s),
         ],
       })),
     },
@@ -534,7 +579,7 @@ const documento = (e) => {
 
 // ── Anexos: las actas firmadas ─────────────────────────────────────────────
 
-/** Hoja separadora: de quién es el acta que viene a continuación. */
+/** Hoja separadora: qué documento viene a continuación y de quién es. */
 const portadaAnexo = (pdf, negrita, normal, numero, a, error) => {
   const pagina = pdf.addPage([612, 792]);
   let y = 720;
@@ -547,10 +592,9 @@ const portadaAnexo = (pdf, negrita, normal, numero, a, error) => {
   };
   linea(`ANEXO ${numero}`, negrita, 10, true);
   y -= 8;
-  linea('Acta de notificación firmada', negrita, 17);
+  linea(a.titulo, negrita, 17);
   y -= 6;
-  linea(`Paso: ${a.paso}`, normal, 11, true);
-  linea(`Persona notificada: ${a.persona}`, normal, 11, true);
+  for (const l of a.lineas) linea(l, normal, 11, true);
   if (error) linea(error, normal, 11);
 };
 
@@ -569,11 +613,13 @@ const notaAnexo = (pdf, normal, txt) => {
  * expediente se emite igual con una hoja que dice qué faltó — perder el
  * documento completo por un adjunto ilegible es el peor de los dos resultados.
  *
- * `leerActa(id_paso_involucrado)` devuelve `{ mime_type, contenido }` o null.
+ * `leerAnexo(origen)` devuelve `{ mime_type, contenido }` o null. `origen` es
+ * `{ tipo: 'acta_notificacion', id_paso_involucrado }` o
+ * `{ tipo: 'suspension_cautelar', id_suspension_cautelar, documento }`.
  *
  * @returns {Promise<{ buffer: Buffer, nombre: string }>}
  */
-const construirExpedientePdf = async (e, leerActa) => {
+const construirExpedientePdf = async (e, leerAnexo) => {
   const doc = documento(e);
   const nombre = `${nombreArchivo(e)}.pdf`;
   const lista = anexos(e);
@@ -590,7 +636,7 @@ const construirExpedientePdf = async (e, leerActa) => {
       let archivo = null;
       let error = '';
       try {
-        archivo = await leerActa(a.id);
+        archivo = await leerAnexo(a.origen);
         if (!archivo) error = 'El archivo no se encontró en el sistema.';
       } catch {
         error = 'No fue posible recuperar el archivo desde el sistema.';

@@ -230,7 +230,7 @@ const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
   // de protección y vive en su propia tabla. Es la medida que más se cuestiona
   // en una fiscalización, y la que tiene plazo fatal para resolver.
   const [suspensionesCautelares] = await pool.query(
-    `SELECT sc.fundamento, sc.fecha_notificacion, sc.medio_notificacion,
+    `SELECT sc.id_suspension_cautelar, sc.fundamento, sc.fecha_notificacion, sc.medio_notificacion,
             sc.fecha_limite_resolucion, sc.fecha_resolucion, sc.estado,
             sc.fecha_limite_reconsideracion, sc.fecha_reconsideracion,
             sc.fecha_consejo, sc.consejo_profesores_acta, sc.resultado_reconsideracion,
@@ -241,6 +241,17 @@ const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
      ORDER BY sc.fecha_notificacion, sc.id_suspension_cautelar`,
     [id_protocolo_activado]
   );
+
+  // Los documentos de la reconsideración (solicitud y acta del Consejo): solo
+  // metadatos, el binario lo lee el PDF al anexarlos.
+  const idsSuspension = suspensionesCautelares.map((s) => s.id_suspension_cautelar);
+  const [documentosSuspension] = idsSuspension.length
+    ? await pool.query(
+        `SELECT id_suspension_cautelar, tipo, nombre_archivo, mime_type, fecha_subida
+         FROM SUSPENSION_CAUTELAR_ARCHIVO WHERE id_suspension_cautelar IN (?)
+         ORDER BY id_suspension_cautelar, FIELD(tipo, 'solicitud_reconsideracion', 'acta_consejo')`,
+        [idsSuspension])
+    : [[]];
 
   const [medidasDisciplinarias] = await pool.query(
     `SELECT id_involucrado, descripcion, tipo_medida, fecha_aplicacion, resultado, fecha_resultado
@@ -262,7 +273,7 @@ const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
     [caso.id_registro]
   );
 
-  return { caso, pasos, descartados, campos, involucrados, gestiones, bitacora,
+  return { caso, pasos, descartados, campos, involucrados, gestiones, bitacora, documentosSuspension,
            medidasProteccion, seguimientos, suspensionesCautelares,
            medidasDisciplinarias, informe: informe ?? null, documentosOrigen };
 };
@@ -311,7 +322,7 @@ const formatear = (datos, { redactado }) => {
   const { caso, pasos: todosLosPasos, descartados, campos, involucrados,
           gestiones: todasLasGestiones, bitacora,
           medidasProteccion, seguimientos, suspensionesCautelares,
-          medidasDisciplinarias, informe, documentosOrigen } = datos;
+          medidasDisciplinarias, informe, documentosOrigen, documentosSuspension = [] } = datos;
 
   // El expediente cuenta el camino que el caso siguió. Los pasos de una rama
   // descartada van aparte, dichos como lo que son, y no cuentan como pendientes
@@ -484,6 +495,18 @@ const formatear = (datos, { redactado }) => {
       consejo_profesores_acta: s.consejo_profesores_acta,
       resultado_reconsideracion: s.resultado_reconsideracion,
       decretada_por: funcionario(s.decretada_por_nombre, s.decretada_por),
+      // Solicitud del apoderado y acta firmada del Consejo. Mismo criterio que
+      // las actas de notificación: en modo redactado se dice que existen pero
+      // no viaja el id, así el PDF no las anexa (traen nombres y firmas).
+      documentos: documentosSuspension
+        .filter((d) => d.id_suspension_cautelar === s.id_suspension_cautelar)
+        .map((d) => ({
+          tipo: d.tipo,
+          id_suspension_cautelar: redactado ? null : d.id_suspension_cautelar,
+          nombre_archivo: redactado ? null : d.nombre_archivo,
+          mime_type: d.mime_type,
+          fecha_subida: d.fecha_subida,
+        })),
     })),
     medidas_disciplinarias: medidasDisciplinarias.map((m) => ({
       persona: persona(m.id_involucrado),
@@ -596,21 +619,31 @@ const getExpedientePdf = async (req, res) => {
     // front (ISO con zona), que es lo que el formateo del PDF espera.
     const e = JSON.parse(JSON.stringify(expediente));
 
-    // Solo actas de gestiones de ESTE caso: el id sale del propio expediente,
-    // pero se vuelve a filtrar por caso por si acaso.
-    const leerActa = async (id_paso_involucrado) => {
+    // Cada anexo se vuelve a filtrar por ESTE caso: el id sale del propio
+    // expediente, pero no se lee un archivo ajeno aunque el id llegara mal.
+    const leerAnexo = async (origen) => {
+      if (origen.tipo === 'suspension_cautelar') {
+        const [[archivo]] = await pool.query(
+          `SELECT a.mime_type, a.contenido
+           FROM SUSPENSION_CAUTELAR_ARCHIVO a
+           JOIN SUSPENSION_CAUTELAR sc ON sc.id_suspension_cautelar = a.id_suspension_cautelar
+           WHERE a.id_suspension_cautelar = ? AND a.tipo = ? AND sc.id_protocolo_activado = ?`,
+          [origen.id_suspension_cautelar, origen.documento, req.params.id]
+        );
+        return archivo ?? null;
+      }
       const [[archivo]] = await pool.query(
         `SELECT a.mime_type, a.contenido
          FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO_ARCHIVO a
          JOIN PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi ON pi.id_paso_involucrado = a.id_paso_involucrado
          JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
          WHERE a.id_paso_involucrado = ? AND p.id_protocolo_activado = ?`,
-        [id_paso_involucrado, req.params.id]
+        [origen.id_paso_involucrado, req.params.id]
       );
       return archivo ?? null;
     };
 
-    const { buffer, nombre } = await construirExpedientePdf(e, leerActa);
+    const { buffer, nombre } = await construirExpedientePdf(e, leerAnexo);
     enviarPdf(res, buffer, nombre);
   } catch (err) {
     console.error(err);
