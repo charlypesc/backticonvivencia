@@ -209,6 +209,34 @@ const iniciarPaso = async (conn, paso) => {
   return limite;
 };
 
+// Las medidas de protección y las suspensiones cautelares "podrán extenderse
+// hasta la conclusión del procedimiento respectivo" (art. 16 E letra j): cerrar
+// el caso con una todavía corriendo es la infracción misma, así que acá no
+// alcanza con un motivo como en el resto de los faltantes del cierre — se
+// bloquea hasta que se concluyan o resuelvan. Lo usan el cierre a mano y el
+// cierre automático del paso final, para que ninguna de las dos puertas lo
+// saltee. Devuelve el mensaje para el 409, o null si no queda nada abierto.
+const medidasAbiertasAlCerrar = async (conn, id_protocolo_activado) => {
+  const [[{ proteccion }]] = await conn.query(
+    `SELECT COUNT(*) AS proteccion FROM MEDIDA_PROTECCION
+     WHERE id_protocolo_activado = ? AND estado = 'vigente'`,
+    [id_protocolo_activado]
+  );
+  const [[{ cautelares }]] = await conn.query(
+    `SELECT COUNT(*) AS cautelares FROM SUSPENSION_CAUTELAR
+     WHERE id_protocolo_activado = ? AND estado <> 'resuelta'`,
+    [id_protocolo_activado]
+  );
+  const abiertas = [
+    proteccion > 0 ? `${proteccion} medida(s) de protección vigente(s)` : '',
+    cautelares > 0 ? `${cautelares} suspensión(es) cautelar(es) sin resolver` : '',
+  ].filter(Boolean);
+  if (abiertas.length === 0) return null;
+  return `No se puede cerrar el caso: quedan ${abiertas.join(' y ')}. ` +
+    'Solo pueden extenderse hasta la conclusión del procedimiento (art. 16 E letra j): ' +
+    'concluílas o resolvelas antes de cerrar.';
+};
+
 const cerrarProtocolo = (conn, id_protocolo_activado) =>
   conn.query(
     `UPDATE PROTOCOLO_ACTIVADO
@@ -800,6 +828,10 @@ const avanzar = async (conn, { req, activado, paso, estadoFinal, datos, evento, 
   });
 
   if (paso.es_paso_final) {
+    // El que llama hace rollback con el error, así que el paso tampoco queda
+    // marcado como completado.
+    const abiertas = await medidasAbiertasAlCerrar(conn, activado.id_protocolo_activado);
+    if (abiertas) return { error: abiertas };
     await cerrarProtocolo(conn, activado.id_protocolo_activado);
     await registrarEvento(conn, {
       activado, paso: paso.id_activado_paso, tipo: 'cierre', id_usuario: req.user.id,
@@ -1110,6 +1142,10 @@ const cerrar = async (req, res) => {
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
     if (activado.estado !== 'activo')
       return res.status(409).json({ message: `El protocolo ya está ${activado.estado}.` });
+
+    // Va antes que los faltantes que se salvan con motivo: este no se salva.
+    const abiertas = await medidasAbiertasAlCerrar(pool, req.params.id);
+    if (abiertas) return res.status(409).json({ message: abiertas });
 
     // Los pasos de una rama que el caso no tomó están pendientes y van a
     // quedarlo siempre: exigir un motivo por ellos sería pedir que se

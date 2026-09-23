@@ -78,6 +78,7 @@ JWT_SECRET=
 JWT_EXPIRES_IN=
 GOOGLE_CREDENTIALS_JSON=   # JSON de credenciales de servicio de Google, como string
 OPENAI_API_KEY=
+CORS_ORIGINS=              # orígenes del front separados por coma (ej. https://app.midominio.cl). Vacío = abierto, con aviso en el log
 ```
 
 `documentai.service.js` tiene además `PROJECT_ID`, `LOCATION` y `PROCESSOR_ID` de Document AI hardcodeados en el archivo (no en `.env`).
@@ -91,3 +92,18 @@ npm start        # node
 ```
 
 Requiere una base de datos MySQL con el esquema ya creado (no hay migraciones versionadas en el repo — ver `TODO` para el estado del diseño de tablas nuevas).
+
+## Seguridad del login
+
+- Límite de 10 intentos fallidos por IP cada 15 minutos en `POST /api/auth/login` (los exitosos no cuentan). Responde 429.
+- Clave temporal: al crear un usuario o al restablecerle la contraseña (lo hace el encargado del colegio desde Usuarios, no hay recuperación por correo) queda `USUARIO.debe_cambiar_password = 1`. Con esa marca en el token, `verifyToken` rechaza todo salvo `GET /api/auth/me` y `PATCH /api/auth/password`, que la baja y devuelve un token nuevo.
+
+## Respaldos
+
+```bash
+node scripts/backup.js                  # backups/<DB_NAME>-<fecha>.sql.gz (DDL + filas, BLOB incluidos)
+node scripts/backup.js --retener=14     # además borra los de más de 14 días
+node scripts/restaurar.js backups/<archivo>.sql.gz --base=OTRA_BASE
+```
+
+`restaurar.js` no escribe sobre la base en uso (`DB_NAME`) ni sobre una base con tablas (salvo `--reemplazar`): para volver atrás se restaura en otra base, se revisa y se cambia `DB_NAME`. `backups/` está en `.gitignore`: los respaldos contienen datos de estudiantes y no van al repo.

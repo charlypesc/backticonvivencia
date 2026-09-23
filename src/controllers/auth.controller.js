@@ -81,6 +81,9 @@ const login = async (req, res) => {
         // `rol` se mantiene por compatibilidad con el frontend actual, que
         // asume un rol único. Quitarlo recién cuando ese repo migre a `roles`.
         rol: roles[0] ?? usuario.rol,
+        // Mientras sea true, verifyToken solo deja cambiar la contraseña: la
+        // clave actual es temporal y la conoce quien la entregó.
+        debe_cambiar_password: Boolean(usuario.debe_cambiar_password),
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
@@ -110,6 +113,7 @@ const login = async (req, res) => {
         // El RBD identifica al colegio ante el Mineduc: va junto al nombre en
         // el navbar para saber sin dudar en cuál se está trabajando.
         rbd_establecimiento:  usuario.rbd,
+        debe_cambiar_password: Boolean(usuario.debe_cambiar_password),
       },
     });
   } catch (err) {
@@ -193,14 +197,27 @@ const cambiarPassword = async (req, res) => {
       return res.status(401).json({ message: 'La contraseña actual no es correcta' });
 
     await pool.query(
-      `UPDATE USUARIO SET password_hash = ? WHERE id_usuario = ?`,
+      `UPDATE USUARIO SET password_hash = ?, debe_cambiar_password = 0 WHERE id_usuario = ?`,
       [await bcrypt.hash(nueva, 10), usuario.id_usuario]
     );
+
+    // Si venía con clave temporal, su token la trae marcada y verifyToken le
+    // bloquea todo lo demás: se le emite uno nuevo sin la marca, con los mismos
+    // datos, para que siga trabajando sin volver a iniciar sesión.
+    let token;
+    if (req.user.debe_cambiar_password) {
+      const { iat, exp, ...payload } = req.user;
+      token = jwt.sign(
+        { ...payload, debe_cambiar_password: false },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN }
+      );
+    }
 
     // El token sigue siendo válido hasta que expire: no hay lista de revocación.
     // Cerrar sesión en el resto de los dispositivos exigiría versionar el token,
     // que es un cambio bastante más grande que este.
-    res.json({ message: 'Contraseña actualizada' });
+    res.json({ message: 'Contraseña actualizada', ...(token ? { token } : {}) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al cambiar la contraseña' });

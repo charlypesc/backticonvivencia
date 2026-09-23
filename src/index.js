@@ -5,10 +5,39 @@ const documentosRoutes = require('./routes/documents.routes');
 const pool = require('./db/connection');
 const { verificarPermisos } = require('./constants/permisos');
 
+const helmet    = require('helmet');
+const rateLimit = require('express-rate-limit');
+
 const app = express();
 
-app.use(cors());
+// Render (y cualquier proxy) pone la IP real en X-Forwarded-For: sin esto el
+// límite de intentos vería a todos los usuarios como una sola IP, la del proxy.
+app.set('trust proxy', 1);
+// cross-origin: el front vive en otro dominio y muestra actas, escaneos y PDFs
+// servidos por esta API; con el default (same-origin) el navegador los bloquea.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// Solo el front propio puede llamar a la API desde un navegador. Se configura
+// por entorno (lista separada por comas) porque local y producción sirven el
+// front desde orígenes distintos. Sin la variable queda abierto como antes,
+// para no dejar al front de producción sin API al desplegar, pero se avisa.
+const origenes = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
+if (origenes.length === 0)
+  console.warn('CORS_ORIGINS no está definido: la API acepta llamadas desde cualquier origen.');
+app.use(cors(origenes.length ? { origin: origenes } : {}));
 app.use(express.json());
+
+// Adivinar contraseñas probando de a miles: 10 intentos fallidos por IP cada
+// 15 minutos. Los exitosos no cuentan, así que un colegio entero entrando
+// desde la misma red no se bloquea a sí mismo.
+app.use('/api/auth/login', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { message: 'Demasiados intentos fallidos. Espera 15 minutos antes de volver a intentar.' },
+}));
 
 app.use('/api/auth',        require('./routes/auth.routes'));
 app.use('/api/registros',   require('./routes/registros.routes'));

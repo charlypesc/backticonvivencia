@@ -19,14 +19,27 @@ Medidas vinculadas al paso que las ordena:
     Son los del art. 16 E letra j: acoso, vulneración de derechos, connotación sexual, agresión física y discriminación. La bandera existía en la BD desde la migración de plazos pero el seed nunca la escribía (ni la columna estaba en el INSERT), así que ningún paso la tenía en 1.
   ✔ correr el ALTER + los dos UPDATE de docs/medidas_vinculo_paso.sql @done
     Se aplicaron el 2026-09-07. Síntoma que los destapó: el detalle del caso devolvía 500 y la pantalla no cargaba — el código ya consultaba MEDIDA_PROTECCION.id_activado_paso y la columna no existía. Lección: al agregar una consulta que depende de una columna nueva, la migración deja de ser opcional; o se aplica junto con el deploy o el endpoint se cae entero.
-  ☐ avisar al cerrar el caso si quedan medidas de protección vigentes o cautelares sin resolver
-    La ley las acota: "podrán extenderse hasta la conclusión del procedimiento respectivo" (art. 16 E letra j). Cerrar con una suspensión de protección corriendo es la infracción, y hoy `cerrar()` solo mira MEDIDA_DISCIPLINARIA — ni consulta MEDIDA_PROTECCION ni SUSPENSION_CAUTELAR.
+  ✔ bloquear el cierre del caso si quedan medidas de protección vigentes o cautelares sin resolver @done
+    La ley las acota: "podrán extenderse hasta la conclusión del procedimiento respectivo" (art. 16 E letra j). Cerrar con una suspensión de protección corriendo es la infracción, y `cerrar()` solo miraba MEDIDA_DISCIPLINARIA — ni consultaba MEDIDA_PROTECCION ni SUSPENSION_CAUTELAR.
+    Causa: había DOS puertas de cierre (el cierre a mano y el automático de `avanzar()` al completar un paso final) y ninguna miraba esas tablas. Se agregó `medidasAbiertasAlCerrar()` y la llaman las dos. A diferencia del resto de los faltantes del cierre, no se salva con motivo: es 409 hasta concluirlas/resolverlas, porque el motivo no deshace la infracción. En `avanzar()` devuelve `{ error }` y el que llama hace rollback, así que el paso final tampoco queda completado a medias. En los datos de prueba ya había un caso cerrado (id 33) con una cautelar abierta: el bug existía.
 
 Diagrama del flujo:
   ✔ el diagrama salía en blanco en los protocolos del establecimiento que heredan el flujo del catálogo @done
     Causa: `idPaso()` en protocolo-flujo.ts elegía el nombre del campo por la RUTA (`esEstablecimiento` → `id_paso_estab`), no por el origen de los datos. Un protocolo del colegio sin personalizar devuelve las filas del catálogo tal cual, con `id_paso`: los 12 nodos quedaban con `id: undefined` y el grafo no dibujaba nada. Se cambió a `p?.id_paso_estab ?? p?.id_paso` (igual para transiciones y campos). Las aristas ya estaban bien porque ambas tablas nombran igual `id_paso_origen`/`id_paso_destino`.
     Lección: cuando un endpoint puede devolver filas de dos tablas distintas según el estado (acá `origen: catalogo | establecimiento`), el cliente tiene que decidir por lo que trae la respuesta, no por la ruta que usó para pedirla. El síntoma parecía caprichoso — se veía bien en los protocolos ya personalizados y en blanco en los heredados.
     Pista falsa que costó tiempo: se buscó primero por el lado de permisos. El coordinador ya tenía el 82 y ya entraba; la pantalla cargaba y solo el lienzo estaba vacío. Antes de revisar RBAC conviene confirmar si la pantalla carga o no: si carga, el problema no es de permisos.
+
+Preparación para vender (2026-09-23):
+  ✔ respaldo y restauración propios (scripts/backup.js, scripts/restaurar.js) @done
+    No hay mysqldump en la máquina y las actas/escaneos viven como BLOB en la base: perder la base es perder la prueba documental. backup.js vuelca DDL + filas (BLOB en hex, columnas generadas excluidas, vistas sin DEFINER) paginado y con backpressure; restaurar.js se niega a pisar DB_NAME o una base con tablas. Probado: restaurado en TiConvivencia_prueba_restauracion, 52 tablas con el mismo conteo y BLOB idénticos por MD5.
+  ☐ BORRAR LA BASE TiConvivencia_prueba_restauracion (quedó de la prueba de restauración; DROP DATABASE requiere confirmación)
+  ☐ PROGRAMAR EL RESPALDO DIARIO (cron o Render Cron Job con --retener) Y DECIDIR DÓNDE SE GUARDAN: contienen datos de menores, no pueden ir a un lugar público
+  ☐ SEPARAR PRODUCCIÓN: base propia en Aiven para producción (restaurar el esquema + catálogos), y que local/scripts dejen de apuntar a la misma base que Render
+  ✔ login: límite de intentos, helmet y CORS configurable @done
+    10 intentos fallidos por IP cada 15 min (express-rate-limit, skipSuccessfulRequests para que un colegio entero en la misma red no se bloquee). `trust proxy` porque en Render todas las IP llegarían como la del proxy. helmet con CORP cross-origin: el front está en otro dominio y abre PDFs/imágenes de la API.
+  ☐ DEFINIR CORS_ORIGINS EN RENDER con el dominio del front (mientras no esté, sigue abierto y avisa en el log)
+  ✔ clave temporal obligatoria de cambiar (recuperación la gestiona el encargado, sin correo) @done
+    El encargado restablece desde Usuarios y ve la clave impresa: si la persona no la cambia, el encargado conoce su contraseña para siempre. USUARIO.debe_cambiar_password (docs/usuario_debe_cambiar_password.sql, aplicado 2026-09-23) se pone en 1 al crear y al restablecer; va en el token y verifyToken rechaza todo salvo /auth/me y /auth/password. El cambio devuelve un token nuevo sin la marca, así no hay que volver a entrar. El bloqueo es en el backend y no solo en el modal porque la API se llama directo con el token. Las 8 cuentas existentes quedaron en 0.
 
 ## Registro de tiempo
 - 2026-09-18 17:48 → 18:51 (1h3m)
