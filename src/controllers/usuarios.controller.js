@@ -8,6 +8,7 @@ const { Permiso, codigoDe, CODIGO_POR_ID } = require('../constants/permisos');
 const { derivarCodigo, permisosFueraDeAlcance } = require('./roles.controller');
 const { resolverEstablecimiento, establecimientoRequerido } = require('../middleware/scope');
 const { generarPassword } = require('../utils/password');
+const { credencialesPdfParaRespuesta } = require('../services/pdf/credenciales.pdf');
 const { sembrarTiposFalta } = require('../utils/sembrarTiposFalta');
 
 // Solo un ADMIN puede otorgar o quitar el rol ADMIN. Se valida en el servidor:
@@ -79,7 +80,7 @@ const create = async (req, res) => {
     // Solo roles globales o del mismo establecimiento del usuario: asignarle el
     // rol de otro colegio sería darle acceso cruzado entre establecimientos.
     const [rolesRows] = await conn.query(
-      `SELECT rol_id, codigo FROM ROLES
+      `SELECT rol_id, codigo, nombre FROM ROLES
        WHERE codigo IN (?) AND activo = TRUE
          AND (id_establecimiento IS NULL OR id_establecimiento <=> ?)`,
       [codigos, esAdminGlobal ? null : id_est]
@@ -135,15 +136,34 @@ const create = async (req, res) => {
       await sembrarTiposFalta(conn, id_est);
     }
 
+    // Para encabezar el documento de credenciales. Antes del commit: si esto
+    // fallara después, respondería error con el usuario ya creado.
+    const [[est]] = esAdminGlobal
+      ? [[null]]
+      : await conn.query('SELECT nombre FROM ESTABLECIMIENTO WHERE id_establecimiento = ?', [id_est]);
+
     await conn.commit();
-    // El correo y la clave vuelven en la respuesta porque el frontend arma con
-    // ellos el documento a entregar. Es la única oportunidad: no hay endpoint
-    // que las relea.
+
+    // El documento a entregar se arma acá, en el mismo request que generó la
+    // clave: es la única oportunidad, no hay endpoint que la relea. Viaja
+    // junto al correo y la clave (que el modal sigue mostrando en pantalla).
+    // En el orden en que se pidieron, con el nombre del catálogo: el documento
+    // dice "Encargado de convivencia", no "ENCARGADO".
+    const rolLegible = codigos
+      .map((c) => rolesRows.find((r) => r.codigo === c)?.nombre || c)
+      .join(', ');
+
     res.status(201).json({
       id_usuario: ins.insertId,
       correo,
       nombre,
       password,
+      ...credencialesPdfParaRespuesta({
+        correo, nombre, password,
+        establecimiento: est?.nombre,
+        rol: rolLegible,
+        variante: 'creacion',
+      }),
       message: 'Usuario creado',
     });
   } catch (err) {
@@ -325,11 +345,14 @@ const resetPassword = async (req, res) => {
     // Mismo acotamiento por establecimiento que toggleActivo: un ENCARGADO no
     // puede tocarle la clave a alguien de otro colegio.
     const id_est = resolverEstablecimiento(req);
-    const where  = id_est === null || id_est === undefined ? '' : 'AND id_establecimiento = ?';
+    const where  = id_est === null || id_est === undefined ? '' : 'AND u.id_establecimiento = ?';
     const params = where ? [req.params.id, id_est] : [req.params.id];
 
     const [[destino]] = await pool.query(
-      `SELECT id_usuario, correo, nombre FROM USUARIO WHERE id_usuario = ? ${where}`, params
+      `SELECT u.id_usuario, u.correo, u.nombre, e.nombre AS establecimiento_nombre
+       FROM USUARIO u
+       LEFT JOIN ESTABLECIMIENTO e ON e.id_establecimiento = u.id_establecimiento
+       WHERE u.id_usuario = ? ${where}`, params
     );
     if (!destino) return res.status(404).json({ message: 'Usuario no encontrado' });
 
@@ -360,6 +383,13 @@ const resetPassword = async (req, res) => {
       // columna; el documento cae al correo en ese caso.
       nombre:     destino.nombre,
       password,
+      ...credencialesPdfParaRespuesta({
+        correo: destino.correo,
+        nombre: destino.nombre,
+        password,
+        establecimiento: destino.establecimiento_nombre,
+        variante: 'restablecimiento',
+      }),
       message:    'Contraseña restablecida',
     });
   } catch (err) {

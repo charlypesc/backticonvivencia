@@ -1,6 +1,8 @@
 const pool = require('../db/connection');
 const { puedeVerConfidencial } = require('../utils/confidencial');
 const { pasosDescartados } = require('../utils/flujoProtocolo');
+const { construirExpedientePdf } = require('../services/pdf/expediente.pdf');
+const { enviarPdf } = require('../services/pdf/comun');
 
 // Expediente de un caso: lo que se le entrega a la Superintendencia cuando pide
 // "los antecedentes y documentación necesarios" (art. 61 de la Ley 20.529).
@@ -352,8 +354,8 @@ const formatear = (datos, { redactado }) => {
       registrado_por: funcionario(g.registrado_por_nombre, g.registrado_por),
       adjunto: g.mime_type
         ? {
-            // El id de la gestión viaja solo cuando hay acta: es lo que le
-            // permite al front pedir el archivo y anexarlo al final del PDF.
+            // El id de la gestión viaja solo cuando hay acta: es lo que usa el
+            // PDF del expediente para anexarla al final.
             id_paso_involucrado: redactado ? null : g.id_paso_involucrado,
             nombre_archivo: redactado ? null : g.nombre_archivo,
             mime_type: g.mime_type,
@@ -532,38 +534,87 @@ const formatear = (datos, { redactado }) => {
   return redactado ? redactarProfundo(salida, involucrados) : salida;
 };
 
+// Lo común al JSON y al PDF: armar, controlar la confidencialidad y dejar la
+// exportación anotada en la bitácora. Devuelve el expediente formateado, o
+// null si ya respondió con un error.
+const prepararExpediente = async (req, res) => {
+  const datos = await armarExpediente(req.params.id, req.id_establecimiento);
+  if (!datos) {
+    res.status(404).json({ message: 'Caso no encontrado' });
+    return null;
+  }
+
+  // Un caso confidencial no deja de serlo porque se pida como expediente:
+  // esta es una lectura más y pasa por el mismo control que el resto.
+  const registroLike = {
+    es_confidencial: datos.caso.es_confidencial,
+    id_usuario: datos.caso.id_autor_registro,
+  };
+  if (datos.caso.es_confidencial && !puedeVerConfidencial(req, registroLike)) {
+    res.status(403).json({
+      message: 'El registro de origen es confidencial',
+      nota_confidencial: datos.caso.nota_confidencial,
+    });
+    return null;
+  }
+
+  const redactado = req.query.redactado === '1' || req.query.redactado === 'true';
+
+  await pool.query(
+    `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+       (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+     VALUES (?, ?, 'expediente_exportado', ?, ?, NOW())`,
+    [req.params.id, req.id_establecimiento,
+     `Expediente exportado en modo ${redactado ? 'redactado' : 'completo'}`, req.user.id]
+  );
+
+  return formatear(datos, { redactado });
+};
+
 // GET /api/protocolos-activados/:id/expediente?redactado=1
 const getExpediente = async (req, res) => {
   try {
-    const datos = await armarExpediente(req.params.id, req.id_establecimiento);
-    if (!datos) return res.status(404).json({ message: 'Caso no encontrado' });
-
-    // Un caso confidencial no deja de serlo porque se pida como expediente:
-    // esta es una lectura más y pasa por el mismo control que el resto.
-    const registroLike = {
-      es_confidencial: datos.caso.es_confidencial,
-      id_usuario: datos.caso.id_autor_registro,
-    };
-    if (datos.caso.es_confidencial && !puedeVerConfidencial(req, registroLike))
-      return res.status(403).json({
-        message: 'El registro de origen es confidencial',
-        nota_confidencial: datos.caso.nota_confidencial,
-      });
-
-    const redactado = req.query.redactado === '1' || req.query.redactado === 'true';
-
-    await pool.query(
-      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
-         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
-       VALUES (?, ?, 'expediente_exportado', ?, ?, NOW())`,
-      [req.params.id, req.id_establecimiento,
-       `Expediente exportado en modo ${redactado ? 'redactado' : 'completo'}`, req.user.id]
-    );
-
-    res.json(formatear(datos, { redactado }));
+    const expediente = await prepararExpediente(req, res);
+    if (expediente) res.json(expediente);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al armar el expediente' });
+  }
+};
+
+// GET /api/protocolos-activados/:id/expediente/pdf?redactado=1
+//
+// El mismo expediente, ya como PDF y con las actas firmadas anexadas. Se arma
+// acá y no en el navegador: las actas están en la base, y bajarlas una por
+// una al cliente para volver a pegarlas era lento y pesado en el teléfono.
+const getExpedientePdf = async (req, res) => {
+  try {
+    const expediente = await prepararExpediente(req, res);
+    if (!expediente) return;
+
+    // Ida y vuelta por JSON: deja las fechas exactamente como las recibía el
+    // front (ISO con zona), que es lo que el formateo del PDF espera.
+    const e = JSON.parse(JSON.stringify(expediente));
+
+    // Solo actas de gestiones de ESTE caso: el id sale del propio expediente,
+    // pero se vuelve a filtrar por caso por si acaso.
+    const leerActa = async (id_paso_involucrado) => {
+      const [[archivo]] = await pool.query(
+        `SELECT a.mime_type, a.contenido
+         FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO_ARCHIVO a
+         JOIN PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi ON pi.id_paso_involucrado = a.id_paso_involucrado
+         JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
+         WHERE a.id_paso_involucrado = ? AND p.id_protocolo_activado = ?`,
+        [id_paso_involucrado, req.params.id]
+      );
+      return archivo ?? null;
+    };
+
+    const { buffer, nombre } = await construirExpedientePdf(e, leerActa);
+    enviarPdf(res, buffer, nombre);
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'No se pudo generar el expediente' });
   }
 };
 
@@ -623,4 +674,4 @@ const exportarMasivo = async (req, res) => {
   }
 };
 
-module.exports = { getExpediente, exportarMasivo, MESES_RETENCION };
+module.exports = { getExpediente, getExpedientePdf, exportarMasivo, MESES_RETENCION };
