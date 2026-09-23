@@ -29,6 +29,11 @@ Diagrama del flujo:
     Pista falsa que costó tiempo: se buscó primero por el lado de permisos. El coordinador ya tenía el 82 y ya entraba; la pantalla cargaba y solo el lienzo estaba vacío. Antes de revisar RBAC conviene confirmar si la pantalla carga o no: si carga, el problema no es de permisos.
 
 ## Registro de tiempo
+- 2026-09-18 17:48 → 18:51 (1h3m)
+- 2026-09-18 17:48 → 18:51 (1h3m)
+- 2026-09-08 11:51 → 00:45 (132h53m)
+- 2026-09-08 12:44 → 00:45 (132h1m)
+- 2026-09-08 10:49 → 00:45 (133h56m)
 - 2026-09-07 15:49 → 00:19 (8h30m)
 - 2026-09-07 15:33 → 00:19 (8h45m)
 - 2026-09-03 17:50 → 17:59 (8m)
