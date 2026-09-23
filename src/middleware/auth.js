@@ -12,6 +12,9 @@ const ID_POR_CODIGO = Object.fromEntries(
 const normalizarPermisos = (permisos) =>
   (permisos ?? []).map((p) => (typeof p === 'number' ? p : ID_POR_CODIGO[p])).filter(Boolean);
 
+// Lo único que se puede hacer con una clave temporal: leer la sesión y cambiarla.
+const RUTAS_CON_CLAVE_TEMPORAL = ['/api/auth/me', '/api/auth/password'];
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -22,10 +25,20 @@ const verifyToken = (req, res, next) => {
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
     req.user.permisos = normalizarPermisos(req.user.permisos);
-    next();
   } catch {
     return res.status(403).json({ message: 'Token inválido o expirado' });
   }
+
+  // Clave temporal (recién creada o restablecida por el encargado): quien la
+  // entregó la conoce, así que hasta reemplazarla la sesión solo sirve para
+  // eso. Se bloquea acá y no solo en la pantalla porque la API se puede
+  // llamar directo con el token.
+  if (req.user.debe_cambiar_password && !RUTAS_CON_CLAVE_TEMPORAL.includes(req.baseUrl + req.path))
+    return res.status(403).json({
+      message: 'Tienes que cambiar tu contraseña temporal antes de continuar',
+      cambio_password_requerido: true,
+    });
+  next();
 };
 
 // Los tokens emitidos antes de RBAC solo traen `rol` (string). El fallback los

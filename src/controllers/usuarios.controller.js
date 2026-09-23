@@ -101,8 +101,9 @@ const create = async (req, res) => {
     const password = generarPassword();
     const hash = await bcrypt.hash(password, 10);
     const [ins] = await conn.query(
-      `INSERT INTO USUARIO (correo, nombre, password_hash, rol, id_establecimiento)
-       VALUES (?, ?, ?, ?, ?)`,
+      // Nace con clave temporal: quien la da de alta la ve impresa.
+      `INSERT INTO USUARIO (correo, nombre, password_hash, rol, id_establecimiento, debe_cambiar_password)
+       VALUES (?, ?, ?, ?, ?, 1)`,
       [correo, nombre, hash, codigos[0], esAdminGlobal ? null : id_est]
     );
 
@@ -371,8 +372,10 @@ const resetPassword = async (req, res) => {
       });
 
     const password = generarPassword();
+    // El encargado que la restablece la conoce: al entrar, la persona tiene
+    // que reemplazarla por una propia antes de poder hacer cualquier otra cosa.
     await pool.query(
-      `UPDATE USUARIO SET password_hash = ? WHERE id_usuario = ?`,
+      `UPDATE USUARIO SET password_hash = ?, debe_cambiar_password = 1 WHERE id_usuario = ?`,
       [await bcrypt.hash(password, 10), destino.id_usuario]
     );
 
