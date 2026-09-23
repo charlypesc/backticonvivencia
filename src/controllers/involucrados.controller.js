@@ -22,6 +22,9 @@ const {
   ROLES_INVOLUCRADO, TIPOS_PERSONA, MEDIOS_NOTIFICACION, SQL_ROL_ALCANZA_PASO,
 } = require('../utils/flujoProtocolo');
 const { comprimirArchivo } = require('../utils/comprimirArchivo');
+const { etiquetaDe } = require('../utils/etiquetas');
+const { construirActaNotificacionPdf } = require('../services/pdf/actaNotificacion.pdf');
+const { enviarPdf } = require('../services/pdf/comun');
 
 const buscarActivado = async (id, id_establecimiento) => {
   const [rows] = await pool.query(
@@ -445,15 +448,21 @@ const registrarGestion = async (req, res) => {
  * involucrado no basta como llave, tiene que pertenecer a este caso y a este
  * establecimiento.
  */
-const buscarGestion = async (id_caso, id_paso_involucrado) => {
+// El establecimiento es obligatorio y va en el WHERE: sin él, con los ids de un
+// caso de otro colegio se podía bajar su acta firmada (nombre, RUT y firma de
+// un estudiante ajeno). Se filtra acá y no en cada llamador para que ninguno
+// pueda olvidarlo.
+const buscarGestion = async (id_caso, id_paso_involucrado, id_establecimiento) => {
   const [filas] = await pool.query(
     `SELECT pi.id_paso_involucrado, pi.id_activado_paso, i.nombre AS involucrado_nombre,
             p.nombre AS paso_nombre
      FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
      JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
      JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
-     WHERE pi.id_paso_involucrado = ? AND p.id_protocolo_activado = ?`,
-    [id_paso_involucrado, id_caso]
+     JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = p.id_protocolo_activado
+     WHERE pi.id_paso_involucrado = ? AND p.id_protocolo_activado = ?
+       AND pa.id_establecimiento = ?`,
+    [id_paso_involucrado, id_caso, id_establecimiento]
   );
   return filas[0] ?? null;
 };
@@ -475,7 +484,7 @@ const adjuntarActaFirmada = async (req, res) => {
     const activado = await buscarActivado(req.params.id, req.id_establecimiento);
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
 
-    const gestion = await buscarGestion(req.params.id, req.params.id_paso_involucrado);
+    const gestion = await buscarGestion(req.params.id, req.params.id_paso_involucrado, req.id_establecimiento);
     if (!gestion) return res.status(404).json({ message: 'Gestión no encontrada en este caso' });
 
     // Mismo criterio que el resto de los adjuntos: entra cualquier foto pesada
@@ -523,7 +532,7 @@ const adjuntarActaFirmada = async (req, res) => {
 // abre normalmente la quiere mirar o imprimir, no bajarla otra vez.
 const descargarActaFirmada = async (req, res) => {
   try {
-    const gestion = await buscarGestion(req.params.id, req.params.id_paso_involucrado);
+    const gestion = await buscarGestion(req.params.id, req.params.id_paso_involucrado, req.id_establecimiento);
     if (!gestion) return res.status(404).json({ message: 'Gestión no encontrada en este caso' });
 
     const [[archivo]] = await pool.query(
@@ -542,7 +551,136 @@ const descargarActaFirmada = async (req, res) => {
   }
 };
 
+/** "7BasicoA" → "7 Basico A". Mismo formato que el pipe cursoNombre del front. */
+const formatearNombreCurso = (nombre) => {
+  if (!nombre) return '';
+  const m = String(nombre).match(/^(\d+)(Basico|Medio)([A-Z])$/);
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : nombre;
+};
+
+/**
+ * El texto del plazo de reconsideración. En expulsión y cancelación de
+ * matrícula el plazo lo fija la ley (art. 6 letra d) del DFL 2): 15 días
+ * hábiles ante el Director. En el resto lo fija el reglamento interno, que el
+ * sistema todavía no guarda: por eso el número lo elige quien emite el acta.
+ */
+const textoPlazo = (dias, esExpulsion) => {
+  const cuantos = `${dias} día${dias === 1 ? '' : 's'} hábil${dias === 1 ? '' : 'es'}`;
+  return esExpulsion
+    ? `${cuantos} desde esta notificación para pedir por escrito la reconsideración de la medida ` +
+        'ante el Director, quien resolverá previa consulta al Consejo de Profesores ' +
+        '(art. 6 letra d) del DFL 2 de 2009).'
+    : `${cuantos} desde esta notificación para pedir por escrito la reconsideración de la medida ` +
+        'ante la Dirección del establecimiento, según el Reglamento Interno de Convivencia Escolar.';
+};
+
+// GET /:id/gestiones/:id_paso_involucrado/acta-notificacion?plazo_dias=5
+//
+// El acta EN BLANCO para imprimir y firmar (la firmada es `/acta`). Todo lo que
+// dice lo junta el servidor —persona, medidas, caso, quién notifica—; del
+// cliente solo viene el plazo, que es la única decisión de quien la emite.
+const generarActaNotificacion = async (req, res) => {
+  try {
+    const activado = await buscarActivado(req.params.id, req.id_establecimiento);
+    if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
+
+    const [[g]] = await pool.query(
+      `SELECT pi.id_paso_involucrado, i.id_involucrado, i.nombre, i.rut, i.curso, i.rol,
+              p.nombre AS paso_nombre, p.tipo_paso
+       FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
+       JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
+       WHERE pi.id_paso_involucrado = ? AND p.id_protocolo_activado = ?`,
+      [req.params.id_paso_involucrado, req.params.id]
+    );
+    if (!g) return res.status(404).json({ message: 'Gestión no encontrada en este caso' });
+
+    const [[registro]] = await pool.query(
+      `SELECT r.asunto, r.fecha_incidente, e.nombre AS establecimiento_nombre, e.rbd
+       FROM REGISTRO_CONVIVENCIA r
+       JOIN ESTABLECIMIENTO e ON e.id_establecimiento = r.id_establecimiento
+       WHERE r.id_registro = ?`,
+      [activado.id_registro]
+    );
+
+    // Solo las medidas de ESTA persona: el acta se le entrega a ella y no
+    // puede traer lo resuelto sobre otro involucrado. Por id cuando la medida
+    // lo trae; las anteriores a esa columna, por el nombre del estudiante.
+    const [medidas] = await pool.query(
+      `SELECT md.descripcion, md.tipo_medida, md.fecha_aplicacion, md.id_involucrado,
+              TRIM(CONCAT(COALESCE(es.nombre, ''), ' ', COALESCE(es.apellido, ''))) AS estudiante
+       FROM MEDIDA_DISCIPLINARIA md
+       LEFT JOIN ESTUDIANTE es ON es.id_estudiante = md.id_estudiante
+       WHERE md.id_registro = ?
+       ORDER BY md.fecha_aplicacion, md.id_medida`,
+      [activado.id_registro]
+    );
+    const nombre = String(g.nombre ?? '').trim().toLowerCase();
+    const suyas = medidas.filter((m) =>
+      m.id_involucrado ? m.id_involucrado === g.id_involucrado : m.estudiante.toLowerCase() === nombre
+    );
+
+    const [[informe]] = await pool.query(
+      'SELECT 1 AS hay FROM INFORME_EXPULSION WHERE id_protocolo_activado = ? AND id_establecimiento = ?',
+      [req.params.id, req.id_establecimiento]
+    );
+    const esExpulsion = !!informe;
+    // 15 días por ley en expulsión; 5 como punto de partida en el resto.
+    const pedido = parseInt(req.query.plazo_dias, 10);
+    const dias = Number.isInteger(pedido) && pedido >= 1 && pedido <= 60 ? pedido : esExpulsion ? 15 : 5;
+
+    // Quien notifica es quien emite el acta: sale de la sesión, no del cliente.
+    // Con el cargo, porque importa en qué calidad actuó.
+    const [[notificador]] = await pool.query(
+      `SELECT u.nombre, u.correo,
+              (SELECT ro.nombre FROM USUARIO_ROLES uro
+                 JOIN ROLES ro ON ro.rol_id = uro.rol_id AND ro.activo = TRUE
+                WHERE uro.id_usuario = u.id_usuario
+                  AND (uro.expira_at IS NULL OR uro.expira_at > NOW())
+                LIMIT 1) AS cargo
+       FROM USUARIO u WHERE u.id_usuario = ?`,
+      [req.user.id]
+    );
+
+    const { buffer, nombre: archivo } = construirActaNotificacionPdf({
+      establecimiento: { nombre: registro?.establecimiento_nombre, rbd: registro?.rbd },
+      caso: {
+        id: activado.id_protocolo_activado,
+        protocolo: activado.nombre,
+        asunto: registro?.asunto,
+        fecha_incidente: registro?.fecha_incidente,
+      },
+      paso: { nombre: g.paso_nombre },
+      // Un paso de notificación al apoderado la emite a nombre de él: la
+      // recibe y la firma el apoderado, no el estudiante.
+      destinatario: g.tipo_paso === 'notificacion_apoderado' ? 'apoderado' : 'estudiante',
+      persona: {
+        nombre: g.nombre,
+        rut: g.rut,
+        curso: formatearNombreCurso(g.curso),
+        rol: g.rol ? etiquetaDe(g.rol, 'rol_involucrado') : '',
+      },
+      medidas: suyas.map((m) => ({
+        descripcion: m.descripcion,
+        tipo_medida: m.tipo_medida ? etiquetaDe(m.tipo_medida, 'tipo_medida_disciplinaria') : '',
+        fecha_aplicacion: m.fecha_aplicacion,
+      })),
+      plazo: textoPlazo(dias, esExpulsion),
+      notificador: {
+        nombre: notificador?.nombre ?? '',
+        cargo: notificador?.cargo ?? '',
+        correo: notificador?.correo ?? '',
+      },
+    });
+
+    enviarPdf(res, buffer, archivo);
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'No se pudo generar el acta de notificación' });
+  }
+};
+
 module.exports = {
   getByCaso, agregar, cambiarRol, quitar, registrarGestion,
-  adjuntarActaFirmada, descargarActaFirmada,
+  adjuntarActaFirmada, descargarActaFirmada, generarActaNotificacion,
 };

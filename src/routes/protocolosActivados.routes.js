@@ -70,6 +70,9 @@ router.put('/:id/gestiones/:id_paso_involucrado/acta',
   involucrados.adjuntarActaFirmada);
 router.get('/:id/gestiones/:id_paso_involucrado/acta',
   requirePermission(Permiso.ProtocoloActivadoVer), involucrados.descargarActaFirmada);
+// El acta en blanco, para imprimir y hacer firmar. La arma el servidor.
+router.get('/:id/gestiones/:id_paso_involucrado/acta-notificacion',
+  requirePermission(Permiso.ProtocoloActivadoVer), involucrados.generarActaNotificacion);
 
 // Medidas de protección del caso (art. 16 E letra j). Cuelgan del caso porque
 // una medida sin caso no existe; el resto de sus acciones va en su propia ruta.
@@ -85,6 +88,7 @@ router.post('/:id/suspensiones-cautelares', requirePermission(Permiso.Suspension
 
 // Expediente del caso: lo que se le entrega a la Superintendencia.
 router.get('/:id/expediente', requirePermission(Permiso.ExpedienteExportar), expediente.getExpediente);
+router.get('/:id/expediente/pdf', requirePermission(Permiso.ExpedienteExportar), expediente.getExpedientePdf);
 
 // Informe previo de expulsión o cancelación de matrícula.
 router.get ('/:id/informe-expulsion', requirePermission(Permiso.InformeExpulsionVer),      informeExpulsion.getByCaso);
