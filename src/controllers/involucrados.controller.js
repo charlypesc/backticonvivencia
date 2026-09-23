@@ -574,18 +574,19 @@ const textoPlazo = (dias, esExpulsion) => {
         'ante la Dirección del establecimiento, según el Reglamento Interno de Convivencia Escolar.';
 };
 
-// GET /:id/gestiones/:id_paso_involucrado/acta-notificacion?plazo_dias=5
+// GET /:id/gestiones/:id_paso_involucrado/acta-notificacion?plazo_dias=5&nota=...
 //
 // El acta EN BLANCO para imprimir y firmar (la firmada es `/acta`). Todo lo que
 // dice lo junta el servidor —persona, medidas, caso, quién notifica—; del
-// cliente solo viene el plazo, que es la única decisión de quien la emite.
+// cliente solo vienen las decisiones de quien la emite: el plazo y una nota
+// opcional que se imprime como observación.
 const generarActaNotificacion = async (req, res) => {
   try {
     const activado = await buscarActivado(req.params.id, req.id_establecimiento);
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
 
     const [[g]] = await pool.query(
-      `SELECT pi.id_paso_involucrado, i.id_involucrado, i.nombre, i.rut, i.curso, i.rol,
+      `SELECT pi.id_paso_involucrado, pi.id_activado_paso, i.id_involucrado, i.nombre, i.rut, i.curso, i.rol,
               p.nombre AS paso_nombre, p.tipo_paso
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
        JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
@@ -628,6 +629,8 @@ const generarActaNotificacion = async (req, res) => {
     // 15 días por ley en expulsión; 5 como punto de partida en el resto.
     const pedido = parseInt(req.query.plazo_dias, 10);
     const dias = Number.isInteger(pedido) && pedido >= 1 && pedido <= 60 ? pedido : esExpulsion ? 15 : 5;
+    // Tope generoso: es una observación para el papel, no un informe.
+    const nota = String(req.query.nota ?? '').trim().slice(0, 2000);
 
     // Quien notifica es quien emite el acta: sale de la sesión, no del cliente.
     // Con el cargo, porque importa en qué calidad actuó.
@@ -666,12 +669,38 @@ const generarActaNotificacion = async (req, res) => {
         fecha_aplicacion: m.fecha_aplicacion,
       })),
       plazo: textoPlazo(dias, esExpulsion),
+      nota,
       notificador: {
         nombre: notificador?.nombre ?? '',
         cargo: notificador?.cargo ?? '',
         correo: notificador?.correo ?? '',
       },
     });
+
+    // La nota queda también en la bitácora: el acta firmada puede no volver
+    // nunca, y lo que se le escribió a la persona tiene que constar igual.
+    // Sin duplicar: imprimir y después descargar la misma acta es una sola
+    // emisión, así que no se repite el evento si ya está en los últimos 30 min.
+    if (nota) {
+      const descripcion = `${g.paso_nombre} — ${g.nombre}: acta de notificación emitida con la nota: ${nota}`;
+      try {
+        const [[repetido]] = await pool.query(
+          `SELECT 1 AS hay FROM PROTOCOLO_ACTIVADO_EVENTO
+           WHERE id_protocolo_activado = ? AND tipo_evento = 'gestion_involucrado'
+             AND descripcion = ? AND fecha > NOW() - INTERVAL 30 MINUTE`,
+          [req.params.id, descripcion]
+        );
+        if (!repetido)
+          await registrarEvento(pool, {
+            id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
+            paso: g.id_activado_paso, tipo: 'gestion_involucrado', id_usuario: req.user.id,
+            descripcion,
+          });
+      } catch (err) {
+        // El papel importa más que la línea de bitácora: se emite igual.
+        console.error('No se pudo registrar la nota del acta en la bitácora', err);
+      }
+    }
 
     enviarPdf(res, buffer, archivo);
   } catch (err) {
