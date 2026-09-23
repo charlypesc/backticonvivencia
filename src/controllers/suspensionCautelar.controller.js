@@ -1,6 +1,9 @@
 const pool = require('../db/connection');
 const { calcularFechaLimite } = require('../utils/flujoProtocolo');
 const { cargarFeriados } = require('../services/feriados.service');
+const { comprimirArchivo } = require('../utils/comprimirArchivo');
+const { construirActaConsejoPdf } = require('../services/pdf/actaConsejo.pdf');
+const { enviarPdf } = require('../services/pdf/comun');
 
 // Suspensión cautelar del art. 6 letra d) del DFL 2/1998.
 //
@@ -50,7 +53,15 @@ const ABIERTAS = ['vigente', 'ampliada_por_reconsideracion', 'vencida'];
 const SELECT_SUSPENSION = `
   SELECT sc.*,
          e.nombre AS estudiante_nombre, e.apellido AS estudiante_apellido,
-         u.correo AS decretada_por
+         u.correo AS decretada_por,
+         -- Los documentos de la reconsideración: solo si existen y cómo se
+         -- llaman. El binario no viaja en el listado.
+         (SELECT a.nombre_archivo FROM SUSPENSION_CAUTELAR_ARCHIVO a
+           WHERE a.id_suspension_cautelar = sc.id_suspension_cautelar
+             AND a.tipo = 'solicitud_reconsideracion') AS solicitud_archivo,
+         (SELECT a.nombre_archivo FROM SUSPENSION_CAUTELAR_ARCHIVO a
+           WHERE a.id_suspension_cautelar = sc.id_suspension_cautelar
+             AND a.tipo = 'acta_consejo') AS acta_consejo_archivo
   FROM SUSPENSION_CAUTELAR sc
   LEFT JOIN ESTUDIANTE e ON e.id_estudiante = sc.id_estudiante
   JOIN USUARIO u ON u.id_usuario = sc.id_usuario
@@ -464,12 +475,19 @@ const resolver = async (req, res) => {
 
     const hubo_reconsideracion = suspension.fecha_reconsideracion !== null;
     const acta = consejo_profesores_acta?.trim() || suspension.consejo_profesores_acta;
+    // El pronunciamiento escrito puede constar como texto o como el acta
+    // firmada adjunta; cualquiera de los dos cumple el requisito.
+    const [[actaFirmada]] = await conn.query(
+      `SELECT 1 AS hay FROM SUSPENSION_CAUTELAR_ARCHIVO
+       WHERE id_suspension_cautelar = ? AND tipo = 'acta_consejo'`,
+      [req.params.id]
+    );
 
-    if (hubo_reconsideracion && !acta)
+    if (hubo_reconsideracion && !acta && !actaFirmada)
       return res.status(409).json({
         message:
           'Hay una reconsideración pendiente: para resolverla hay que registrar el pronunciamiento ' +
-          'por escrito del Consejo de Profesores (art. 6 letra d)',
+          'por escrito del Consejo de Profesores (art. 6 letra d), transcrito o como acta firmada',
         requiere_acta_consejo: true,
       });
 
@@ -525,7 +543,157 @@ const resolver = async (req, res) => {
   }
 };
 
+// ── Documentos de la reconsideración ─────────────────────────────────────────
+//
+// La solicitud que firmó el apoderado y el acta firmada del Consejo. El texto
+// registrado acredita lo que el establecimiento dice que pasó; estos papeles
+// son la prueba. Ver docs/suspension_cautelar_documentos.sql.
+
+const TIPOS_DOCUMENTO = {
+  solicitud_reconsideracion: 'la solicitud de reconsideración',
+  acta_consejo: 'el acta del Consejo de Profesores',
+};
+
+// PUT /api/suspensiones-cautelares/:id/documentos/:tipo  (multipart, campo "archivo")
+//
+// Uno por tipo: volver a subir reemplaza, porque lo que vale es la última
+// copia legible. Se acepta también con la suspensión ya resuelta: la copia
+// firmada suele llegar días después.
+const subirDocumento = async (req, res) => {
+  const { tipo } = req.params;
+  if (!TIPOS_DOCUMENTO[tipo]) return res.status(400).json({ message: 'Tipo de documento inválido' });
+  if (!req.file) return res.status(400).json({ message: 'No se recibió archivo' });
+
+  const conn = await pool.getConnection();
+  try {
+    const suspension = await buscarSuspension(conn, req.params.id, req.id_establecimiento);
+    if (!suspension) return res.status(404).json({ message: 'Suspensión cautelar no encontrada' });
+    // Ambos documentos son de la reconsideración: sin ella no hay qué adjuntar.
+    if (suspension.fecha_reconsideracion === null)
+      return res.status(409).json({
+        message: 'Primero registra la reconsideración: estos documentos son parte de ella',
+      });
+
+    // Mismo criterio que el resto de los adjuntos: entra la foto pesada del
+    // teléfono y el sistema la baja de peso, en vez de rechazarla.
+    const archivo = await comprimirArchivo(req.file);
+
+    await conn.beginTransaction();
+    await conn.query(
+      `INSERT INTO SUSPENSION_CAUTELAR_ARCHIVO
+         (id_suspension_cautelar, tipo, nombre_archivo, mime_type, peso_bytes, contenido, id_usuario)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         nombre_archivo = VALUES(nombre_archivo), mime_type = VALUES(mime_type),
+         peso_bytes = VALUES(peso_bytes), contenido = VALUES(contenido),
+         id_usuario = VALUES(id_usuario), fecha_subida = NOW()`,
+      [req.params.id, tipo, archivo.originalname, archivo.mimetype, archivo.size,
+       archivo.buffer, req.user.id]
+    );
+    await conn.query(
+      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+       VALUES (?, ?, 'suspension_cautelar_documento', ?, ?, NOW())`,
+      [suspension.id_protocolo_activado, req.id_establecimiento,
+       `Suspensión cautelar: se adjuntó ${TIPOS_DOCUMENTO[tipo]}`, req.user.id]
+    );
+    await conn.commit();
+
+    res.json({
+      message: 'Documento adjuntado',
+      bytes: archivo.size,
+      bytes_originales: archivo.bytes_originales,
+    });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error(err);
+    res.status(500).json({ message: 'Error al adjuntar el documento' });
+  } finally {
+    conn.release();
+  }
+};
+
+// GET /api/suspensiones-cautelares/:id/documentos/:tipo — inline: quien lo
+// abre normalmente lo quiere mirar o imprimir.
+const descargarDocumento = async (req, res) => {
+  const { tipo } = req.params;
+  if (!TIPOS_DOCUMENTO[tipo]) return res.status(400).json({ message: 'Tipo de documento inválido' });
+  try {
+    const [[archivo]] = await pool.query(
+      `SELECT a.nombre_archivo, a.mime_type, a.contenido
+       FROM SUSPENSION_CAUTELAR_ARCHIVO a
+       JOIN SUSPENSION_CAUTELAR sc ON sc.id_suspension_cautelar = a.id_suspension_cautelar
+       WHERE a.id_suspension_cautelar = ? AND a.tipo = ? AND sc.id_establecimiento = ?`,
+      [req.params.id, tipo, req.id_establecimiento]
+    );
+    if (!archivo) return res.status(404).json({ message: 'Documento no encontrado' });
+
+    res.setHeader('Content-Type', archivo.mime_type);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(archivo.nombre_archivo)}`
+    );
+    res.send(archivo.contenido);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al descargar el documento' });
+  }
+};
+
+/** "7BasicoA" → "7 Basico A", igual que el pipe cursoNombre del front. */
+const formatearNombreCurso = (nombre) => {
+  const m = String(nombre ?? '').match(/^(\d+)(Basico|Medio)([A-Z])$/);
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : nombre || '';
+};
+
+// GET /api/suspensiones-cautelares/:id/acta-consejo — el formato en blanco del
+// acta del Consejo, con los datos del caso ya puestos, para imprimir y firmar.
+const generarActaConsejo = async (req, res) => {
+  try {
+    const [[d]] = await pool.query(
+      `SELECT sc.*, est.nombre AS establecimiento_nombre, est.rbd,
+              COALESCE(pe.nombre, cp.nombre) AS protocolo,
+              COALESCE(i.nombre, TRIM(CONCAT(COALESCE(e.nombre, ''), ' ', COALESCE(e.apellido, '')))) AS persona_nombre,
+              COALESCE(i.rut, CASE WHEN e.run IS NOT NULL THEN CONCAT(e.run, '-', e.dv) END) AS persona_rut,
+              i.curso AS persona_curso
+       FROM SUSPENSION_CAUTELAR sc
+       JOIN ESTABLECIMIENTO est ON est.id_establecimiento = sc.id_establecimiento
+       JOIN PROTOCOLO_ACTIVADO pa ON pa.id_protocolo_activado = sc.id_protocolo_activado
+       JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pe.id_protocolo_establecimiento = pa.id_protocolo_establecimiento
+       LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
+       LEFT JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = sc.id_involucrado
+       LEFT JOIN ESTUDIANTE e ON e.id_estudiante = sc.id_estudiante
+       WHERE sc.id_suspension_cautelar = ? AND sc.id_establecimiento = ?`,
+      [req.params.id, req.id_establecimiento]
+    );
+    if (!d) return res.status(404).json({ message: 'Suspensión cautelar no encontrada' });
+
+    const { buffer, nombre } = construirActaConsejoPdf({
+      establecimiento: { nombre: d.establecimiento_nombre, rbd: d.rbd },
+      caso: { id: d.id_protocolo_activado, protocolo: d.protocolo },
+      estudiante: {
+        nombre: d.persona_nombre,
+        rut: d.persona_rut,
+        curso: formatearNombreCurso(d.persona_curso),
+      },
+      suspension: {
+        fundamento: d.fundamento,
+        fecha_notificacion: d.fecha_notificacion,
+        medio_notificacion: d.medio_notificacion,
+        fecha_reconsideracion: d.fecha_reconsideracion,
+        fecha_consejo: d.fecha_consejo,
+        consejo_profesores_acta: d.consejo_profesores_acta,
+      },
+    });
+    enviarPdf(res, buffer, nombre);
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'No se pudo generar el acta del Consejo' });
+  }
+};
+
 module.exports = {
   getByCaso, crear, actualizar, registrarReconsideracion, resolver,
+  subirDocumento, descargarDocumento, generarActaConsejo, TIPOS_DOCUMENTO,
   DIAS_HABILES_RESOLUCION, DIAS_HABILES_RECONSIDERACION, MEDIOS_NOTIFICACION,
 };
