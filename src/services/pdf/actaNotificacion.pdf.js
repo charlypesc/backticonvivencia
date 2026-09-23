@@ -42,6 +42,7 @@ const nombreArchivo = (d) => {
  *   destinatario: 'estudiante' | 'apoderado',
  *   medidas: { descripcion: string, tipo_medida?: string, fecha_aplicacion?: string }[],
  *   plazo: string,
+ *   nota?: string,
  *   notificador: { nombre?: string, cargo?: string, correo: string },
  * }}
  * @returns {{ buffer: Buffer, nombre: string }}
@@ -49,13 +50,24 @@ const nombreArchivo = (d) => {
 const construirActaNotificacionPdf = (d) => {
   const doc = new jsPDF({ unit: 'pt', format: 'letter', compress: true });
   const ancho = doc.internal.pageSize.getWidth();
+  const alto = doc.internal.pageSize.getHeight();
   const m = MARGEN;
   const util = ancho - m * 2;
   let y = m;
 
+  // Una hoja suele alcanzar, pero una nota larga o varias medidas la pasan: se
+  // salta de página antes de cortar un bloque o dejar las firmas afuera.
+  const salto = (necesario) => {
+    if (y + necesario > alto - 50) {
+      doc.addPage();
+      y = m;
+    }
+  };
+
   const parrafo = (texto, tam = 10, estilo = 'normal', color = TINTA) => {
     doc.setFontSize(tam).setFont('helvetica', estilo).setTextColor(...color);
     const lineas = doc.splitTextToSize(plano(texto), util);
+    salto(lineas.length * (tam + 3) + 6);
     doc.text(lineas, m, y);
     y += lineas.length * (tam + 3) + 6;
   };
@@ -140,6 +152,14 @@ const construirActaNotificacionPdf = (d) => {
   parrafo('PLAZO PARA PEDIR RECONSIDERACION', 9, 'bold', GRIS);
   parrafo(d.plazo);
   y += 4;
+
+  // Lo que quien notifica quiere dejar escrito en el papel que se firma
+  // (condiciones, citación, lo conversado). Solo si lo escribió.
+  if (d.nota?.trim()) {
+    parrafo('OBSERVACIONES', 9, 'bold', GRIS);
+    parrafo(d.nota.trim());
+    y += 4;
+  }
   linea();
 
   // Firmas. Bajo la de quien notifica van nombre y cargo, no sólo el correo:
@@ -156,6 +176,8 @@ const construirActaNotificacionPdf = (d) => {
     doc.text(lineas, x, y + 70);
   };
   const anchoFirma = (util - 24) / 2;
+  // Las dos firmas y la leyenda del pie van juntas en la misma hoja.
+  salto(130);
   firmar(
     alApoderado ? 'Firma del apoderado o adulto responsable' : 'Firma de quien recibe la notificacion',
     alApoderado ? `Apoderado de ${d.persona.nombre}` : d.persona.nombre,
