@@ -15,6 +15,7 @@ const { cargarFeriados } = require('../services/feriados.service');
 const { reducirSiConfidencial } = require('../utils/confidencial');
 const { tienePermiso } = require('../middleware/auth');
 const { Permiso } = require('../constants/permisos');
+const { etiquetaDe } = require('../utils/etiquetas');
 
 // Motor de ejecución de protocolos.
 //
@@ -154,6 +155,14 @@ const registrarEvento = (conn, { activado, paso = null, tipo, descripcion, id_us
 // tienen 13 roles (Funcionario, Docente, Profesor jefe...) y usarlo como gate le
 // abriría los pasos del Director a todos ellos. reasignar_paso lo tienen solo
 // los que gestionan el caso, que son justamente los que ya podían dar el rodeo.
+// La decisión de expulsión o cancelación de matrícula solo la puede adoptar el
+// director (DFL 2/1998 art. 6 letra d, texto de la Ley 21.128). No se delega:
+// ni "en lugar de" con el permiso de reasignar, ni reasignándole el paso a otro
+// como responsable. Aprobarla alguien más deja la medida viciada ante la
+// Superintendencia. El paso se reconoce por su campo 'medida_adoptada', que es
+// el que define el catálogo para esa decisión.
+const esDecisionIndelegable = (campos) => campos.some((c) => c.codigo === 'medida_adoptada');
+
 const puedeActuar = async (req, paso, tipo_participacion) => {
   if ((req.user.roles ?? []).includes('ADMIN')) return 'propio';
   if (paso.id_usuario_responsable === req.user.id) return 'propio';
@@ -255,7 +264,23 @@ const getAll = async (req, res) => {
       `${BASE_SELECT} ${req.query.estado ? 'AND pa.estado = ?' : ''} ORDER BY pa.fecha_activacion DESC`,
       req.query.estado ? [req.id_establecimiento, req.query.estado] : [req.id_establecimiento]
     );
-    res.json(rows);
+
+    // Los estudiantes de cada caso, para buscar por alumno en el listado. Solo
+    // estudiantes: el buscador es por alumno, y funcionarios y externos no
+    // tienen ficha. Una consulta para todos los casos, no una por fila.
+    const ids = rows.map((r) => r.id_protocolo_activado);
+    const porCaso = new Map(ids.map((id) => [id, []]));
+    if (ids.length) {
+      const [involucrados] = await pool.query(
+        `SELECT id_protocolo_activado, id_estudiante, nombre, rut, curso, rol
+         FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+         WHERE id_protocolo_activado IN (?) AND tipo_persona = 'estudiante' AND id_estudiante IS NOT NULL
+         ORDER BY FIELD(rol, 'afectado','senalado','denunciante','testigo'), nombre`,
+        [ids]
+      );
+      for (const i of involucrados) porCaso.get(i.id_protocolo_activado).push(i);
+    }
+    res.json(rows.map((r) => ({ ...r, estudiantes: porCaso.get(r.id_protocolo_activado) })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener protocolos activados' });
@@ -408,11 +433,18 @@ const getDetalle = async (req, res) => {
     // Un paso sin titular no es de nadie, y por eso mismo lo toma quien gestiona
     // el caso: queda como 'en_lugar_de' y la bitácora lo deja escrito.
     const tituloSobre = (paso, tipo_participacion) => {
-      if (esAdministrador || paso.id_usuario_responsable === req.user.id) return 'propio';
+      if (esAdministrador) return 'propio';
       const delPaso = roles.filter(
         (r) => r.id_activado_paso === paso.id_activado_paso && r.tipo_participacion === tipo_participacion
       );
-      if (delPaso.some((r) => misRoles.includes(r.rol_codigo))) return 'propio';
+      const esTitular = delPaso.some((r) => misRoles.includes(r.rol_codigo));
+      // La decisión de expulsión solo la aprueba su titular: la misma regla que
+      // aplica aprobarPaso, para que la pantalla no ofrezca un botón que la API
+      // va a rechazar.
+      if (tipo_participacion === 'aprobador' &&
+          esDecisionIndelegable(campos.filter((c) => c.id_activado_paso === paso.id_activado_paso)))
+        return esTitular ? 'propio' : null;
+      if (esTitular || paso.id_usuario_responsable === req.user.id) return 'propio';
       return puedeTomarAjenos ? 'en_lugar_de' : null;
     };
 
@@ -752,9 +784,13 @@ const activar = async (req, res) => {
       await registrarEvento(conn, {
         activado, tipo: 'activacion', id_usuario: req.user.id,
         descripcion:
-          `Protocolo activado sobre el registro ${id_registro} (flujo ${fuente.origen})` +
+          // En castellano y no con los códigos de la base: esta frase sale tal
+          // cual en el expediente que lee la Superintendencia.
+          `Protocolo activado sobre el registro ${id_registro} ` +
+          `(${fuente.origen === 'catalogo' ? 'flujo del catálogo' : 'flujo propio del establecimiento'})` +
           (involucrados.length
-            ? ` — involucrados: ${involucrados.map((i) => `${i.nombre} (${i.rol})`).join(', ')}`
+            ? ` — involucrados: ${involucrados
+                .map((i) => `${i.nombre} (${etiquetaDe(i.rol, 'rol_involucrado').toLowerCase()})`).join(', ')}`
             : ' — sin involucrados registrados'),
       });
 
@@ -1072,6 +1108,23 @@ const aprobarPaso = async (req, res) => {
       'SELECT * FROM PROTOCOLO_ACTIVADO_PASO_CAMPO WHERE id_activado_paso = ?',
       [paso.id_activado_paso]
     );
+    if (esDecisionIndelegable(campos) && !(req.user.roles ?? []).includes('ADMIN')) {
+      const [titular] = await pool.query(
+        `SELECT 1 FROM PROTOCOLO_ACTIVADO_PASO_ROL pr
+         JOIN USUARIO_ROLES ur ON ur.rol_id = pr.rol_id
+         WHERE pr.id_activado_paso = ? AND pr.tipo_participacion = 'aprobador' AND ur.id_usuario = ?
+           AND (ur.expira_at IS NULL OR ur.expira_at > NOW())
+         LIMIT 1`,
+        [paso.id_activado_paso, req.user.id]
+      );
+      if (!titular.length)
+        return res.status(403).json({
+          message: `La decisión de expulsión o cancelación de matrícula solo la puede adoptar ` +
+            `${(await rolesDelPaso(paso.id_activado_paso, 'aprobador')) || 'el director'} ` +
+            '(art. 6 letra d del DFL 2). No se puede aprobar en su lugar.',
+        });
+    }
+
     const validados = validarDatosSalida(campos, req.body?.datos_salida);
     if (validados.error) return res.status(400).json({ message: validados.error });
 

@@ -3,6 +3,7 @@ const { puedeVerConfidencial } = require('../utils/confidencial');
 const { pasosDescartados } = require('../utils/flujoProtocolo');
 const { construirExpedientePdf } = require('../services/pdf/expediente.pdf');
 const { enviarPdf } = require('../services/pdf/comun');
+const { ETIQUETAS, etiquetaDe, humanizar } = require('../utils/etiquetas');
 
 // Expediente de un caso: lo que se le entrega a la Superintendencia cuando pide
 // "los antecedentes y documentación necesarios" (art. 61 de la Ley 20.529).
@@ -273,9 +274,24 @@ const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
     [caso.id_registro]
   );
 
+  // El cargo de cada funcionario, por correo: todas las consultas de arriba
+  // traen nombre y correo de quien actuó, y el correo es único. Con esto el
+  // expediente nombra "Nombre, Cargo" en vez de una dirección de correo. Se
+  // incluyen las cuentas sin establecimiento (el administrador del sistema).
+  const [cuentas] = await pool.query(
+    `SELECT u.correo, GROUP_CONCAT(DISTINCT r.nombre ORDER BY r.nombre SEPARATOR ' / ') AS cargo
+     FROM USUARIO u
+     LEFT JOIN USUARIO_ROLES ur ON ur.id_usuario = u.id_usuario
+     LEFT JOIN ROLES r ON r.rol_id = ur.rol_id
+     WHERE u.id_establecimiento = ? OR u.id_establecimiento IS NULL
+     GROUP BY u.id_usuario`,
+    [caso.id_establecimiento]
+  );
+  const cargos = new Map(cuentas.map((c) => [c.correo, c.cargo]));
+
   return { caso, pasos, descartados, campos, involucrados, gestiones, bitacora, documentosSuspension,
            medidasProteccion, seguimientos, suspensionesCautelares,
-           medidasDisciplinarias, informe: informe ?? null, documentosOrigen };
+           medidasDisciplinarias, informe: informe ?? null, documentosOrigen, cargos };
 };
 
 // El dato que la Superintendencia mira primero: si el paso se cumplió dentro
@@ -308,9 +324,32 @@ const salidaDe = (paso) => {
 //
 // Se limpia al emitir y no en la fila: el evento guardado es el rastro de
 // auditoría y no se reescribe.
+//
+// Lo mismo con los códigos que el motor pegó en la frase: "(senalado)",
+// "(flujo catalogo)", "(condición constituye_delito=si)". Son claves de la
+// base, no castellano, y en un documento que lee la Superintendencia se ven
+// como un error.
+// Un código suelto en la frase no dice de qué dominio es: se busca en todas
+// las etiquetas ("expulsion_o_cancelacion" → "Expulsión o cancelación de
+// matrícula") y solo si no está en ninguna se le sacan los guiones.
+const etiquetaDeCualquiera = (codigo) => {
+  for (const dominio of Object.values(ETIQUETAS)) if (dominio[codigo]) return dominio[codigo];
+  return humanizar(codigo);
+};
+
 const limpiarDescripcion = (texto) =>
   typeof texto === 'string'
-    ? texto.replace(/\s*\(rama por defecto\)/g, '').replace(/'([^']*)'/g, '$1')
+    ? texto
+        .replace(/\s*\(rama por defecto\)/g, '')
+        .replace(/'([^']*)'/g, '$1')
+        .replace(/\(flujo catalogo\)/g, '(flujo del catálogo)')
+        .replace(/\(flujo establecimiento\)/g, '(flujo propio del establecimiento)')
+        .replace(/\((afectado|senalado|testigo|denunciante)\)/g,
+          (_, rol) => `(${etiquetaDe(rol, 'rol_involucrado').toLowerCase()})`)
+        .replace(/\(condición ([a-z0-9_]+)=([a-z0-9_]+)\)/g,
+          (_, campo, valor) => `(${humanizar(campo).toLowerCase()}: ${valor === 'si' ? 'sí' : etiquetaDeCualquiera(valor).toLowerCase()})`)
+        // Cualquier otro código_con_guiones que haya quedado en la frase.
+        .replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, (codigo) => etiquetaDeCualquiera(codigo).toLowerCase())
     : texto;
 
 const motivoCierreDe = (bitacora) => {
@@ -333,12 +372,26 @@ const formatear = (datos, { redactado }) => {
 
   // Toda medida, suspensión o gestión apunta a un involucrado por id: acá se
   // resuelve una sola vez cómo se nombra a esa persona según el modo.
-  // A un funcionario se le nombra por su nombre, nunca por su correo ni por su
-  // id: el expediente lo lee alguien de afuera, para quien
-  // 'encargado@colegio.cl' no identifica a nadie. El correo queda solo como
-  // respaldo para las cuentas que todavía no tienen nombre cargado.
-  const funcionario = (nombre, correo) =>
-    redactado ? redactarCorreo() : (nombre || correo || null);
+  // A un funcionario se le nombra por su nombre y su cargo, nunca por su
+  // correo: el expediente lo lee alguien de afuera, para quien
+  // 'encargado@colegio.cl' no identifica a nadie, y lo que tiene que poder
+  // verificar es que quien actuó tenía competencia para hacerlo — eso lo dice
+  // el cargo. Una cuenta sin nombre cargado se nombra por su cargo solo.
+  const { cargos = new Map() } = datos;
+  const funcionario = (nombre, correo) => {
+    if (redactado) return redactarCorreo();
+    const cargo = cargos.get(correo) || null;
+    // Una cuenta con nombre genérico ("Coordinador") repetiría el cargo.
+    if (nombre && cargo && !cargo.toLowerCase().startsWith(nombre.toLowerCase())) return `${nombre}, ${cargo}`;
+    if (cargo) return cargo;
+    return nombre || cargo || correo || null;
+  };
+  // Los correos que el motor escribió dentro de la frase ("asignado a
+  // encargado@colegio.cl") se cambian por el mismo nombre y cargo.
+  const sinCorreos = (texto) =>
+    typeof texto === 'string' && !redactado
+      ? texto.replace(CORREO, (c) => (cargos.has(c) ? funcionario(null, c) : c))
+      : texto;
 
   const porId = new Map(involucrados.map((i) => [i.id_involucrado, i]));
   const persona = (id_involucrado) => {
@@ -529,7 +582,7 @@ const formatear = (datos, { redactado }) => {
     bitacora: bitacora.map((b) => ({
       fecha: b.fecha,
       tipo_evento: b.tipo_evento,
-      descripcion: limpiarDescripcion(b.descripcion),
+      descripcion: sinCorreos(limpiarDescripcion(b.descripcion)),
       usuario: funcionario(b.nombre, b.correo),
     })),
     resumen_cumplimiento: {

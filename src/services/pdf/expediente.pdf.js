@@ -503,27 +503,68 @@ const documento = (e) => {
     }
   };
 
-  for (const s of secciones(e)) {
-    // Título más su primera línea: un título solo al pie de la hoja es huérfano.
-    salto(52);
-    y = tituloSeccion(doc, s.titulo, y, util);
+  // Un bloque de la lista (paso, gestión, medida) ya partido en líneas, para
+  // poder medirlo antes de dibujarlo.
+  const medirItem = (item) => {
+    doc.setFontSize(8).setFont('helvetica', 'bold');
+    const marca = plano(item.marca).toUpperCase();
+    const marcaAncho = marca ? doc.getTextWidth(marca) + 12 : 0;
 
+    doc.setFontSize(10).setFont('helvetica', 'bold');
+    const lineasTitulo = doc.splitTextToSize(plano(item.titulo) || '-', util - marcaAncho - 20);
+
+    doc.setFontSize(9).setFont('helvetica', 'normal');
+    const detalles = (item.detalles ?? []).flatMap((d) => doc.splitTextToSize(plano(d), util - 14));
+    // Un bloque más alto que una hoja se parte igual: pedir más que una hoja
+    // entera solo agregaría una página en blanco.
+    const alto = Math.min(lineasTitulo.length * 12 + detalles.length * 11 + 14, piso - m - 10);
+    return { marca, lineasTitulo, detalles, alto };
+  };
+
+  for (const s of secciones(e)) {
+    // El título viaja con su primer bloque: reservar solo una línea dejaba el
+    // título solo al pie de la hoja cuando el primer paso era largo y saltaba
+    // entero a la siguiente.
     if (s.tipo === 'campos') {
-      for (const c of s.campos) {
-        const etiquetaAncho = 132;
+      // La columna de etiquetas se ajusta a la más larga de la sección, con
+      // tope: con un ancho fijo, "Gestiones por persona pendientes" se montaba
+      // sobre el número. La que no cabe en el tope se parte en dos líneas.
+      doc.setFontSize(8.5).setFont('helvetica', 'normal');
+      const masLarga = Math.max(...s.campos.map((c) => doc.getTextWidth(plano(c.etiqueta).toUpperCase())));
+      const etiquetaAncho = Math.min(Math.max(132, masLarga + 14), util * 0.45);
+
+      const filas = s.campos.map((c) => {
+        doc.setFontSize(8.5).setFont('helvetica', 'normal');
+        const etiqueta = doc.splitTextToSize(plano(c.etiqueta).toUpperCase(), etiquetaAncho - 14);
+        doc.setFontSize(9.5).setFont('helvetica', 'normal');
         const valor = doc.splitTextToSize(plano(c.valor) || '-', util - etiquetaAncho);
-        salto(valor.length * 12 + 4);
+        return { etiqueta, valor, lineas: Math.max(etiqueta.length, valor.length) };
+      });
+
+      // Una sección de datos corta (el resumen de cumplimiento, la
+      // identificación) va entera en la misma hoja: partida en dos, la mitad
+      // de los números queda lejos de su título. Si no cabe ni en una hoja
+      // entera, se parte igual.
+      const altoSeccion = filas.reduce((t, f) => t + f.lineas * 12 + 5, 0) + 8;
+      salto(22 + Math.min(altoSeccion, piso - m - 40));
+      y = tituloSeccion(doc, s.titulo, y, util);
+
+      for (const { etiqueta, valor, lineas } of filas) {
+        salto(lineas * 12 + 4);
 
         doc.setFontSize(8.5).setFont('helvetica', 'normal').setTextColor(...GRIS);
-        doc.text(plano(c.etiqueta).toUpperCase(), m, y);
+        doc.text(etiqueta, m, y, { lineHeightFactor: 1.35 });
 
         doc.setFontSize(9.5).setFont('helvetica', 'normal').setTextColor(...TINTA);
         doc.text(valor, m + etiquetaAncho, y);
-        y += valor.length * 12 + 5;
+        y += lineas * 12 + 5;
       }
       y += 8;
       continue;
     }
+
+    salto(22 + (s.items.length ? medirItem(s.items[0]).alto : 30));
+    y = tituloSeccion(doc, s.titulo, y, util);
 
     if (!s.items.length) {
       salto(18);
@@ -535,16 +576,8 @@ const documento = (e) => {
 
     for (const item of s.items) {
       // Se mide antes de dibujar: un bloque partido deja el detalle sin título.
-      doc.setFontSize(8).setFont('helvetica', 'bold');
-      const marca = plano(item.marca).toUpperCase();
-      const marcaAncho = marca ? doc.getTextWidth(marca) + 12 : 0;
-
-      doc.setFontSize(10).setFont('helvetica', 'bold');
-      const lineasTitulo = doc.splitTextToSize(plano(item.titulo) || '-', util - marcaAncho - 20);
-
-      doc.setFontSize(9).setFont('helvetica', 'normal');
-      const detalles = (item.detalles ?? []).flatMap((d) => doc.splitTextToSize(plano(d), util - 14));
-      salto(lineasTitulo.length * 12 + detalles.length * 11 + 14);
+      const { marca, lineasTitulo, detalles, alto: altoBloque } = medirItem(item);
+      salto(altoBloque);
 
       const yBloque = y;
 
