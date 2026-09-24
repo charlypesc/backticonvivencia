@@ -813,6 +813,81 @@ const buscarPasoActivadoEn = async (conn, id_activado_paso) => {
 // Avance
 // ---------------------------------------------------------------------------
 
+// Lo que el director resuelve en el paso de decisión de expulsión, traducido al
+// tipo de medida disciplinaria. 'se_desestima' no está: no hay medida que dejar.
+const MEDIDA_POR_DECISION = {
+  expulsion: { tipo: 'expulsion', etiqueta: 'Expulsión' },
+  cancelacion_de_matricula: { tipo: 'cancelacion_matricula', etiqueta: 'Cancelación de matrícula' },
+};
+
+// Aprobar la expulsión en el protocolo es adoptar la medida: antes quedaba solo
+// en la bitácora y había que volver a cargarla a mano en la tarjeta de medidas.
+// Si nadie lo hacía, el paso de resolución seguía reclamando su medida, el
+// cierre pedía un motivo y el informe de expulsión no la encontraba.
+//
+// Se registra una por cada estudiante señalado del paso, atada al paso de
+// resolución que la esperaba (si hay uno pendiente) para que deje de
+// reclamarla. No se duplica si el paso se vuelve a aprobar tras una
+// reconsideración.
+const registrarMedidaDeExpulsion = async (conn, { req, activado, paso, datos }) => {
+  const medida = MEDIDA_POR_DECISION[datos?.medida_adoptada];
+  if (!medida || datos.aprobado !== 'si') return;
+
+  let [estudiantes] = await conn.query(
+    `SELECT i.id_estudiante FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
+      WHERE pi.id_activado_paso = ? AND i.rol = 'senalado' AND i.id_estudiante IS NOT NULL`,
+    [paso.id_activado_paso]
+  );
+  // Un paso sin gestiones por persona: se toma a los señalados del caso.
+  if (estudiantes.length === 0)
+    [estudiantes] = await conn.query(
+      `SELECT id_estudiante FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+        WHERE id_protocolo_activado = ? AND rol = 'senalado' AND id_estudiante IS NOT NULL`,
+      [activado.id_protocolo_activado]
+    );
+  if (estudiantes.length === 0) return;
+
+  const [[pendiente]] = await conn.query(
+    `SELECT p.id_activado_paso FROM PROTOCOLO_ACTIVADO_PASO p
+      WHERE p.id_protocolo_activado = ? AND p.requiere_medida = 1
+        AND p.tipo_medida_requerida = 'disciplinaria'
+        AND NOT EXISTS (SELECT 1 FROM MEDIDA_DISCIPLINARIA m WHERE m.id_activado_paso = p.id_activado_paso)
+      ORDER BY p.fecha_completado DESC, p.id_activado_paso DESC LIMIT 1`,
+    [activado.id_protocolo_activado]
+  );
+  const id_paso_medida = pendiente?.id_activado_paso ?? paso.id_activado_paso;
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  for (const { id_estudiante } of estudiantes) {
+    const [[ya]] = await conn.query(
+      `SELECT id_medida FROM MEDIDA_DISCIPLINARIA
+        WHERE id_registro = ? AND id_estudiante = ? AND tipo_medida = ? AND estado = 'vigente'`,
+      [activado.id_registro, id_estudiante, medida.tipo]
+    );
+    if (ya) continue;
+
+    await conn.query(
+      `INSERT INTO MEDIDA_DISCIPLINARIA
+         (descripcion, fundamento, tipo_medida, fecha_aplicacion,
+          id_registro, id_estudiante, id_involucrado, id_establecimiento, id_usuario, id_activado_paso)
+       VALUES (?, ?, ?, ?, ?, ?,
+               (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+                 WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1),
+               ?, ?, ?)`,
+      [`${medida.etiqueta} adoptada por el director en "${paso.nombre}"`,
+       datos.observaciones?.trim() || null, medida.tipo, hoy,
+       activado.id_registro, id_estudiante,
+       activado.id_protocolo_activado, id_estudiante,
+       activado.id_establecimiento, req.user.id, id_paso_medida]
+    );
+    await registrarEvento(conn, {
+      activado, paso: id_paso_medida, tipo: 'medida_disciplinaria_aplicada', id_usuario: req.user.id,
+      descripcion: `${medida.etiqueta} registrada como medida disciplinaria al aprobarse ${paso.nombre}`,
+    });
+  }
+};
+
 // Cierra un paso y decide el destino. Es el corazón del motor: lo comparten
 // completar, aprobar y omitir, que solo se diferencian en qué datos_salida
 // producen y en qué estado dejan el paso.
@@ -826,6 +901,8 @@ const avanzar = async (conn, { req, activado, paso, estadoFinal, datos, evento, 
   await registrarEvento(conn, {
     activado, paso: paso.id_activado_paso, tipo: evento, descripcion, id_usuario: req.user.id,
   });
+  if (estadoFinal === 'completado')
+    await registrarMedidaDeExpulsion(conn, { req, activado, paso, datos });
 
   if (paso.es_paso_final) {
     // El que llama hace rollback con el error, así que el paso tampoco queda
