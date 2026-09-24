@@ -74,6 +74,10 @@ const TIPOS_MEDIDA = [
   'servicio_comunitario', 'derivacion', 'retiro_sala', 'suspension_actividades',
   'condicionalidad', 'suspension', 'reduccion_jornada', 'separacion_temporal',
   'asistencia_solo_evaluaciones', 'otra',
+  // Las registra solas el motor al aprobarse el paso de decisión de expulsión
+  // (ver registrarMedidaDeExpulsion); se aceptan también a mano para los casos
+  // que se resolvieron antes de eso.
+  'expulsion', 'cancelacion_matricula',
 ];
 
 // Solo estas cuatro son "medidas excepcionales" (Circular 482 p. 47): proceden
