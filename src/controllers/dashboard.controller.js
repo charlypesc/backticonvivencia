@@ -154,27 +154,13 @@ const getResumen = async (req, res) => {
       [id_est, id_est, id_est, id_est, id_est, id_est, id_est, id_est]
     );
 
-    // Porcentaje de pasos cerrados dentro de plazo. Es el número que resume si
-    // los procedimientos se ejecutan a tiempo; NULL cuando todavía no hay
-    // ningún paso terminado con plazo, para no mostrar un 0% engañoso.
-    const [[plazos]] = await pool.query(
-      `SELECT COUNT(*) AS terminados,
-              SUM(fecha_completado <= fecha_limite) AS en_plazo
-       FROM PROTOCOLO_ACTIVADO_PASO
-       WHERE id_establecimiento = ? AND fecha_completado IS NOT NULL AND fecha_limite IS NOT NULL`,
-      [id_est]
-    );
-
+    // El "% de pasos cerrados en plazo" salió del tablero: era un acumulado
+    // histórico y un solo atraso viejo lo dejaba en 99% para siempre, sin
+    // decir nada de cómo se está trabajando hoy.
     res.json({
       registros_mes, estudiantes_con_registro, protocolos_activados,
       ultimos: ultimosFiltrados,
-      cumplimiento: {
-        ...cumplimiento,
-        pasos_terminados: plazos.terminados,
-        porcentaje_en_plazo: plazos.terminados > 0
-          ? Math.round((plazos.en_plazo / plazos.terminados) * 100)
-          : null,
-      },
+      cumplimiento,
     });
   } catch (err) {
     console.error(err);
