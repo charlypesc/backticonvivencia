@@ -19,14 +19,16 @@ const verifyToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  // 401 (no 403) con `sesion_expirada`: el front lo usa para volver al login.
+  // Un 403 se confundía con "no tienes permiso" y la pantalla quedaba vacía.
   if (!token)
-    return res.status(401).json({ message: 'Token requerido' });
+    return res.status(401).json({ message: 'Token requerido', sesion_expirada: true });
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
     req.user.permisos = normalizarPermisos(req.user.permisos);
   } catch {
-    return res.status(403).json({ message: 'Token inválido o expirado' });
+    return res.status(401).json({ message: 'Tu sesión expiró, vuelve a iniciar sesión', sesion_expirada: true });
   }
 
   // Clave temporal (recién creada o restablecida por el encargado): quien la
