@@ -131,17 +131,20 @@ const construirActaNotificacionPdf = (d) => {
   y += 6;
   linea();
 
-  // Lo que se notifica
+  // Lo que se notifica: las medidas cargadas y, debajo, lo que quien notifica
+  // escribió al emitir el acta. El texto va acá y no en un bloque aparte de
+  // "Observaciones" porque es justamente lo que se le está notificando.
   parrafo('SE NOTIFICA', 9, 'bold', GRIS);
-  if (d.medidas.length) {
-    for (const med of d.medidas) {
-      parrafo(
-        `- ${med.tipo_medida ? med.tipo_medida + ': ' : ''}${med.descripcion}` +
-          (med.fecha_aplicacion ? ` (aplicada el ${formatearFecha(med.fecha_aplicacion)})` : ''),
-      );
-    }
-  } else {
-    // Sin medidas cargadas el acta se emite igual y se llena a mano: un acta
+  const nota = d.nota?.trim();
+  for (const med of d.medidas) {
+    parrafo(
+      `- ${med.tipo_medida ? med.tipo_medida + ': ' : ''}${med.descripcion}` +
+        (med.fecha_aplicacion ? ` (aplicada el ${formatearFecha(med.fecha_aplicacion)})` : ''),
+    );
+  }
+  if (nota) parrafo(nota);
+  if (!d.medidas.length && !nota) {
+    // Sin medidas ni texto el acta se emite igual y se llena a mano: un acta
     // que no se puede imprimir deja al establecimiento sin constancia.
     parrafo('_______________________________________________________________________');
     parrafo('_______________________________________________________________________');
@@ -152,14 +155,6 @@ const construirActaNotificacionPdf = (d) => {
   parrafo('PLAZO PARA PEDIR RECONSIDERACION', 9, 'bold', GRIS);
   parrafo(d.plazo);
   y += 4;
-
-  // Lo que quien notifica quiere dejar escrito en el papel que se firma
-  // (condiciones, citación, lo conversado). Solo si lo escribió.
-  if (d.nota?.trim()) {
-    parrafo('OBSERVACIONES', 9, 'bold', GRIS);
-    parrafo(d.nota.trim());
-    y += 4;
-  }
   linea();
 
   // Firmas. Bajo la de quien notifica van nombre y cargo, no sólo el correo:
