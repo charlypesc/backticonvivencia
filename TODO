@@ -41,7 +41,45 @@ Preparación para vender (2026-09-23):
   ✔ clave temporal obligatoria de cambiar (recuperación la gestiona el encargado, sin correo) @done
     El encargado restablece desde Usuarios y ve la clave impresa: si la persona no la cambia, el encargado conoce su contraseña para siempre. USUARIO.debe_cambiar_password (docs/usuario_debe_cambiar_password.sql, aplicado 2026-09-23) se pone en 1 al crear y al restablecer; va en el token y verifyToken rechaza todo salvo /auth/me y /auth/password. El cambio devuelve un token nuevo sin la marca, así no hay que volver a entrar. El bloqueo es en el backend y no solo en el modal porque la API se llama directo con el token. Las 8 cuentas existentes quedaron en 0.
 
+Registros (2026-09-28):
+  ✔ cambiar la etiqueta "tipo de falta" por "motivo del registro" @done
+    Solo en pantalla (formulario, listado, historial del estudiante, PDF y mensaje de error); en la base sigue siendo TIPO_FALTA. El mantenedor del menú todavía se llama "Tipos de falta".
+  ✔ buscador de texto en el selector de motivo @done
+    El <select> se cambió por <app-buscador> con minimoCaracteres=0 (al enfocar lista todo) y búsqueda por palabra sin tildes sobre nombre, gravedad y descripción.
+  ✔ al agregar un funcionario, no perder lo escrito en "otros involucrados" @done
+    Causa: el panel de funcionario/externo tenía su propio botón "Agregar" y guardar() no lo miraba: lo tipeado y no agregado se descartaba en silencio. Ahora guardar() revisa si el panel quedó a medias: si está completo lo agrega solo, si falta algo muestra qué y hace scroll a esa sección.
+  ✔ mostrar más grande quién llenó el registro @done
+    Bloque destacado con avatar y nombre en el encabezado del formulario, y columna "Registrado por" en negrita en el listado.
+  ✔ imprimir el registro inicial puro @done
+    GET /registros/:id/pdf (services/pdf/registro.pdf.js, jsPDF como el acta): hecho, involucrados, antecedentes, acuerdos y firmas, sin protocolo. Botón "Imprimir" en el formulario → popover Imprimir/Descargar. Imprime la versión guardada actual (si se editó, sale lo editado).
+  ✔ derivar un registro a otro funcionario con plazo + notificación @done
+    Tabla REGISTRO_DERIVACION (docs/registro_derivacion.sql). Derivar de nuevo anula la pendiente anterior. El destinatario ve el registro aunque no tenga ver_todos, y lo marca "atendido" (avisa a quien derivó). Si vence el plazo, el job de 15 min avisa UNA vez (aviso_vencida_at) al funcionario ("no has atendido") y al coordinador que derivó + coordinadores ("vuelve a tomarlo").
+  ✔ notificar a los coordinadores cuando se llena un registro nuevo, y mostrarlo en el dashboard para atajarlo @done
+    REGISTRO_CONVIVENCIA.id_usuario_atiende/fecha_atencion. Lo que llena un coordinador (permiso registro.derivar) nace atendido; lo de cualquier otro avisa a los ENCARGADO y aparece en "Registros nuevos por atender" con botón Atender (solo si nadie lo tomó: 409 si otro llegó antes).
+  ✔ marcar como atendidos los 12 registros viejos @done
+    Nacieron antes de la columna id_usuario_atiende y salían todos "por atender", pintando de amarillo a sus estudiantes. Se dejaron atendidos por el coordinador del establecimiento 6258 (usuario 2), con fecha_atencion = fecha_creacion (aplicado 2026-09-28, respaldo en backup-2026-09-28-atencion-registros.json del scratchpad).
+
+Dashboard y estados del estudiante (2026-09-28):
+  ✔ colores de estado: verde = convivencia sana, amarillo = tiene registros pendientes @done
+    Reemplaza el badge activo/inactivo. Pendiente = sin atender, derivación pendiente, protocolo en curso u obligatorio sin activar (n_pendientes en GET /estudiantes).
+  ✔ alerta en el dashboard cuando un estudiante aparece afectado 2 o más veces, con más razón si es bullying @done
+    Tarjeta "Afectados en más de un registro" con etiqueta roja "Bullying". Bullying se detecta por nombre (motivo o protocolo que calce con bullying|acoso escolar|ciberacoso|hostigamiento): no hay código común entre colegios.
+  ✔ señalados por bullying: alerta y marcados en rojo @done
+    Tarjeta roja en el dashboard + badge rojo en el listado de estudiantes y la ficha.
+  ✔ gráfico de convivencia como el del proyecto en clean architecture @done
+    Era MiConvivencia/convivencia-backend (.NET). Se replicaron sus tres gráficos: registros por mes, protocolos activados por tipo e ingresos por tipo de documento (la dona pasó a barras horizontales). CSS puro, sin librería.
+
+Protocolos (2026-09-28):
+  ✔ al activar un 2do protocolo sobre el mismo estudiante, modal de sobreintervención @done
+    GET /protocolos-activados/sobreintervencion?estudiantes= devuelve los protocolos 'activo' de esos estudiantes (por involucrado del caso o del registro). Se consulta antes de activar, desde el registro y desde la pantalla de protocolos; es advertencia (confirmarAccion), no bloqueo.
+  ✔ el inspector no debe poder ver los protocolos activados @done
+    No se le podía quitar protocolo_activado.ver: Inspectoría ejecuta 13 pasos en casos vivos y perdería acceso a ellos. Se creó protocolo_activado.ver_todos (115) para el listado/menú; sin él (INSPECTORIA, INSPECTOR_GENERAL) solo se ven los casos donde el usuario tiene un paso o es responsable, y el detalle de otro caso da 404.
+
 ## Registro de tiempo
+- 2026-09-24 08:49 → 14:53 (6h3m)
+- 2026-09-24 12:57 → 14:53 (1h55m)
+- 2026-09-23 15:13 → 17:04 (1h51m)
+- 2026-09-23 16:44 → 17:04 (20m)
 - 2026-09-18 17:48 → 18:51 (1h3m)
 - 2026-09-18 17:48 → 18:51 (1h3m)
 - 2026-09-08 11:51 → 00:45 (132h53m)
