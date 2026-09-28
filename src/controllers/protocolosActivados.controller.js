@@ -258,11 +258,35 @@ const cerrarProtocolo = (conn, id_protocolo_activado) =>
 // Lectura
 // ---------------------------------------------------------------------------
 
+// Quien no tiene protocolo_activado.ver_todos (Inspectoría, Inspector General)
+// ve solo los casos donde participa: tiene un rol en algún paso, es el
+// responsable asignado de uno, o activó el caso. No se les quita el permiso de
+// ver a secas porque Inspectoría ejecuta pasos: sin él no podría abrir el caso
+// que le llegó por la campana.
+const participaSql = `
+  AND (pa.id_usuario_activo = ?
+       OR EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO_PASO px
+                   WHERE px.id_protocolo_activado = pa.id_protocolo_activado
+                     AND px.id_usuario_responsable = ?)
+       OR EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO_PASO px
+                    JOIN PROTOCOLO_ACTIVADO_PASO_ROL pr ON pr.id_activado_paso = px.id_activado_paso
+                    JOIN USUARIO_ROLES ur ON ur.rol_id = pr.rol_id AND ur.id_usuario = ?
+                     AND (ur.expira_at IS NULL OR ur.expira_at > NOW())
+                   WHERE px.id_protocolo_activado = pa.id_protocolo_activado))`;
+
+/** '' y sin parámetros para quien ve todo; el filtro de participación para el resto. */
+const filtroParticipacion = (req) =>
+  tienePermiso(req, Permiso.ProtocoloActivadoVerTodos)
+    ? { sql: '', params: [] }
+    : { sql: participaSql, params: [req.user.id, req.user.id, req.user.id] };
+
 const getAll = async (req, res) => {
   try {
+    const filtro = filtroParticipacion(req);
     const [rows] = await pool.query(
-      `${BASE_SELECT} ${req.query.estado ? 'AND pa.estado = ?' : ''} ORDER BY pa.fecha_activacion DESC`,
-      req.query.estado ? [req.id_establecimiento, req.query.estado] : [req.id_establecimiento]
+      `${BASE_SELECT} ${req.query.estado ? 'AND pa.estado = ?' : ''} ${filtro.sql}
+       ORDER BY pa.fecha_activacion DESC`,
+      [req.id_establecimiento, ...(req.query.estado ? [req.query.estado] : []), ...filtro.params]
     );
 
     // Los estudiantes de cada caso, para buscar por alumno en el listado. Solo
@@ -289,9 +313,10 @@ const getAll = async (req, res) => {
 
 const getByRegistro = async (req, res) => {
   try {
+    const filtro = filtroParticipacion(req);
     const [rows] = await pool.query(
-      `${BASE_SELECT} AND pa.id_registro = ? ORDER BY pa.fecha_activacion DESC`,
-      [req.id_establecimiento, req.params.id_registro]
+      `${BASE_SELECT} AND pa.id_registro = ? ${filtro.sql} ORDER BY pa.fecha_activacion DESC`,
+      [req.id_establecimiento, req.params.id_registro, ...filtro.params]
     );
     res.json(rows);
   } catch (err) {
@@ -306,6 +331,17 @@ const getDetalle = async (req, res) => {
   try {
     const activado = await buscarActivado(req.params.id, req.id_establecimiento);
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
+
+    // 404 y no 403 para quien no participa: igual que con otro colegio, no
+    // tiene por qué enterarse de que el caso existe.
+    const filtro = filtroParticipacion(req);
+    if (filtro.sql) {
+      const [participa] = await pool.query(
+        `SELECT 1 FROM PROTOCOLO_ACTIVADO pa WHERE pa.id_protocolo_activado = ? ${filtro.sql}`,
+        [activado.id_protocolo_activado, ...filtro.params]
+      );
+      if (!participa.length) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
+    }
 
     const [pasos] = await pool.query(
       `SELECT p.*, u.nombre AS responsable_nombre, u.correo AS responsable_correo
@@ -1516,8 +1552,59 @@ const remove = async (req, res) => {
   }
 };
 
+/**
+ * GET /protocolos-activados/sobreintervencion?estudiantes=1,2,3
+ *
+ * Los protocolos que ya están en curso sobre alguno de estos estudiantes. Lo
+ * consulta el front ANTES de activar uno nuevo para advertirle al coordinador
+ * que puede estar sobreinterviniendo: dos o tres procedimientos simultáneos
+ * sobre el mismo niño (entrevistas, medidas, citaciones) son una carga en sí
+ * mismos. No bloquea: es una advertencia, la decisión es del coordinador.
+ *
+ * Un estudiante está en un caso si figura como involucrado del caso o del
+ * registro que lo originó (el involucrado del caso se copia al activar, pero
+ * uno agregado al registro después no).
+ */
+const sobreintervencion = async (req, res) => {
+  const ids = String(req.query.estudiantes ?? '')
+    .split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  if (!ids.length) return res.json([]);
+  try {
+    const [rows] = await pool.query(
+      `SELECT e.id_estudiante, CONCAT(e.nombre, ' ', e.apellido) AS estudiante,
+              pa.id_protocolo_activado, pa.fecha_activacion,
+              COALESCE(pe.nombre, cp.nombre) AS protocolo
+       FROM ESTUDIANTE e
+       JOIN PROTOCOLO_ACTIVADO pa
+         ON pa.id_establecimiento = e.id_establecimiento AND pa.estado = 'activo'
+       JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pe.id_protocolo_establecimiento = pa.id_protocolo_establecimiento
+       LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
+       WHERE e.id_estudiante IN (?) AND e.id_establecimiento = ?
+         AND (EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO_INVOLUCRADO i
+                       WHERE i.id_protocolo_activado = pa.id_protocolo_activado
+                         AND i.id_estudiante = e.id_estudiante)
+              OR EXISTS (SELECT 1 FROM REGISTRO_ESTUDIANTE re
+                          WHERE re.id_registro = pa.id_registro AND re.id_estudiante = e.id_estudiante))
+       ORDER BY e.apellido, pa.fecha_activacion`,
+      [ids, req.id_establecimiento]
+    );
+    const porEstudiante = new Map();
+    for (const r of rows) {
+      if (!porEstudiante.has(r.id_estudiante))
+        porEstudiante.set(r.id_estudiante, { id_estudiante: r.id_estudiante, estudiante: r.estudiante, protocolos: [] });
+      porEstudiante.get(r.id_estudiante).protocolos.push({
+        id_protocolo_activado: r.id_protocolo_activado, nombre: r.protocolo, fecha_activacion: r.fecha_activacion,
+      });
+    }
+    res.json([...porEstudiante.values()]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al revisar los protocolos en curso' });
+  }
+};
+
 module.exports = {
-  getAll, getByRegistro, getDetalle, getBitacora,
+  getAll, getByRegistro, getDetalle, getBitacora, sobreintervencion,
   create: activar,
   completarPaso, aprobarPaso, omitirPaso, reasignarPaso,
   cerrar, anular, agregarNota,

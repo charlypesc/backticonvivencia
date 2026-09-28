@@ -1,5 +1,32 @@
 const pool = require('../db/connection');
 const { puedeVerConfidencial } = require('../utils/confidencial');
+const { tienePermiso } = require('../middleware/auth');
+const { Permiso } = require('../constants/permisos');
+
+// Qué cuenta como bullying para las alertas del dashboard: el motivo del
+// registro o el protocolo activado. Por nombre porque los motivos son de cada
+// establecimiento (no hay un código común); "acoso sexual" queda fuera a
+// propósito, es otro procedimiento.
+const REGEX_BULLYING = 'bullying|acoso escolar|ciberacoso|hostigamiento';
+
+/** Registros que tocan bullying, por el motivo o por un protocolo activado sobre ellos. */
+const ES_BULLYING_SQL = `(
+  tf.nombre REGEXP '${REGEX_BULLYING}'
+  OR EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO pab
+               JOIN PROTOCOLO_ESTABLECIMIENTO peb ON peb.id_protocolo_establecimiento = pab.id_protocolo_establecimiento
+               LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cpb ON cpb.id_protocolo = peb.id_protocolo
+              WHERE pab.id_registro = r.id_registro AND pab.estado <> 'anulado'
+                AND COALESCE(peb.nombre, cpb.nombre) REGEXP '${REGEX_BULLYING}'))`;
+
+/**
+ * Lo que un confidencial no deja ver es el asunto, no quiénes están
+ * involucrados (mismo criterio que `ultimos`).
+ */
+const ocultarAsunto = (req, r) => {
+  const { id_usuario, nota_confidencial, ...resto } = r;
+  if (!r.es_confidencial || puedeVerConfidencial(req, r)) return resto;
+  return { ...resto, asunto: nota_confidencial || 'Sin nota', contenido_oculto: true };
+};
 
 const getResumen = async (req, res) => {
   const id_est = req.id_establecimiento;
@@ -154,13 +181,159 @@ const getResumen = async (req, res) => {
       [id_est, id_est, id_est, id_est, id_est, id_est, id_est, id_est]
     );
 
+    // ── Registros por atender (coordinador) ────────────────────────────────
+    // Los que llenó otro funcionario y ningún coordinador tomó todavía. Es la
+    // bandeja desde donde se "ataja" el registro para atenderlo o derivarlo.
+    const puedeDerivar = tienePermiso(req, Permiso.RegistroDerivar);
+    let por_atender = null;
+    let derivaciones = null;
+    if (puedeDerivar) {
+      const [filas] = await pool.query(
+        `SELECT r.id_registro, r.asunto, r.fecha_creacion, r.id_usuario,
+                r.es_confidencial, r.nota_confidencial,
+                COALESCE(u.nombre, u.correo) AS autor_nombre,
+                tf.nombre AS tipo_falta_nombre, tf.gravedad,
+                GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
+                             ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
+         FROM REGISTRO_CONVIVENCIA r
+         JOIN USUARIO u ON u.id_usuario = r.id_usuario
+         JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
+         LEFT JOIN REGISTRO_ESTUDIANTE re ON re.id_registro = r.id_registro
+         LEFT JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+         WHERE r.id_establecimiento = ? AND r.id_usuario_atiende IS NULL
+         GROUP BY r.id_registro
+         ORDER BY r.fecha_creacion
+         LIMIT 20`,
+        [id_est]
+      );
+      por_atender = filas.map((r) => ocultarAsunto(req, r));
+
+      const [[d]] = await pool.query(
+        `SELECT
+           SUM(estado = 'pendiente' AND fecha_limite >= NOW()) AS en_plazo,
+           SUM(estado = 'pendiente' AND fecha_limite < NOW())  AS vencidas
+         FROM REGISTRO_DERIVACION WHERE id_establecimiento = ?`,
+        [id_est]
+      );
+      derivaciones = { en_plazo: Number(d.en_plazo ?? 0), vencidas: Number(d.vencidas ?? 0) };
+    }
+
+    // Lo que le derivaron a quien mira: su propia lista de pendientes.
+    const [mis_derivaciones] = await pool.query(
+      `SELECT d.id_registro, d.fecha_limite, d.instrucciones, (d.fecha_limite < NOW()) AS vencida,
+              COALESCE(uo.nombre, uo.correo) AS origen_nombre,
+              r.asunto, r.es_confidencial, r.nota_confidencial, r.id_usuario
+       FROM REGISTRO_DERIVACION d
+       JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = d.id_registro
+       JOIN USUARIO uo ON uo.id_usuario = d.id_usuario_origen
+       WHERE d.id_establecimiento = ? AND d.id_usuario_destino = ? AND d.estado = 'pendiente'
+       ORDER BY d.fecha_limite`,
+      [id_est, req.user.id]
+    );
+
+    // ── Alertas por estudiante ─────────────────────────────────────────────
+    // Afectado en dos o más registros: el patrón que por separado no se ve.
+    // Con más razón si alguno es de bullying, que por definición es reiterado.
+    const [afectados_reiterados] = await pool.query(
+      `SELECT e.id_estudiante, e.run, e.dv, CONCAT(e.nombre, ' ', e.apellido) AS nombre, c.nombre AS curso_nombre,
+              COUNT(DISTINCT r.id_registro) AS veces,
+              MAX(${ES_BULLYING_SQL}) AS bullying
+       FROM REGISTRO_ESTUDIANTE re
+       JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro
+       JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
+       JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+       LEFT JOIN CURSO c ON c.id_curso = e.id_curso
+       WHERE r.id_establecimiento = ? AND re.rol_en_incidente = 'afectado'
+       GROUP BY e.id_estudiante
+       HAVING veces >= 2
+       ORDER BY bullying DESC, veces DESC
+       LIMIT 20`,
+      [id_est]
+    );
+
+    // Señalados en un registro de bullying: van en rojo.
+    const [senalados_bullying] = await pool.query(
+      `SELECT e.id_estudiante, e.run, e.dv, CONCAT(e.nombre, ' ', e.apellido) AS nombre, c.nombre AS curso_nombre,
+              COUNT(DISTINCT r.id_registro) AS veces
+       FROM REGISTRO_ESTUDIANTE re
+       JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro
+       JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
+       JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+       LEFT JOIN CURSO c ON c.id_curso = e.id_curso
+       WHERE r.id_establecimiento = ? AND re.rol_en_incidente = 'senalado' AND ${ES_BULLYING_SQL}
+       GROUP BY e.id_estudiante
+       ORDER BY veces DESC
+       LIMIT 20`,
+      [id_est]
+    );
+
+    // ── Gráficos (los del dashboard de MiConvivencia) ──────────────────────
+    // Registros por mes del año en curso, protocolos activados por tipo, y el
+    // volumen de lo que se ingresó por tipo de documento.
+    const [porMes] = await pool.query(
+      `SELECT MONTH(fecha_creacion) AS mes, COUNT(*) AS n
+       FROM REGISTRO_CONVIVENCIA
+       WHERE id_establecimiento = ? AND YEAR(fecha_creacion) = YEAR(CURDATE())
+       GROUP BY mes`,
+      [id_est]
+    );
+    const registros_por_mes = Array.from({ length: 12 }, (_, i) =>
+      Number(porMes.find((f) => f.mes === i + 1)?.n ?? 0));
+
+    const verProtocolos = tienePermiso(req, Permiso.ProtocoloActivadoVerTodos);
+    let protocolos_por_tipo = null;
+    if (verProtocolos) {
+      [protocolos_por_tipo] = await pool.query(
+        `SELECT COALESCE(pe.nombre, cp.nombre) AS nombre, COUNT(*) AS n
+         FROM PROTOCOLO_ACTIVADO pa
+         JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pe.id_protocolo_establecimiento = pa.id_protocolo_establecimiento
+         LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
+         WHERE pa.id_establecimiento = ? AND pa.estado <> 'anulado'
+           AND YEAR(pa.fecha_activacion) = YEAR(CURDATE())
+         GROUP BY nombre
+         ORDER BY n DESC`,
+        [id_est]
+      );
+    }
+
+    const [[ingresos]] = await pool.query(
+      `SELECT
+         (SELECT COUNT(*) FROM REGISTRO_CONVIVENCIA
+           WHERE id_establecimiento = ? AND YEAR(fecha_creacion) = YEAR(CURDATE())) AS registros,
+         (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO
+           WHERE id_establecimiento = ? AND estado <> 'anulado'
+             AND YEAR(fecha_activacion) = YEAR(CURDATE())) AS protocolos,
+         (SELECT COUNT(*) FROM MEDIDA_DISCIPLINARIA
+           WHERE id_establecimiento = ? AND YEAR(fecha_aplicacion) = YEAR(CURDATE())) AS medidas_disciplinarias,
+         (SELECT COUNT(*) FROM MEDIDA_PROTECCION
+           WHERE id_establecimiento = ? AND YEAR(fecha_registro) = YEAR(CURDATE())) AS medidas_proteccion`,
+      [id_est, id_est, id_est, id_est]
+    );
+
     // El "% de pasos cerrados en plazo" salió del tablero: era un acumulado
     // histórico y un solo atraso viejo lo dejaba en 99% para siempre, sin
     // decir nada de cómo se está trabajando hoy.
+    //
+    // Quien no ve el listado de protocolos (Inspectoría) tampoco ve sus
+    // números: el conteo y el cumplimiento son de los casos, no de sus pasos.
     res.json({
-      registros_mes, estudiantes_con_registro, protocolos_activados,
+      registros_mes, estudiantes_con_registro,
+      protocolos_activados: verProtocolos ? protocolos_activados : null,
       ultimos: ultimosFiltrados,
-      cumplimiento,
+      cumplimiento: verProtocolos ? cumplimiento : null,
+      por_atender,
+      derivaciones,
+      mis_derivaciones: mis_derivaciones.map((r) => ocultarAsunto(req, r)),
+      alertas: {
+        afectados_reiterados: afectados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
+        senalados_bullying,
+      },
+      graficos: {
+        anio: new Date().getFullYear(),
+        registros_por_mes,
+        protocolos_por_tipo,
+        ingresos: verProtocolos ? ingresos : { ...ingresos, protocolos: undefined },
+      },
     });
   } catch (err) {
     console.error(err);

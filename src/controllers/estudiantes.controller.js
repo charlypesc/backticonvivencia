@@ -6,7 +6,33 @@ const getAll = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT e.*, c.nombre AS curso_nombre, c.grado,
-        (SELECT COUNT(*) FROM REGISTRO_ESTUDIANTE re WHERE re.id_estudiante = e.id_estudiante) AS n_registros
+        (SELECT COUNT(*) FROM REGISTRO_ESTUDIANTE re WHERE re.id_estudiante = e.id_estudiante) AS n_registros,
+        -- Registros que todavía piden trabajo: nadie los tomó, hay una
+        -- derivación sin atender, un protocolo en curso, o el motivo obliga a un
+        -- protocolo que no se activó. Es lo que pinta al estudiante de amarillo;
+        -- en cero, verde ("convivencia sana").
+        (SELECT COUNT(DISTINCT r.id_registro)
+           FROM REGISTRO_ESTUDIANTE re
+           JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro
+          WHERE re.id_estudiante = e.id_estudiante
+            AND (r.id_usuario_atiende IS NULL
+                 OR EXISTS (SELECT 1 FROM REGISTRO_DERIVACION d
+                             WHERE d.id_registro = r.id_registro AND d.estado = 'pendiente')
+                 OR EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO pa
+                             WHERE pa.id_registro = r.id_registro AND pa.estado = 'activo')
+                 OR EXISTS (SELECT 1 FROM TIPO_FALTA_PROTOCOLO tfp
+                              LEFT JOIN PROTOCOLO_ACTIVADO pa2
+                                ON pa2.id_registro = r.id_registro
+                               AND pa2.id_protocolo_establecimiento = tfp.id_protocolo_establecimiento
+                               AND pa2.estado <> 'anulado'
+                             WHERE tfp.id_tipo_falta = r.id_tipo_falta AND tfp.obligatorio = 1
+                               AND pa2.id_protocolo_activado IS NULL))) AS n_pendientes,
+        -- Señalado en un registro de bullying: se marca en rojo.
+        EXISTS (SELECT 1 FROM REGISTRO_ESTUDIANTE re
+                  JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro
+                  JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
+                 WHERE re.id_estudiante = e.id_estudiante AND re.rol_en_incidente = 'senalado'
+                   AND tf.nombre REGEXP 'bullying|acoso escolar|ciberacoso|hostigamiento') AS senalado_bullying
        FROM ESTUDIANTE e
        JOIN CURSO c ON e.id_curso = c.id_curso
        WHERE e.id_establecimiento = ?

@@ -70,6 +70,7 @@ const destinatariosDePaso = async (ejecutor, id_activado_paso, tipos = ['ejecuto
  * @param {string} [datos.mensaje]
  * @param {number} [datos.id_protocolo_activado] arma la url del caso
  * @param {number} [datos.id_activado_paso]
+ * @param {number} [datos.id_registro] aviso de un registro (nuevo, derivado): arma la url del registro
  * @param {number} [datos.excepto] no notificar a quien hizo la acción: ya lo sabe
  */
 const crear = async (ejecutor, {
@@ -80,6 +81,7 @@ const crear = async (ejecutor, {
   mensaje = null,
   id_protocolo_activado = null,
   id_activado_paso = null,
+  id_registro = null,
   excepto = null,
 }) => {
   const destinatarios = [...new Set(usuarios ?? [])].filter((id) => id && id !== excepto);
@@ -87,17 +89,20 @@ const crear = async (ejecutor, {
 
   // La url se arma acá y no en el frontend porque es lo que hace clickeable la
   // notificación: el día que exista el correo, el mismo string sirve de enlace.
-  const url = id_protocolo_activado ? `/protocolos-activados/${id_protocolo_activado}` : null;
+  // Un aviso de registro abre el formulario del registro: la lista de registros
+  // es la dueña del modal y lo abre con ?abrir=, igual que desde el dashboard.
+  const url = id_protocolo_activado ? `/protocolos-activados/${id_protocolo_activado}`
+    : id_registro ? `/registros?abrir=${id_registro}` : null;
 
   try {
     await ejecutor.query(
       `INSERT INTO NOTIFICACION
          (id_usuario, id_establecimiento, tipo, titulo, mensaje, url,
-          id_protocolo_activado, id_activado_paso, leida, fecha)
+          id_protocolo_activado, id_activado_paso, id_registro, leida, fecha)
        VALUES ?`,
       [destinatarios.map((id_usuario) => [
         id_usuario, id_establecimiento, tipo, titulo, mensaje, url,
-        id_protocolo_activado, id_activado_paso, 0, new Date(),
+        id_protocolo_activado, id_activado_paso, id_registro, 0, new Date(),
       ])]
     );
     return destinatarios.length;

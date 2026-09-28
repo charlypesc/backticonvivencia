@@ -318,6 +318,57 @@ async function procesarMedidasDisciplinariasVencidas(lote = LOTE) {
 // Arranca el job periódico. Devuelve el timer para poder detenerlo (los tests
 // lo llaman a mano y no quieren un intervalo colgando).
 //
+/**
+ * Derivaciones de registros cuyo plazo pasó sin que el funcionario las marcara
+ * atendidas.
+ *
+ * Se avisa a dos lados y una sola vez (aviso_vencida_at): al funcionario, que
+ * no ha atendido el caso, y al coordinador que derivó más el resto de los
+ * coordinadores, para que lo vuelvan a tomar. La derivación sigue pendiente:
+ * el funcionario puede atenderla tarde, o el coordinador derivarla de nuevo.
+ */
+async function procesarDerivacionesVencidas(lote = LOTE) {
+  const [vencidas] = await pool.query(
+    `SELECT d.id_derivacion, d.id_registro, d.id_establecimiento, d.id_usuario_origen,
+            d.id_usuario_destino, d.fecha_limite,
+            COALESCE(ud.nombre, ud.correo) AS destino_nombre
+     FROM REGISTRO_DERIVACION d
+     JOIN USUARIO ud ON ud.id_usuario = d.id_usuario_destino
+     WHERE d.estado = 'pendiente' AND d.fecha_limite < NOW() AND d.aviso_vencida_at IS NULL
+     ORDER BY d.fecha_limite
+     LIMIT ?`,
+    [lote]
+  );
+
+  for (const d of vencidas) {
+    // Marca primero: si el aviso falla, no se repite cada quince minutos. Una
+    // notificación perdida es mejor que una campana inundada.
+    await pool.query(
+      'UPDATE REGISTRO_DERIVACION SET aviso_vencida_at = NOW() WHERE id_derivacion = ?',
+      [d.id_derivacion]
+    );
+    await notificaciones.crear(pool, {
+      usuarios: [d.id_usuario_destino],
+      id_establecimiento: d.id_establecimiento,
+      tipo: 'derivacion_vencida',
+      titulo: `No has atendido el registro #${d.id_registro}`,
+      mensaje: 'El plazo de la derivación venció. Atiéndelo y márcalo como atendido.',
+      id_registro: d.id_registro,
+    });
+    const coordinadores = await notificaciones.coordinadoresDeConvivencia(pool, d.id_establecimiento);
+    await notificaciones.crear(pool, {
+      usuarios: [d.id_usuario_origen, ...coordinadores],
+      id_establecimiento: d.id_establecimiento,
+      tipo: 'derivacion_vencida',
+      titulo: `Registro #${d.id_registro} sin atender: vuelve a tomarlo`,
+      mensaje: `${d.destino_nombre} no lo atendió dentro del plazo. Atiéndelo o derívalo de nuevo.`,
+      id_registro: d.id_registro,
+      excepto: d.id_usuario_destino,
+    });
+  }
+  return { procesados: vencidas.length };
+}
+
 // Se puede desactivar con PROTOCOLOS_JOB_MINUTOS=0 y correr el service desde un
 // cron externo, que es lo que conviene si algún día hay más de una instancia:
 // con varias, todas despertarían a la vez sobre las mismas filas.
@@ -339,6 +390,9 @@ function iniciarJob() {
           `[vencimientos] medidas disciplinarias: ${md.cumplidas} cumplida(s), ` +
           `${md.porTerminar} por terminar, ${md.porRevisar} condicionalidad(es) por revisar`
         );
+      const dv = await procesarDerivacionesVencidas();
+      if (dv.procesados > 0)
+        console.log(`[vencimientos] ${dv.procesados} derivación(es) de registro vencidas`);
     } catch (err) {
       // Un fallo del job no puede tumbar el proceso: se reintenta solo en la
       // próxima corrida.
@@ -353,5 +407,6 @@ function iniciarJob() {
 }
 
 module.exports = {
-  procesarVencidos, procesarMedidasVencidas, procesarMedidasDisciplinariasVencidas, iniciarJob,
+  procesarVencidos, procesarMedidasVencidas, procesarMedidasDisciplinariasVencidas,
+  procesarDerivacionesVencidas, iniciarJob,
 };

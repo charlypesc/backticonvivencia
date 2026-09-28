@@ -7,6 +7,10 @@ const {
   reducirSiConfidencial,
 } = require('../utils/confidencial');
 const { ROLES_INVOLUCRADO } = require('../utils/flujoProtocolo');
+const notificaciones = require('../services/notificaciones.service');
+const { formatearFecha } = require('../utils/fecha');
+const { construirRegistroPdf } = require('../services/pdf/registro.pdf');
+const { enviarPdf } = require('../services/pdf/comun');
 
 // Tipos de persona de un involucrado que no es estudiante. Distinto de
 // TIPOS_PERSONA (estudiante/funcionario/externo) del motor de protocolos: acá
@@ -14,6 +18,17 @@ const { ROLES_INVOLUCRADO } = require('../utils/flujoProtocolo');
 // tabla y su propia validación.
 const TIPOS_PERSONA_NO_ESTUDIANTE = ['funcionario', 'externo'];
 const { COLUMNAS_ESTADO_PROTOCOLO } = require('../utils/sqlProtocolos');
+
+// La derivación vigente de cada registro, para el listado. Subconsultas y no
+// JOIN por el mismo motivo que COLUMNAS_ESTADO_PROTOCOLO: la consulta ya
+// agrupa por registro. Solo puede haber una pendiente (derivar de nuevo anula
+// la anterior), así que el LIMIT 1 no esconde nada.
+const COLUMNAS_DERIVACION = `
+        (SELECT COALESCE(ud.nombre, ud.correo) FROM REGISTRO_DERIVACION d
+           JOIN USUARIO ud ON ud.id_usuario = d.id_usuario_destino
+          WHERE d.id_registro = r.id_registro AND d.estado = 'pendiente' LIMIT 1) AS derivado_a,
+        (SELECT d.fecha_limite FROM REGISTRO_DERIVACION d
+          WHERE d.id_registro = r.id_registro AND d.estado = 'pendiente' LIMIT 1) AS derivacion_limite`;
 
 /**
  * Activa a los estudiantes que entran a un registro.
@@ -62,7 +77,37 @@ const tipoFaltaValido = async (db, id_tipo_falta, id_establecimiento) => {
 };
 
 const MSG_TIPO_FALTA_INVALIDO =
-  'El tipo de falta indicado no pertenece al establecimiento del registro';
+  'El motivo del registro indicado no pertenece al establecimiento';
+
+const nombreDeUsuario = async (id_usuario) => {
+  const [[u]] = await pool.query('SELECT nombre, correo FROM USUARIO WHERE id_usuario = ?', [id_usuario]);
+  return u?.nombre || u?.correo || 'Un funcionario';
+};
+
+/**
+ * Aviso a los coordinadores de que entró un registro que nadie atendió todavía.
+ *
+ * Va después del COMMIT y fuera de la transacción: el aviso nunca puede
+ * deshacer el registro (misma regla que el resto de las notificaciones). Solo
+ * sale cuando el registro nació sin atender — si lo llenó un coordinador, ya
+ * está atendido por quien lo escribió y avisarle al resto es ruido.
+ */
+const avisarRegistroNuevo = async (req, id_registro, asunto) => {
+  try {
+    const coordinadores = await notificaciones.coordinadoresDeConvivencia(pool, req.id_establecimiento);
+    await notificaciones.crear(pool, {
+      usuarios: coordinadores,
+      id_establecimiento: req.id_establecimiento,
+      tipo: 'registro_nuevo',
+      titulo: `Registro nuevo #${id_registro} por atender`,
+      mensaje: `${await nombreDeUsuario(req.user.id)} registró: ${String(asunto).slice(0, 200)}`,
+      id_registro,
+      excepto: req.user.id,
+    });
+  } catch (err) {
+    console.error('No se pudo avisar el registro nuevo:', err.message);
+  }
+};
 
 // Misma representación que la subconsulta `involucrados_firma` de
 // bloquearEscrituraConfidencial: "12:afectado,30:testigo", ordenada por id.
@@ -156,6 +201,8 @@ const getAll = async (req, res) => {
         u.correo   AS encargado_correo,
         um.nombre  AS editor_nombre,
         um.correo  AS editor_correo,
+        ua.nombre  AS atiende_nombre,
+        ${COLUMNAS_DERIVACION},
         -- Los involucrados se listan también en los registros confidenciales
         -- (ver reducirSiConfidencial), por eso van en la consulta general.
         -- GROUP_CONCAT + GROUP BY para no multiplicar la fila del registro por
@@ -167,6 +214,7 @@ const getAll = async (req, res) => {
       JOIN USUARIO    u  ON r.id_usuario    = u.id_usuario
       -- LEFT: un registro nunca editado no tiene id_usuario_modificacion
       LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
+      LEFT JOIN USUARIO ua ON r.id_usuario_atiende = ua.id_usuario
       LEFT JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro
       LEFT JOIN ESTUDIANTE e ON re.id_estudiante = e.id_estudiante
       -- El tenant sale de la columna propia del registro, no del autor. Cuando
@@ -183,9 +231,14 @@ const getAll = async (req, res) => {
     // ENCARGADO *y* DIRECTOR, al revés de lo que se espera. Y con roles
     // dinámicos, listar roles obligaría a editar este archivo por cada rol
     // nuevo que deba ver todo: por eso va por permiso.
+    // Un registro derivado es de quien lo recibió mientras tenga que trabajarlo:
+    // sin esto, el funcionario recibía la notificación y no encontraba el
+    // registro en su lista (solo ve los que escribió él).
     if (!tienePermiso(req, Permiso.RegistroVerTodos)) {
-      query += ' AND r.id_usuario = ?';
-      params.push(req.user.id);
+      query += ` AND (r.id_usuario = ? OR EXISTS (
+                   SELECT 1 FROM REGISTRO_DERIVACION d
+                    WHERE d.id_registro = r.id_registro AND d.id_usuario_destino = ?))`;
+      params.push(req.user.id, req.user.id);
     }
 
     query += ' GROUP BY r.id_registro ORDER BY r.fecha_creacion DESC';
@@ -205,11 +258,13 @@ const getById = async (req, res) => {
       `SELECT r.*,
         tf.nombre AS tipo_falta_nombre, tf.gravedad, tf.medida_sugerida,
         u.nombre AS autor_nombre, u.correo AS autor_correo,
-        um.nombre AS editor_nombre, um.correo AS editor_correo
+        um.nombre AS editor_nombre, um.correo AS editor_correo,
+        ua.nombre AS atiende_nombre, ua.correo AS atiende_correo
        FROM REGISTRO_CONVIVENCIA r
        JOIN TIPO_FALTA tf ON r.id_tipo_falta = tf.id_tipo_falta
        JOIN USUARIO u ON r.id_usuario = u.id_usuario
        LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
+       LEFT JOIN USUARIO ua ON r.id_usuario_atiende = ua.id_usuario
        WHERE r.id_registro = ?`,
       [req.params.id]
     );
@@ -259,11 +314,29 @@ const getById = async (req, res) => {
     // acá donde la persona tiene que poder ver cuál le falta activar.
     const protocolos_pendientes = await protocolosObligatoriosPendientes(pool, req.params.id);
 
+    // Historia completa de derivaciones, la vigente primero. El formulario
+    // muestra la pendiente como aviso y el resto como rastro.
+    const [derivaciones] = await pool.query(
+      `SELECT d.id_derivacion, d.instrucciones, d.fecha_derivacion, d.fecha_limite, d.estado,
+              d.fecha_atendida, d.comentario_atencion, d.id_usuario_destino,
+              (d.estado = 'pendiente' AND d.fecha_limite < NOW()) AS vencida,
+              uo.nombre AS origen_nombre, uo.correo AS origen_correo,
+              ud.nombre AS destino_nombre, ud.correo AS destino_correo
+       FROM REGISTRO_DERIVACION d
+       JOIN USUARIO uo ON uo.id_usuario = d.id_usuario_origen
+       JOIN USUARIO ud ON ud.id_usuario = d.id_usuario_destino
+       WHERE d.id_registro = ?
+       ORDER BY (d.estado = 'pendiente') DESC, d.fecha_derivacion DESC`,
+      [req.params.id]
+    );
+
     res.json({
       ...registro,
       estudiantes,
       involucrados_personal,
       protocolos_pendientes,
+      derivaciones,
+      puede_derivar: tienePermiso(req, Permiso.RegistroDerivar),
       puede_editar_confidencialidad: puedeEditarConfidencialidad(req, registro),
     });
   } catch (err) {
@@ -316,11 +389,18 @@ const create = async (req, res) => {
   //
   // El establecimiento se guarda en el registro: derivarlo del autor deja
   // huérfano todo lo que cree un ADMIN (id_establecimiento NULL).
+  // Quien puede atender y derivar registros (el coordinador) lo atiende al
+  // llenarlo: no tiene sentido que aparezca "por atender" en su propio
+  // dashboard. El de cualquier otro funcionario nace sin atender y le llega a
+  // los coordinadores para que lo tomen.
+  const atendidoAlCrear = tienePermiso(req, Permiso.RegistroDerivar);
+
   const sqlRegistro = `
     INSERT INTO REGISTRO_CONVIVENCIA
       (fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, id_usuario,
-       id_establecimiento, es_confidencial, nota_confidencial)
-    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+       id_establecimiento, es_confidencial, nota_confidencial,
+       id_usuario_atiende, fecha_atencion)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? IS NULL, NULL, NOW())
       FROM DUAL
      WHERE EXISTS (SELECT 1 FROM TIPO_FALTA
                     WHERE id_tipo_falta = ? AND id_establecimiento = ?)`;
@@ -328,6 +408,7 @@ const create = async (req, res) => {
     fecha_incidente, asunto, antecedentes, acuerdos || null, id_tipo_falta, req.user.id,
     req.id_establecimiento,
     confidencial, confidencial ? nota_confidencial.trim() : null,
+    atendidoAlCrear ? req.user.id : null, atendidoAlCrear ? req.user.id : null,
     id_tipo_falta, req.id_establecimiento,
   ];
 
@@ -339,9 +420,11 @@ const create = async (req, res) => {
       const [result] = await pool.query(sqlRegistro, paramsRegistro);
       if (result.affectedRows === 0)
         return res.status(400).json({ message: MSG_TIPO_FALTA_INVALIDO });
-      return res
+      res
         .status(201)
         .json({ id_registro: result.insertId, message: 'Registro creado exitosamente' });
+      if (!atendidoAlCrear) await avisarRegistroNuevo(req, result.insertId, asunto);
+      return;
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: 'Error al crear registro' });
@@ -387,6 +470,9 @@ const create = async (req, res) => {
 
     await conn.commit();
     res.status(201).json({ id_registro, message: 'Registro creado exitosamente' });
+    // La conexión se suelta en el finally recién después de esto: el aviso va
+    // por el pool, no por conn, así que no la retiene.
+    if (!atendidoAlCrear) await avisarRegistroNuevo(req, id_registro, asunto);
   } catch (err) {
     await conn.rollback();
     console.error(err);
@@ -599,4 +685,213 @@ const confirmar = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, create, update, remove, confirmar };
+// ── Atención y derivación ─────────────────────────────────────────────────
+//
+// Un registro que llena cualquier funcionario le llega al coordinador como
+// "por atender" (dashboard + campana). El coordinador lo ataja —queda a su
+// nombre— y, si corresponde que lo trabaje otro, lo deriva con un plazo. Si el
+// plazo pasa sin que el funcionario lo marque atendido, el job de vencimientos
+// le avisa a él y al coordinador (ver procesarDerivacionesVencidas).
+
+/** Registro del establecimiento activo, o null (el 404 lo decide quien llama). */
+const registroDelScope = async (req) => {
+  const [[r]] = await pool.query(
+    `SELECT id_registro, asunto, id_usuario, id_usuario_atiende, id_establecimiento
+       FROM REGISTRO_CONVIVENCIA WHERE id_registro = ? AND id_establecimiento = ?`,
+    [req.params.id, req.id_establecimiento]
+  );
+  return r ?? null;
+};
+
+// POST /api/registros/:id/atender — el coordinador toma el registro.
+const atender = async (req, res) => {
+  try {
+    const registro = await registroDelScope(req);
+    if (!registro) return res.status(404).json({ message: 'Registro no encontrado' });
+
+    // Solo si nadie lo tomó: dos coordinadores que abren el dashboard a la vez
+    // no se pisan, el segundo se entera de quién lo tiene.
+    const [r] = await pool.query(
+      `UPDATE REGISTRO_CONVIVENCIA SET id_usuario_atiende = ?, fecha_atencion = NOW()
+        WHERE id_registro = ? AND id_usuario_atiende IS NULL`,
+      [req.user.id, registro.id_registro]
+    );
+    if (r.affectedRows === 0 && registro.id_usuario_atiende !== req.user.id)
+      return res.status(409).json({
+        message: `Este registro ya lo está atendiendo ${await nombreDeUsuario(registro.id_usuario_atiende)}`,
+      });
+
+    // La campana de los demás coordinadores deja de reclamarlo.
+    await pool.query(
+      `UPDATE NOTIFICACION SET leida = 1 WHERE id_registro = ? AND tipo = 'registro_nuevo'`,
+      [registro.id_registro]
+    );
+    res.json({ message: 'Registro tomado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al atender el registro' });
+  }
+};
+
+// POST /api/registros/:id/derivar — { id_usuario_destino, fecha_limite, instrucciones }
+const derivar = async (req, res) => {
+  const { id_usuario_destino, fecha_limite, instrucciones } = req.body;
+  if (!id_usuario_destino || !fecha_limite)
+    return res.status(400).json({ message: 'Indica a quién derivar y el plazo' });
+
+  // Un plazo 'yyyy-MM-dd' vence al final de ese día, no a medianoche del
+  // anterior: quien elige "viernes" espera tener el viernes entero.
+  const limite = /^\d{4}-\d{2}-\d{2}$/.test(fecha_limite) ? `${fecha_limite} 23:59:59` : fecha_limite;
+  if (isNaN(new Date(limite).getTime()) || new Date(limite) < new Date())
+    return res.status(400).json({ message: 'El plazo tiene que ser una fecha futura' });
+
+  const conn = await pool.getConnection();
+  try {
+    const registro = await registroDelScope(req);
+    if (!registro) return res.status(404).json({ message: 'Registro no encontrado' });
+    if (Number(id_usuario_destino) === req.user.id)
+      return res.status(400).json({ message: 'No puedes derivarte un registro a ti mismo' });
+
+    const [[destino]] = await conn.query(
+      `SELECT id_usuario, nombre, correo FROM USUARIO
+        WHERE id_usuario = ? AND id_establecimiento = ? AND activo = 1`,
+      [id_usuario_destino, req.id_establecimiento]
+    );
+    if (!destino)
+      return res.status(400).json({ message: 'El funcionario no pertenece al establecimiento o está inactivo' });
+
+    await conn.beginTransaction();
+    // Una sola derivación pendiente por registro: derivar de nuevo (a otra
+    // persona o con otro plazo) reemplaza la anterior en vez de sumar una
+    // segunda tarea que nadie va a cerrar.
+    await conn.query(
+      `UPDATE REGISTRO_DERIVACION SET estado = 'anulada'
+        WHERE id_registro = ? AND estado = 'pendiente'`,
+      [registro.id_registro]
+    );
+    await conn.query(
+      `INSERT INTO REGISTRO_DERIVACION
+         (id_registro, id_establecimiento, id_usuario_origen, id_usuario_destino, instrucciones, fecha_limite)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [registro.id_registro, req.id_establecimiento, req.user.id, destino.id_usuario,
+       instrucciones?.trim().slice(0, 500) || null, limite]
+    );
+    // Derivar es atender: quien deriva ya tomó el registro.
+    await conn.query(
+      `UPDATE REGISTRO_CONVIVENCIA SET id_usuario_atiende = ?, fecha_atencion = NOW()
+        WHERE id_registro = ? AND id_usuario_atiende IS NULL`,
+      [req.user.id, registro.id_registro]
+    );
+    await conn.query(
+      `UPDATE NOTIFICACION SET leida = 1 WHERE id_registro = ? AND tipo = 'registro_nuevo'`,
+      [registro.id_registro]
+    );
+    await notificaciones.crear(conn, {
+      usuarios: [destino.id_usuario],
+      id_establecimiento: req.id_establecimiento,
+      tipo: 'registro_derivado',
+      titulo: `Te derivaron el registro #${registro.id_registro}`,
+      mensaje: `${await nombreDeUsuario(req.user.id)} te pide atenderlo antes del ` +
+        `${formatearFecha(new Date(limite), true)}` +
+        (instrucciones?.trim() ? `: ${instrucciones.trim().slice(0, 300)}` : ''),
+      id_registro: registro.id_registro,
+    });
+    await conn.commit();
+    res.status(201).json({ message: `Registro derivado a ${destino.nombre || destino.correo}` });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error(err);
+    res.status(500).json({ message: 'Error al derivar el registro' });
+  } finally {
+    conn.release();
+  }
+};
+
+// POST /api/registros/:id/derivacion/atendida — { comentario }
+// Solo la marca quien recibió la derivación: es su constancia de haberlo hecho.
+const marcarDerivacionAtendida = async (req, res) => {
+  try {
+    const registro = await registroDelScope(req);
+    if (!registro) return res.status(404).json({ message: 'Registro no encontrado' });
+
+    const [[d]] = await pool.query(
+      `SELECT id_derivacion, id_usuario_origen FROM REGISTRO_DERIVACION
+        WHERE id_registro = ? AND estado = 'pendiente' AND id_usuario_destino = ?`,
+      [registro.id_registro, req.user.id]
+    );
+    if (!d) return res.status(404).json({ message: 'No tienes una derivación pendiente en este registro' });
+
+    const comentario = req.body?.comentario?.trim().slice(0, 500) || null;
+    await pool.query(
+      `UPDATE REGISTRO_DERIVACION
+          SET estado = 'atendida', fecha_atendida = NOW(), comentario_atencion = ?
+        WHERE id_derivacion = ?`,
+      [comentario, d.id_derivacion]
+    );
+    // Sus avisos de "te derivaron" y "no has atendido" ya no piden nada.
+    await pool.query(
+      `UPDATE NOTIFICACION SET leida = 1
+        WHERE id_registro = ? AND id_usuario = ? AND tipo IN ('registro_derivado','derivacion_vencida')`,
+      [registro.id_registro, req.user.id]
+    );
+    await notificaciones.crear(pool, {
+      usuarios: [d.id_usuario_origen],
+      id_establecimiento: req.id_establecimiento,
+      tipo: 'derivacion_atendida',
+      titulo: `Registro #${registro.id_registro} atendido`,
+      mensaje: `${await nombreDeUsuario(req.user.id)} marcó como atendido el registro derivado` +
+        (comentario ? `: ${comentario.slice(0, 300)}` : ''),
+      id_registro: registro.id_registro,
+    });
+    res.json({ message: 'Derivación marcada como atendida' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al marcar la derivación' });
+  }
+};
+
+// GET /api/registros/:id/pdf — el registro tal como se llenó, sin el protocolo.
+const getPdf = async (req, res) => {
+  try {
+    const [[registro]] = await pool.query(
+      `SELECT r.*, tf.nombre AS tipo_falta_nombre, tf.gravedad,
+              u.nombre AS autor_nombre, u.correo AS autor_correo,
+              es.nombre AS establecimiento_nombre, es.rbd
+       FROM REGISTRO_CONVIVENCIA r
+       JOIN TIPO_FALTA tf ON r.id_tipo_falta = tf.id_tipo_falta
+       JOIN USUARIO u ON r.id_usuario = u.id_usuario
+       LEFT JOIN ESTABLECIMIENTO es ON es.id_establecimiento = r.id_establecimiento
+       WHERE r.id_registro = ? AND r.id_establecimiento = ?`,
+      [req.params.id, req.id_establecimiento]
+    );
+    if (!registro) return res.status(404).json({ message: 'Registro no encontrado' });
+    // El PDF es el contenido completo: lo reservado no se imprime.
+    if (registro.es_confidencial && !puedeVerConfidencial(req, registro))
+      return res.status(403).json({ message: 'Este registro es confidencial' });
+
+    const [estudiantes] = await pool.query(
+      `SELECT e.nombre, e.apellido, e.run, e.dv, c.nombre AS curso, re.rol_en_incidente
+       FROM REGISTRO_ESTUDIANTE re
+       JOIN ESTUDIANTE e ON re.id_estudiante = e.id_estudiante
+       LEFT JOIN CURSO c ON c.id_curso = e.id_curso
+       WHERE re.id_registro = ?`,
+      [req.params.id]
+    );
+    const [personal] = await pool.query(
+      `SELECT tipo_persona, nombre, rut, rol_en_incidente
+       FROM REGISTRO_INVOLUCRADO_NO_ESTUDIANTE WHERE id_registro = ?`,
+      [req.params.id]
+    );
+
+    const { buffer, nombre } = construirRegistroPdf({ registro, estudiantes, personal });
+    enviarPdf(res, buffer, nombre);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al generar el PDF del registro' });
+  }
+};
+
+module.exports = {
+  getAll, getById, create, update, remove, confirmar,
+  atender, derivar, marcarDerivacionAtendida, getPdf,
+};

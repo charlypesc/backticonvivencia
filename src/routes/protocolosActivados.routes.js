@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 const {
-  getAll, getByRegistro, getDetalle, getBitacora,
+  getAll, getByRegistro, getDetalle, getBitacora, sobreintervencion,
   create,
   completarPaso, aprobarPaso, omitirPaso, reasignarPaso,
   cerrar, anular, agregarNota,
@@ -30,6 +30,8 @@ const upload = multer({
 
 router.get('/',                       requirePermission(Permiso.ProtocoloActivadoVer), getAll);
 router.get('/registro/:id_registro',  requirePermission(Permiso.ProtocoloActivadoVer), getByRegistro);
+// Antes de '/:id': si no, 'sobreintervencion' se leería como un id de caso.
+router.get('/sobreintervencion',      requirePermission(Permiso.ProtocoloActivadoCrear), sobreintervencion);
 router.get('/:id',                    requirePermission(Permiso.ProtocoloActivadoVer), getDetalle);
 router.get('/:id/bitacora',           requirePermission(Permiso.ProtocoloActivadoVerBitacora), getBitacora);
 
