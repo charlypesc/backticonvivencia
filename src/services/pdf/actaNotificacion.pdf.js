@@ -30,7 +30,7 @@ const MARGEN = 56;
 const nombreArchivo = (d) => {
   const persona = plano(d.persona.nombre).replace(/[\\/:*?"<>|]/g, '').trim();
   const quien = d.destinatario === 'apoderado' ? 'Notificacion apoderado de' : 'Notificacion';
-  return `${quien} ${persona || 'caso ' + d.caso.id}.pdf`;
+  return `${d.caso.codigo ? d.caso.codigo + ' - ' : ''}${quien} ${persona || 'caso'}.pdf`;
 };
 
 /**
@@ -124,7 +124,8 @@ const construirActaNotificacionPdf = (d) => {
     if (d.persona.curso) dato('Curso', d.persona.curso);
     if (d.persona.rol) dato('Calidad en el caso', d.persona.rol);
   }
-  dato('Caso', `N° ${d.caso.id} - ${d.caso.protocolo}`);
+  dato('Caso', `${d.caso.codigo ?? 'N° ' + d.caso.id} - ${d.caso.protocolo}`);
+  if (d.caso.registro_codigo) dato('Registro', d.caso.registro_codigo);
   if (d.caso.asunto) dato('Asunto', d.caso.asunto);
   if (d.caso.fecha_incidente) dato('Fecha del hecho', formatearFecha(d.caso.fecha_incidente));
   dato('Fecha de notificacion', formatearFecha(new Date(), true));

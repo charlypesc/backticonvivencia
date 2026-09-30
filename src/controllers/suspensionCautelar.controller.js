@@ -652,6 +652,7 @@ const generarActaConsejo = async (req, res) => {
   try {
     const [[d]] = await pool.query(
       `SELECT sc.*, est.nombre AS establecimiento_nombre, est.rbd,
+              pa.codigo AS caso_codigo,
               COALESCE(pe.nombre, cp.nombre) AS protocolo,
               COALESCE(i.nombre, TRIM(CONCAT(COALESCE(e.nombre, ''), ' ', COALESCE(e.apellido, '')))) AS persona_nombre,
               COALESCE(i.rut, CASE WHEN e.run IS NOT NULL THEN CONCAT(e.run, '-', e.dv) END) AS persona_rut,
@@ -670,7 +671,7 @@ const generarActaConsejo = async (req, res) => {
 
     const { buffer, nombre } = construirActaConsejoPdf({
       establecimiento: { nombre: d.establecimiento_nombre, rbd: d.rbd },
-      caso: { id: d.id_protocolo_activado, protocolo: d.protocolo },
+      caso: { id: d.id_protocolo_activado, codigo: d.caso_codigo, protocolo: d.protocolo },
       estudiante: {
         nombre: d.persona_nombre,
         rut: d.persona_rut,

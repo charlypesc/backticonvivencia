@@ -689,7 +689,7 @@ const generarActaNotificacion = async (req, res) => {
     if (!g) return res.status(404).json({ message: 'Gestión no encontrada en este caso' });
 
     const [[registro]] = await pool.query(
-      `SELECT r.asunto, r.fecha_incidente, e.nombre AS establecimiento_nombre, e.rbd
+      `SELECT r.codigo, r.asunto, r.fecha_incidente, e.nombre AS establecimiento_nombre, e.rbd
        FROM REGISTRO_CONVIVENCIA r
        JOIN ESTABLECIMIENTO e ON e.id_establecimiento = r.id_establecimiento
        WHERE r.id_registro = ?`,
@@ -741,6 +741,8 @@ const generarActaNotificacion = async (req, res) => {
       establecimiento: { nombre: registro?.establecimiento_nombre, rbd: registro?.rbd },
       caso: {
         id: activado.id_protocolo_activado,
+        codigo: activado.codigo,
+        registro_codigo: registro?.codigo,
         protocolo: activado.nombre,
         asunto: registro?.asunto,
         fecha_incidente: registro?.fecha_incidente,

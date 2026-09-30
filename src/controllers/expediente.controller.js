@@ -104,7 +104,7 @@ const redactarProfundo = (valor, involucrados) => {
 
 const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
   const [[caso]] = await pool.query(
-    `SELECT pa.*, r.asunto, r.antecedentes, r.acuerdos, r.fecha_incidente,
+    `SELECT pa.*, r.codigo AS registro_codigo, r.asunto, r.antecedentes, r.acuerdos, r.fecha_incidente,
             r.fecha_creacion AS fecha_registro,
             r.es_confidencial, r.nota_confidencial, r.id_usuario AS id_autor_registro,
             tf.nombre AS tipo_falta_nombre, tf.gravedad,
@@ -438,6 +438,8 @@ const formatear = (datos, { redactado }) => {
     establecimiento: { nombre: caso.establecimiento_nombre, rbd: caso.rbd },
     caso: {
       id_protocolo_activado: caso.id_protocolo_activado,
+      codigo: caso.codigo,
+      registro_codigo: caso.registro_codigo,
       // Nombre y versión congelados al activar: es el protocolo que regía ese
       // día, no el que rige hoy.
       protocolo: caso.nombre_protocolo,

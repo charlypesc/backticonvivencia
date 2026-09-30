@@ -128,7 +128,7 @@ const construirActaConsejoPdf = (d) => {
 
   // ── La medida que se pide reconsiderar ──────────────────────────────────
   const s = d.suspension;
-  dato('Caso', `N° ${d.caso.id}${d.caso.protocolo ? ` - ${d.caso.protocolo}` : ''}`);
+  dato('Caso', `${d.caso.codigo ?? 'N° ' + d.caso.id}${d.caso.protocolo ? ` - ${d.caso.protocolo}` : ''}`);
   dato('Estudiante', d.estudiante?.nombre || '______________________________________');
   if (d.estudiante?.rut) dato('RUT', d.estudiante.rut);
   if (d.estudiante?.curso) dato('Curso', d.estudiante.curso);
@@ -222,14 +222,14 @@ const construirActaConsejoPdf = (d) => {
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
     doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(...GRIS);
-    doc.text(`Caso N° ${d.caso.id} · Acta del Consejo de Profesores`, m, alto - 28);
+    doc.text(`${d.caso.codigo ?? 'Caso N° ' + d.caso.id} · Acta del Consejo de Profesores`, m, alto - 28);
     doc.text(`Página ${p} de ${total}`, ancho - m, alto - 28, { align: 'right' });
   }
 
   const persona = plano(d.estudiante?.nombre || '').replace(/[\\/:*?"<>|]/g, '').trim();
   return {
     buffer: Buffer.from(doc.output('arraybuffer')),
-    nombre: `Acta Consejo de Profesores ${persona || 'caso ' + d.caso.id}.pdf`,
+    nombre: `${d.caso.codigo ? d.caso.codigo + ' - ' : ''}Acta Consejo de Profesores ${persona || 'caso'}.pdf`,
   };
 };
 
