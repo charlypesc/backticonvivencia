@@ -352,7 +352,7 @@ async function procesarDerivacionesVencidas(lote = LOTE) {
       usuarios: [d.id_usuario_destino],
       id_establecimiento: d.id_establecimiento,
       tipo: 'derivacion_vencida',
-      titulo: `No has atendido el registro N° ${d.folio}`,
+      titulo: `No has atendido el registro N° Folio ${d.folio}`,
       mensaje: 'El plazo de la derivación venció. Atiéndelo y márcalo como atendido.',
       id_registro: d.id_registro,
     });
@@ -361,7 +361,7 @@ async function procesarDerivacionesVencidas(lote = LOTE) {
       usuarios: [d.id_usuario_origen, ...coordinadores],
       id_establecimiento: d.id_establecimiento,
       tipo: 'derivacion_vencida',
-      titulo: `Registro N° ${d.folio} sin atender: vuelve a tomarlo`,
+      titulo: `Registro N° Folio ${d.folio} sin atender: vuelve a tomarlo`,
       mensaje: `${d.destino_nombre} no lo atendió dentro del plazo. Atiéndelo o derívalo de nuevo.`,
       id_registro: d.id_registro,
       excepto: d.id_usuario_destino,
