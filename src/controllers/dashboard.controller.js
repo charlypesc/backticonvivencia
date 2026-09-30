@@ -72,13 +72,14 @@ const getResumen = async (req, res) => {
     const [ultimos] = await pool.query(
       `SELECT r.id_registro, r.codigo, r.asunto, r.fecha_creacion,
               r.id_usuario, r.es_confidencial, r.nota_confidencial,
-              r.fecha_modificacion,
+              r.fecha_modificacion, tf.nombre AS tipo_falta_nombre,
               u.nombre AS autor_nombre, u.correo AS autor_correo,
               um.nombre AS editor_nombre, um.correo AS editor_correo,
               GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
                            ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
        FROM REGISTRO_CONVIVENCIA r
        JOIN USUARIO u ON r.id_usuario = u.id_usuario
+       LEFT JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
        LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
        LEFT JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro
        LEFT JOIN ESTUDIANTE e ON re.id_estudiante = e.id_estudiante
@@ -264,18 +265,23 @@ const getResumen = async (req, res) => {
       [id_est]
     );
 
-    // Señalados en un registro de bullying: van en rojo.
-    const [senalados_bullying] = await pool.query(
+    // Señalado en dos o más registros: el mismo patrón visto del otro lado.
+    // Reemplaza a la tarjeta "Señalados por bullying", que marcaba en rojo a
+    // un estudiante por un solo registro; lo que interesa ver es la
+    // reiteración. El bullying queda como etiqueta dentro de la fila.
+    const [senalados_reiterados] = await pool.query(
       `SELECT e.id_estudiante, e.run, e.dv, CONCAT(e.nombre, ' ', e.apellido) AS nombre, c.nombre AS curso_nombre,
-              COUNT(DISTINCT r.id_registro) AS veces
+              COUNT(DISTINCT r.id_registro) AS veces,
+              MAX(${ES_BULLYING_SQL}) AS bullying
        FROM REGISTRO_ESTUDIANTE re
        JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro
        JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
        JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
        LEFT JOIN CURSO c ON c.id_curso = e.id_curso
-       WHERE r.id_establecimiento = ? AND re.rol_en_incidente = 'senalado' AND ${ES_BULLYING_SQL}
+       WHERE r.id_establecimiento = ? AND re.rol_en_incidente = 'senalado'
        GROUP BY e.id_estudiante
-       ORDER BY veces DESC
+       HAVING veces >= 2
+       ORDER BY veces DESC, bullying DESC
        LIMIT 20`,
       [id_est]
     );
@@ -339,7 +345,7 @@ const getResumen = async (req, res) => {
       mis_derivaciones: mis_derivaciones.map((r) => ocultarAsunto(req, r)),
       alertas: {
         afectados_reiterados: afectados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
-        senalados_bullying,
+        senalados_reiterados: senalados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
       },
       graficos: {
         anio: new Date().getFullYear(),

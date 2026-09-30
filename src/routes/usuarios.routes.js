@@ -1,14 +1,35 @@
 const router = require('express').Router();
+const multer = require('multer');
 const {
   getAll, create, update, toggleActivo, resetPassword,
   getRoles, asignarRol, quitarRol,
   getPermisos, setPermisos, guardarPermisosComoRol,
 } = require('../controllers/usuarios.controller');
+const { plantilla, importar } = require('../controllers/usuariosImportar.controller');
 const { verifyToken, requirePermission } = require('../middleware/auth');
 const { resolverScope } = require('../middleware/scope');
 const { Permiso } = require('../constants/permisos');
 
 router.use(verifyToken, resolverScope);
+
+// Alta masiva: la plantilla Excel y la subida del archivo ya llenado. Van con
+// el mismo permiso que el alta de a uno. El filtro es por extensión además del
+// mimetype: algunos navegadores mandan los .xlsx como application/octet-stream.
+const uploadExcel = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (req, file, cb) =>
+    /\.(xlsx|xls)$/i.test(file.originalname) || /spreadsheet|ms-excel/.test(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Sube la plantilla en formato Excel (.xlsx)')),
+});
+router.get('/plantilla', requirePermission(Permiso.UsuarioCrear), plantilla);
+// El error de multer (archivo que no es Excel) se responde como JSON: sin
+// manejador de errores global, Express devolvería su página HTML de 500.
+const subirExcel = (req, res, next) =>
+  uploadExcel.single('archivo')(req, res, (err) =>
+    err ? res.status(400).json({ message: err.message }) : next());
+router.post('/importar', requirePermission(Permiso.UsuarioCrear), subirExcel, importar);
 
 // Antes todo este router era requireRole('DIRECTOR'). Ahora va por permiso, y
 // ENCARGADO también los tiene: dar de alta usuarios dejó de ser exclusivo del
