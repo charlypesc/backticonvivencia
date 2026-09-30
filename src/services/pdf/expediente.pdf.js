@@ -2,6 +2,7 @@ const { jsPDF } = require('jspdf');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const { formatearFecha, formatearFechasEnTexto } = require('../../utils/fecha');
 const { etiquetaDe } = require('../../utils/etiquetas');
+const { formatearNombreCurso } = require('../../utils/curso');
 const { plano } = require('./comun');
 
 // El expediente de un caso como PDF.
@@ -231,7 +232,7 @@ const secciones = (e) => {
           t(i.tipo_persona, 'tipo_persona'),
           // En modo redactado no vienen: identifican a la persona.
           ...(i.rut ? [`RUT ${i.rut}`] : []),
-          ...(i.curso ? [`Curso: ${t(i.curso)}`] : []),
+          ...(i.curso ? [`Curso: ${t(formatearNombreCurso(i.curso))}`] : []),
         ].filter(Boolean),
       })),
     },

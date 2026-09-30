@@ -18,6 +18,7 @@
 //     (`id_paso_actual` es uno solo): el primero en completarse arrastraría el
 //     caso al paso siguiente dejando a los otros dos sin hacer.
 const pool = require('../db/connection');
+const { formatearNombreCurso } = require('../utils/curso');
 const { errorDeMedida, insertarMedida } = require('./medidasProteccion.controller');
 const { errorDeMedidaDisciplinaria, insertarMedidaDisciplinaria } = require('./medidasDisciplinarias.controller');
 const {
@@ -643,12 +644,6 @@ const descargarActaFirmada = async (req, res) => {
   }
 };
 
-/** "7BasicoA" → "7 Basico A". Mismo formato que el pipe cursoNombre del front. */
-const formatearNombreCurso = (nombre) => {
-  if (!nombre) return '';
-  const m = String(nombre).match(/^(\d+)(Basico|Medio)([A-Z])$/);
-  return m ? `${m[1]} ${m[2]} ${m[3]}` : nombre;
-};
 
 /**
  * El texto del plazo de reconsideración. En expulsión y cancelación de

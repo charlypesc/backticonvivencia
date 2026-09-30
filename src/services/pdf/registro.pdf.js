@@ -2,6 +2,7 @@ const { jsPDF } = require('jspdf');
 const { formatearFecha } = require('../../utils/fecha');
 const { etiquetaDe } = require('../../utils/etiquetas');
 const { plano } = require('./comun');
+const { formatearNombreCurso } = require('../../utils/curso');
 
 // El registro de convivencia tal como se llenó: el hecho, los involucrados, el
 // relato y los acuerdos. Sin protocolo, bitácora ni medidas — eso es el
@@ -101,7 +102,7 @@ const construirRegistroPdf = ({ registro: r, estudiantes, personal }) => {
   for (const e of estudiantes)
     parrafo(
       `- ${e.nombre} ${e.apellido} (${e.run}-${e.dv})` +
-        (e.curso ? ` · ${e.curso}` : '') +
+        (e.curso ? ` · ${formatearNombreCurso(e.curso)}` : '') +
         (e.rol_en_incidente ? ` · ${etiquetaDe(e.rol_en_incidente, 'rol_involucrado')}` : ''),
     );
 
