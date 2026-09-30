@@ -264,7 +264,9 @@ const secciones = (e) => {
                 ? ` · Acta firmada${anexoDe(g) ? ` en anexo ${anexoDe(g)}` : ''}` +
                   (g.adjunto.nombre_archivo ? ` (${t(g.adjunto.nombre_archivo)})` : '')
                 : '');
-            return [cabeza, ...(g.observacion ? [`   ${quien} — ${t(g.observacion)}`] : [])];
+            // La observación va sangrada bajo la línea de su persona: repetir
+            // el nombre acá lo duplicaba en cada paso del expediente.
+            return [cabeza, ...(g.observacion ? [`   Observación: ${t(g.observacion)}`] : [])];
           }),
         ],
       })),
