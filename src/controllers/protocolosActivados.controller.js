@@ -40,8 +40,8 @@ const BASE_SELECT = `
   SELECT pa.*,
          COALESCE(pe.nombre, cp.nombre)           AS nombre,
          COALESCE(pe.descripcion, cp.descripcion) AS descripcion,
-         (SELECT rf.folio FROM REGISTRO_CONVIVENCIA rf
-           WHERE rf.id_registro = pa.id_registro)  AS registro_folio
+         (SELECT rf.codigo FROM REGISTRO_CONVIVENCIA rf
+           WHERE rf.id_registro = pa.id_registro)  AS registro_codigo
   FROM PROTOCOLO_ACTIVADO pa
   JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pa.id_protocolo_establecimiento = pe.id_protocolo_establecimiento
   LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON pe.id_protocolo = cp.id_protocolo
@@ -876,7 +876,9 @@ const activar = async (req, res) => {
         descripcion:
           // En castellano y no con los códigos de la base: esta frase sale tal
           // cual en el expediente que lee la Superintendencia.
-          `Protocolo activado sobre el registro ${id_registro} ` +
+          `Protocolo activado sobre el registro ${
+            (await conn.query('SELECT codigo FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id_registro]))[0][0]?.codigo
+              ?? id_registro} ` +
           `(${fuente.origen === 'catalogo' ? 'flujo del catálogo' : 'flujo propio del establecimiento'})` +
           (involucrados.length
             ? ` — involucrados: ${involucrados

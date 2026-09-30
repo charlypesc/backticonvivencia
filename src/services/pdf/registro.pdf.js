@@ -13,10 +13,10 @@ const GRIS = [107, 114, 128];
 const LINEA = [209, 213, 219];
 const MARGEN = 56;
 
-/** "Registro 12 - Pelea en el recreo". Por folio y asunto: así se busca en la carpeta. */
+/** "REG-2026-012 - Pelea en el recreo". Por código y asunto: con el año y los ceros, la carpeta queda en orden sola. */
 const nombreArchivo = (r) => {
   const asunto = plano(r.asunto).replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 60);
-  return `Registro ${r.folio ?? r.id_registro}${asunto ? ' - ' + asunto : ''}.pdf`;
+  return `${r.codigo ?? 'Registro ' + r.id_registro}${asunto ? ' - ' + asunto : ''}.pdf`;
 };
 
 /**
@@ -83,7 +83,7 @@ const construirRegistroPdf = ({ registro: r, estudiantes, personal }) => {
   doc.setFontSize(15).setFont('helvetica', 'bold').setTextColor(...TINTA);
   doc.text('REGISTRO DE CONVIVENCIA ESCOLAR', m, y + 8);
   doc.setFontSize(10).setFont('helvetica', 'normal').setTextColor(...GRIS);
-  doc.text(`N° Folio ${r.folio ?? r.id_registro}`, ancho - m, y + 8, { align: 'right' });
+  doc.text(`N° Folio ${r.codigo ?? r.id_registro}`, ancho - m, y + 8, { align: 'right' });
   y += 30;
   linea();
 

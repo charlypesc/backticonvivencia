@@ -80,9 +80,9 @@ const MSG_TIPO_FALTA_INVALIDO =
   'El motivo del registro indicado no pertenece al establecimiento';
 
 /**
- * INSERT del registro con reintento por folio. El folio lo pone el trigger
- * trg_registro_folio (MAX + 1 del colegio): dos guardados simultáneos pueden
- * calcular el mismo y el segundo choca con uq_registro_folio. Un error de
+ * INSERT del registro con reintento por folio. Año y folio los pone el trigger
+ * trg_registro_folio (MAX + 1 del colegio en el año): dos guardados simultáneos
+ * pueden calcular el mismo y el segundo choca con uq_registro_folio_anio. Un error de
  * clave duplicada deshace solo la sentencia, no la transacción, así que
  * reintentar el INSERT sirve también dentro de una.
  */
@@ -91,15 +91,16 @@ const insertarConFolio = async (ejecutor, sql, params, intentos = 3) => {
     try {
       return await ejecutor.query(sql, params);
     } catch (err) {
-      if (err.code !== 'ER_DUP_ENTRY' || !/uq_registro_folio/.test(err.sqlMessage ?? '') || i >= intentos)
+      if (err.code !== 'ER_DUP_ENTRY' || !/uq_registro_folio_anio/.test(err.sqlMessage ?? '') || i >= intentos)
         throw err;
     }
   }
 };
 
-const folioDe = async (id_registro) => {
-  const [[r]] = await pool.query('SELECT folio FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id_registro]);
-  return r?.folio ?? id_registro;
+/** El código visible del registro (REG-2026-013). Lo arma la base. */
+const codigoDe = async (id_registro) => {
+  const [[r]] = await pool.query('SELECT codigo FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id_registro]);
+  return r?.codigo ?? `#${id_registro}`;
 };
 
 const nombreDeUsuario = async (id_usuario) => {
@@ -122,7 +123,7 @@ const avisarRegistroNuevo = async (req, id_registro, asunto) => {
       usuarios: coordinadores,
       id_establecimiento: req.id_establecimiento,
       tipo: 'registro_nuevo',
-      titulo: `Registro nuevo N° Folio ${await folioDe(id_registro)} por atender`,
+      titulo: `Registro nuevo ${await codigoDe(id_registro)} por atender`,
       mensaje: `${await nombreDeUsuario(req.user.id)} registró: ${String(asunto).slice(0, 200)}`,
       id_registro,
       excepto: req.user.id,
@@ -443,10 +444,10 @@ const create = async (req, res) => {
       const [result] = await insertarConFolio(pool, sqlRegistro, paramsRegistro);
       if (result.affectedRows === 0)
         return res.status(400).json({ message: MSG_TIPO_FALTA_INVALIDO });
-      const folio = await folioDe(result.insertId);
+      const codigo = await codigoDe(result.insertId);
       res
         .status(201)
-        .json({ id_registro: result.insertId, folio, message: `Registro N° Folio ${folio} creado` });
+        .json({ id_registro: result.insertId, codigo, message: `Registro ${codigo} creado` });
       if (!atendidoAlCrear) await avisarRegistroNuevo(req, result.insertId, asunto);
       return;
     } catch (err) {
@@ -492,10 +493,10 @@ const create = async (req, res) => {
       );
     }
 
-    const [[{ folio }]] = await conn.query(
-      'SELECT folio FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id_registro]);
+    const [[{ codigo }]] = await conn.query(
+      'SELECT codigo FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id_registro]);
     await conn.commit();
-    res.status(201).json({ id_registro, folio, message: `Registro N° Folio ${folio} creado` });
+    res.status(201).json({ id_registro, codigo, message: `Registro ${codigo} creado` });
     // La conexión se suelta en el finally recién después de esto: el aviso va
     // por el pool, no por conn, así que no la retiene.
     if (!atendidoAlCrear) await avisarRegistroNuevo(req, id_registro, asunto);
@@ -722,7 +723,7 @@ const confirmar = async (req, res) => {
 /** Registro del establecimiento activo, o null (el 404 lo decide quien llama). */
 const registroDelScope = async (req) => {
   const [[r]] = await pool.query(
-    `SELECT id_registro, folio, asunto, id_usuario, id_usuario_atiende, id_establecimiento
+    `SELECT id_registro, codigo, asunto, id_usuario, id_usuario_atiende, id_establecimiento
        FROM REGISTRO_CONVIVENCIA WHERE id_registro = ? AND id_establecimiento = ?`,
     [req.params.id, req.id_establecimiento]
   );
@@ -816,7 +817,7 @@ const derivar = async (req, res) => {
       usuarios: [destino.id_usuario],
       id_establecimiento: req.id_establecimiento,
       tipo: 'registro_derivado',
-      titulo: `Te derivaron el registro N° Folio ${registro.folio}`,
+      titulo: `Te derivaron el registro ${registro.codigo}`,
       mensaje: `${await nombreDeUsuario(req.user.id)} te pide atenderlo antes del ` +
         `${formatearFecha(new Date(limite), true)}` +
         (instrucciones?.trim() ? `: ${instrucciones.trim().slice(0, 300)}` : ''),
@@ -864,7 +865,7 @@ const marcarDerivacionAtendida = async (req, res) => {
       usuarios: [d.id_usuario_origen],
       id_establecimiento: req.id_establecimiento,
       tipo: 'derivacion_atendida',
-      titulo: `Registro N° Folio ${registro.folio} atendido`,
+      titulo: `Registro ${registro.codigo} atendido`,
       mensaje: `${await nombreDeUsuario(req.user.id)} marcó como atendido el registro derivado` +
         (comentario ? `: ${comentario.slice(0, 300)}` : ''),
       id_registro: registro.id_registro,

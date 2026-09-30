@@ -330,7 +330,7 @@ async function procesarMedidasDisciplinariasVencidas(lote = LOTE) {
 async function procesarDerivacionesVencidas(lote = LOTE) {
   const [vencidas] = await pool.query(
     `SELECT d.id_derivacion, d.id_registro, d.id_establecimiento, d.id_usuario_origen,
-            d.id_usuario_destino, d.fecha_limite, r.folio,
+            d.id_usuario_destino, d.fecha_limite, r.codigo,
             COALESCE(ud.nombre, ud.correo) AS destino_nombre
      FROM REGISTRO_DERIVACION d
      JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = d.id_registro
@@ -352,7 +352,7 @@ async function procesarDerivacionesVencidas(lote = LOTE) {
       usuarios: [d.id_usuario_destino],
       id_establecimiento: d.id_establecimiento,
       tipo: 'derivacion_vencida',
-      titulo: `No has atendido el registro N° Folio ${d.folio}`,
+      titulo: `No has atendido el registro ${d.codigo}`,
       mensaje: 'El plazo de la derivación venció. Atiéndelo y márcalo como atendido.',
       id_registro: d.id_registro,
     });
@@ -361,7 +361,7 @@ async function procesarDerivacionesVencidas(lote = LOTE) {
       usuarios: [d.id_usuario_origen, ...coordinadores],
       id_establecimiento: d.id_establecimiento,
       tipo: 'derivacion_vencida',
-      titulo: `Registro N° Folio ${d.folio} sin atender: vuelve a tomarlo`,
+      titulo: `Registro ${d.codigo} sin atender: vuelve a tomarlo`,
       mensaje: `${d.destino_nombre} no lo atendió dentro del plazo. Atiéndelo o derívalo de nuevo.`,
       id_registro: d.id_registro,
       excepto: d.id_usuario_destino,

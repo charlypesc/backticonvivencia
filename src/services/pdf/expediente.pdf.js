@@ -49,7 +49,13 @@ const plazo = (p) => {
   return plano(`${p.plazo_valor} ${unidad}`);
 };
 
-const nombreArchivo = (e) => `expediente-${e.caso?.id_protocolo_activado ?? 'caso'}`;
+// "PROT-2026-005 - REG-2026-013 - Protocolo de acoso escolar". El código del
+// caso primero: con el año y los ceros, la carpeta queda en orden sola; el del
+// registro dice de qué hecho viene (un registro puede tener dos protocolos).
+const nombreArchivo = (e) =>
+  [e.caso?.codigo ?? `caso ${e.caso?.id_protocolo_activado ?? ''}`.trim(), e.caso?.registro_codigo,
+   plano(e.caso?.protocolo ?? '').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 80)]
+    .filter(Boolean).join(' - ');
 
 const titulo = (e) => `${e.caso?.protocolo ?? 'Caso'} — versión ${e.caso?.version ?? '—'}`;
 
@@ -207,7 +213,7 @@ const secciones = (e) => {
       campos: [
         { etiqueta: 'Fecha del incidente', valor: fecha(e.hecho?.fecha_incidente) },
         {
-          etiqueta: 'Tipo de falta',
+          etiqueta: 'Motivo del registro',
           valor: `${t(e.hecho?.tipo_falta) || '—'} (${t(e.hecho?.gravedad, 'opcion_campo') || '—'})`,
         },
         { etiqueta: 'Asunto', valor: t(e.hecho?.asunto) || '—' },
@@ -436,6 +442,16 @@ const portada = (doc, e, ancho, util) => {
 
   doc.setFontSize(19).setFont('helvetica', 'bold').setTextColor(...TINTA);
   doc.text('Expediente del caso', m, y);
+  // Los dos folios a la derecha del título: el del caso lo identifica, el del
+  // registro dice de qué hecho viene.
+  if (e.caso?.codigo) {
+    doc.setFontSize(10).setFont('helvetica', 'bold');
+    doc.text(`N° Folio ${e.caso.codigo}`, ancho - m, y - 6, { align: 'right' });
+    if (e.caso.registro_codigo) {
+      doc.setFont('helvetica', 'normal').setTextColor(...GRIS);
+      doc.text(`Registro ${e.caso.registro_codigo}`, ancho - m, y + 7, { align: 'right' });
+    }
+  }
   y += 16;
 
   doc.setFontSize(10.5).setFont('helvetica', 'normal').setTextColor(...GRIS);

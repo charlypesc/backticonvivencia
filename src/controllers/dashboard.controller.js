@@ -70,7 +70,7 @@ const getResumen = async (req, res) => {
     // registros: un registro con 5 involucrados se comía la lista entera y los
     // registros anteriores desaparecían del dashboard.
     const [ultimos] = await pool.query(
-      `SELECT r.id_registro, r.folio, r.asunto, r.fecha_creacion,
+      `SELECT r.id_registro, r.codigo, r.asunto, r.fecha_creacion,
               r.id_usuario, r.es_confidencial, r.nota_confidencial,
               r.fecha_modificacion,
               u.nombre AS autor_nombre, u.correo AS autor_correo,
@@ -189,7 +189,7 @@ const getResumen = async (req, res) => {
     let derivaciones = null;
     if (puedeDerivar) {
       const [filas] = await pool.query(
-        `SELECT r.id_registro, r.folio, r.asunto, r.fecha_creacion, r.id_usuario,
+        `SELECT r.id_registro, r.codigo, r.asunto, r.fecha_creacion, r.id_usuario,
                 r.es_confidencial, r.nota_confidencial,
                 COALESCE(u.nombre, u.correo) AS autor_nombre,
                 tf.nombre AS tipo_falta_nombre, tf.gravedad,
@@ -233,7 +233,7 @@ const getResumen = async (req, res) => {
 
     // Lo que le derivaron a quien mira: su propia lista de pendientes.
     const [mis_derivaciones] = await pool.query(
-      `SELECT d.id_registro, r.folio, d.fecha_limite, d.instrucciones, (d.fecha_limite < NOW()) AS vencida,
+      `SELECT d.id_registro, r.codigo, d.fecha_limite, d.instrucciones, (d.fecha_limite < NOW()) AS vencida,
               COALESCE(uo.nombre, uo.correo) AS origen_nombre,
               r.asunto, r.es_confidencial, r.nota_confidencial, r.id_usuario
        FROM REGISTRO_DERIVACION d

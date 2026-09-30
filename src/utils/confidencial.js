@@ -44,7 +44,7 @@ const reducirSiConfidencial = (req, registro) => {
 
   return {
     id_registro: registro.id_registro,
-    folio: registro.folio,
+    codigo: registro.codigo,
     fecha_incidente: registro.fecha_incidente,
     fecha_creacion: registro.fecha_creacion,
     autor_correo: autorCorreo(registro),
