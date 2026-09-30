@@ -39,7 +39,9 @@ const { etiquetaDe } = require('../utils/etiquetas');
 const BASE_SELECT = `
   SELECT pa.*,
          COALESCE(pe.nombre, cp.nombre)           AS nombre,
-         COALESCE(pe.descripcion, cp.descripcion) AS descripcion
+         COALESCE(pe.descripcion, cp.descripcion) AS descripcion,
+         (SELECT rf.folio FROM REGISTRO_CONVIVENCIA rf
+           WHERE rf.id_registro = pa.id_registro)  AS registro_folio
   FROM PROTOCOLO_ACTIVADO pa
   JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pa.id_protocolo_establecimiento = pe.id_protocolo_establecimiento
   LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON pe.id_protocolo = cp.id_protocolo
