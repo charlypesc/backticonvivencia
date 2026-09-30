@@ -155,13 +155,42 @@ const registrarEvento = (conn, { activado, paso = null, tipo, descripcion, id_us
 // tienen 13 roles (Funcionario, Docente, Profesor jefe...) y usarlo como gate le
 // abriría los pasos del Director a todos ellos. reasignar_paso lo tienen solo
 // los que gestionan el caso, que son justamente los que ya podían dar el rodeo.
-// La decisión de expulsión o cancelación de matrícula solo la puede adoptar el
-// director (DFL 2/1998 art. 6 letra d, texto de la Ley 21.128). No se delega:
-// ni "en lugar de" con el permiso de reasignar, ni reasignándole el paso a otro
-// como responsable. Aprobarla alguien más deja la medida viciada ante la
-// Superintendencia. El paso se reconoce por su campo 'medida_adoptada', que es
-// el que define el catálogo para esa decisión.
-const esDecisionIndelegable = (campos) => campos.some((c) => c.codigo === 'medida_adoptada');
+// Dos decisiones que la ley le da solo al director (DFL 2/1998 art. 6 letra d):
+//   - expulsar o cancelar la matrícula ("sólo podrá ser adoptada por el
+//     director"). El paso se reconoce por su campo 'medida_adoptada'.
+//   - suspender como medida cautelar ("el director tendrá la facultad de
+//     suspender"). El paso se reconoce porque ordena una medida 'cautelar'.
+//   - resolver la reconsideración de cualquiera de las dos ("ante la misma
+//     autoridad, quien resolverá previa consulta al Consejo de Profesores").
+//     Solo en un caso que tiene alguna de esas dos decisiones: la
+//     reconsideración de una medida ordinaria (discriminación arbitraria, por
+//     ejemplo) la define el Reglamento Interno, no la ley.
+// No se delegan: ni "en lugar de" con el permiso de reasignar, ni
+// reasignándole el paso a otro como responsable. Aprobarlas alguien más deja
+// la medida viciada ante la Superintendencia.
+const esDecisionIndelegable = (campos, paso, casoConSancionMaxima = false) =>
+  paso?.tipo_medida_requerida === 'cautelar' ||
+  campos.some((c) => c.codigo === 'medida_adoptada') ||
+  (casoConSancionMaxima && /reconsideraci/i.test(paso?.nombre ?? ''));
+
+/** El caso tiene una decisión de expulsión/cancelación o de suspensión cautelar. */
+const tieneSancionMaxima = async (id_protocolo_activado) => {
+  const [rows] = await pool.query(
+    `SELECT 1 FROM PROTOCOLO_ACTIVADO_PASO p
+     LEFT JOIN PROTOCOLO_ACTIVADO_PASO_CAMPO c
+       ON c.id_activado_paso = p.id_activado_paso AND c.codigo = 'medida_adoptada'
+     WHERE p.id_protocolo_activado = ?
+       AND (p.tipo_medida_requerida = 'cautelar' OR c.id_activado_paso IS NOT NULL)
+     LIMIT 1`,
+    [id_protocolo_activado]
+  );
+  return rows.length > 0;
+};
+
+const nombreDecisionIndelegable = (paso) =>
+  /reconsideraci/i.test(paso.nombre ?? '') ? 'La resolución de la reconsideración'
+    : paso.tipo_medida_requerida === 'cautelar' ? 'La suspensión cautelar'
+    : 'La decisión de expulsión o cancelación de matrícula';
 
 const puedeActuar = async (req, paso, tipo_participacion) => {
   if ((req.user.roles ?? []).includes('ADMIN')) return 'propio';
@@ -468,17 +497,21 @@ const getDetalle = async (req, res) => {
     // y la API decía que sí, así que el caso se quedaba trabado sin explicación.
     // Un paso sin titular no es de nadie, y por eso mismo lo toma quien gestiona
     // el caso: queda como 'en_lugar_de' y la bitácora lo deja escrito.
+    const casoConSancionMaxima = pasos.some((p) =>
+      esDecisionIndelegable(campos.filter((c) => c.id_activado_paso === p.id_activado_paso), p));
     const tituloSobre = (paso, tipo_participacion) => {
       if (esAdministrador) return 'propio';
       const delPaso = roles.filter(
         (r) => r.id_activado_paso === paso.id_activado_paso && r.tipo_participacion === tipo_participacion
       );
       const esTitular = delPaso.some((r) => misRoles.includes(r.rol_codigo));
-      // La decisión de expulsión solo la aprueba su titular: la misma regla que
+      // Expulsión, suspensión cautelar y su reconsideración solo las aprueba su
+      // titular: la misma regla que
       // aplica aprobarPaso, para que la pantalla no ofrezca un botón que la API
       // va a rechazar.
       if (tipo_participacion === 'aprobador' &&
-          esDecisionIndelegable(campos.filter((c) => c.id_activado_paso === paso.id_activado_paso)))
+          esDecisionIndelegable(campos.filter((c) => c.id_activado_paso === paso.id_activado_paso), paso,
+            casoConSancionMaxima))
         return esTitular ? 'propio' : null;
       if (esTitular || paso.id_usuario_responsable === req.user.id) return 'propio';
       return puedeTomarAjenos ? 'en_lugar_de' : null;
@@ -1144,7 +1177,8 @@ const aprobarPaso = async (req, res) => {
       'SELECT * FROM PROTOCOLO_ACTIVADO_PASO_CAMPO WHERE id_activado_paso = ?',
       [paso.id_activado_paso]
     );
-    if (esDecisionIndelegable(campos) && !(req.user.roles ?? []).includes('ADMIN')) {
+    if (!(req.user.roles ?? []).includes('ADMIN') &&
+        esDecisionIndelegable(campos, paso, await tieneSancionMaxima(activado.id_protocolo_activado))) {
       const [titular] = await pool.query(
         `SELECT 1 FROM PROTOCOLO_ACTIVADO_PASO_ROL pr
          JOIN USUARIO_ROLES ur ON ur.rol_id = pr.rol_id
@@ -1155,7 +1189,7 @@ const aprobarPaso = async (req, res) => {
       );
       if (!titular.length)
         return res.status(403).json({
-          message: `La decisión de expulsión o cancelación de matrícula solo la puede adoptar ` +
+          message: `${nombreDecisionIndelegable(paso)} solo la puede adoptar ` +
             `${(await rolesDelPaso(paso.id_activado_paso, 'aprobador')) || 'el director'} ` +
             '(art. 6 letra d del DFL 2). No se puede aprobar en su lugar.',
         });
