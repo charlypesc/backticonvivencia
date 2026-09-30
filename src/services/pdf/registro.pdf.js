@@ -83,7 +83,7 @@ const construirRegistroPdf = ({ registro: r, estudiantes, personal }) => {
   doc.setFontSize(15).setFont('helvetica', 'bold').setTextColor(...TINTA);
   doc.text('REGISTRO DE CONVIVENCIA ESCOLAR', m, y + 8);
   doc.setFontSize(10).setFont('helvetica', 'normal').setTextColor(...GRIS);
-  doc.text(`N° ${r.folio ?? r.id_registro}`, ancho - m, y + 8, { align: 'right' });
+  doc.text(`N° Folio ${r.folio ?? r.id_registro}`, ancho - m, y + 8, { align: 'right' });
   y += 30;
   linea();
 

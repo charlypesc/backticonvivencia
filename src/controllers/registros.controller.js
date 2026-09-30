@@ -122,7 +122,7 @@ const avisarRegistroNuevo = async (req, id_registro, asunto) => {
       usuarios: coordinadores,
       id_establecimiento: req.id_establecimiento,
       tipo: 'registro_nuevo',
-      titulo: `Registro nuevo N° ${await folioDe(id_registro)} por atender`,
+      titulo: `Registro nuevo N° Folio ${await folioDe(id_registro)} por atender`,
       mensaje: `${await nombreDeUsuario(req.user.id)} registró: ${String(asunto).slice(0, 200)}`,
       id_registro,
       excepto: req.user.id,
@@ -446,7 +446,7 @@ const create = async (req, res) => {
       const folio = await folioDe(result.insertId);
       res
         .status(201)
-        .json({ id_registro: result.insertId, folio, message: `Registro N° ${folio} creado` });
+        .json({ id_registro: result.insertId, folio, message: `Registro N° Folio ${folio} creado` });
       if (!atendidoAlCrear) await avisarRegistroNuevo(req, result.insertId, asunto);
       return;
     } catch (err) {
@@ -495,7 +495,7 @@ const create = async (req, res) => {
     const [[{ folio }]] = await conn.query(
       'SELECT folio FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id_registro]);
     await conn.commit();
-    res.status(201).json({ id_registro, folio, message: `Registro N° ${folio} creado` });
+    res.status(201).json({ id_registro, folio, message: `Registro N° Folio ${folio} creado` });
     // La conexión se suelta en el finally recién después de esto: el aviso va
     // por el pool, no por conn, así que no la retiene.
     if (!atendidoAlCrear) await avisarRegistroNuevo(req, id_registro, asunto);
@@ -816,7 +816,7 @@ const derivar = async (req, res) => {
       usuarios: [destino.id_usuario],
       id_establecimiento: req.id_establecimiento,
       tipo: 'registro_derivado',
-      titulo: `Te derivaron el registro N° ${registro.folio}`,
+      titulo: `Te derivaron el registro N° Folio ${registro.folio}`,
       mensaje: `${await nombreDeUsuario(req.user.id)} te pide atenderlo antes del ` +
         `${formatearFecha(new Date(limite), true)}` +
         (instrucciones?.trim() ? `: ${instrucciones.trim().slice(0, 300)}` : ''),
@@ -864,7 +864,7 @@ const marcarDerivacionAtendida = async (req, res) => {
       usuarios: [d.id_usuario_origen],
       id_establecimiento: req.id_establecimiento,
       tipo: 'derivacion_atendida',
-      titulo: `Registro N° ${registro.folio} atendido`,
+      titulo: `Registro N° Folio ${registro.folio} atendido`,
       mensaje: `${await nombreDeUsuario(req.user.id)} marcó como atendido el registro derivado` +
         (comentario ? `: ${comentario.slice(0, 300)}` : ''),
       id_registro: registro.id_registro,
