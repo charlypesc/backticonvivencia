@@ -102,6 +102,93 @@ const getByCaso = async (req, res) => {
 };
 
 // POST /api/protocolos-activados/:id/medidas-proteccion
+/**
+ * Las reglas de la ley sobre una medida nueva. Devuelve el mensaje de error, o
+ * null si está bien. La usan el alta suelta y la tarjeta del paso de
+ * resguardo, para que las dos vías exijan exactamente lo mismo.
+ */
+const errorDeMedida = ({ tipo, fundamento, dias_habiles }) => {
+  if (!tipo) return 'Indica el tipo de medida de protección';
+  // El tipo se rechaza si no está en el catálogo en vez de aplanarlo a 'otra':
+  // de él dependen el tope de 15 días y la obligación de sustituir la medida al
+  // vencer, y una medida guardada como 'otra' se salta las dos.
+  if (!TIPOS_MEDIDA.includes(tipo)) return `tipo inválido. Valores: ${TIPOS_MEDIDA.join(', ')}`;
+  // La ley admite la suspensión solo cuando no se puede resguardar a la persona
+  // afectada con otra medida. Exigir el fundamento por escrito es lo que hace
+  // auditable esa decisión; sin él, el expediente no puede sostenerla.
+  if (tipo === 'suspension') {
+    if (!fundamento?.trim())
+      return 'La suspensión requiere fundamentar por qué no es posible resguardar a la persona afectada con otra medida';
+    if (!dias_habiles) return 'La suspensión requiere indicar los días hábiles';
+    if (dias_habiles > MAX_DIAS_SUSPENSION)
+      return `La suspensión no puede extenderse por más de ${MAX_DIAS_SUSPENSION} días hábiles (art. 16 E letra j)`;
+  }
+  return null;
+};
+
+/**
+ * Inserta la medida dentro de la transacción de quien llama, con su evento en
+ * la bitácora. No valida (eso es errorDeMedida) ni abre transacción.
+ *
+ * `id_involucrado` va directo cuando se conoce (la tarjeta del paso sabe a
+ * quién protege, sea estudiante o funcionario); si no, se resuelve desde
+ * (caso, estudiante), y queda en NULL si esa persona no figura como
+ * involucrada: es la verdad y no una atribución inventada.
+ */
+const insertarMedida = async (conn, {
+  id_protocolo_activado, id_establecimiento, id_usuario,
+  tipo, descripcion, fundamento, id_estudiante = null, id_involucrado = null,
+  fecha_inicio, dias_habiles, es_reaplicacion = false, id_activado_paso = null,
+}) => {
+  // El término se calcula, no se digita: es el plazo legal, no una fecha que
+  // alguien elija. Con feriados de la región del establecimiento.
+  let fecha_termino = null;
+  if (dias_habiles) {
+    const feriados = await cargarFeriados(id_establecimiento);
+    fecha_termino = calcularFechaLimite(
+      new Date(fecha_inicio + 'T12:00:00Z'), Number(dias_habiles), 'dias_habiles', feriados
+    ).toISOString().slice(0, 10);
+  }
+
+  const [r] = await conn.query(
+    `INSERT INTO MEDIDA_PROTECCION
+       (id_protocolo_activado, id_establecimiento, id_estudiante, id_involucrado, tipo, descripcion,
+        fundamento, fecha_inicio, fecha_termino, dias_habiles, es_reaplicacion, id_usuario,
+        id_activado_paso)
+     VALUES (?, ?, ?,
+             COALESCE(?, (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+                          WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1)),
+             ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id_protocolo_activado, id_establecimiento, id_estudiante || null,
+     id_involucrado || null, id_protocolo_activado, id_estudiante || null, tipo,
+     descripcion?.trim() || null, fundamento?.trim() || null,
+     fecha_inicio, fecha_termino, dias_habiles || null, es_reaplicacion ? 1 : 0, id_usuario,
+     id_activado_paso || null]
+  );
+
+  // Reaplicación por reiteración: la investigación tiene que concluir antes
+  // del término del nuevo plazo. Se toma el MENOR entre el techo que ya tenía
+  // el caso (2 meses) y este, porque el nuevo plazo solo puede adelantarlo.
+  if (es_reaplicacion && tipo === 'suspension' && fecha_termino) {
+    await conn.query(
+      `UPDATE PROTOCOLO_ACTIVADO
+       SET fecha_limite_investigacion = LEAST(COALESCE(fecha_limite_investigacion, ?), ?)
+       WHERE id_protocolo_activado = ?`,
+      [fecha_termino, fecha_termino, id_protocolo_activado]
+    );
+  }
+
+  await conn.query(
+    `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+       (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+     VALUES (?, ?, 'medida_proteccion_aplicada', ?, ?, NOW())`,
+    [id_protocolo_activado, id_establecimiento,
+     `${tipo}${fecha_termino ? ` hasta el ${fecha_termino}` : ''}`, id_usuario]
+  );
+
+  return { id_medida_proteccion: r.insertId, fecha_termino };
+};
+
 const crear = async (req, res) => {
   const {
     tipo, descripcion, fundamento, id_estudiante,
@@ -110,30 +197,8 @@ const crear = async (req, res) => {
 
   if (!tipo || !fecha_inicio)
     return res.status(400).json({ message: 'tipo y fecha_inicio son requeridos' });
-
-  // El tipo se rechaza si no está en el catálogo en vez de aplanarlo a 'otra':
-  // de él dependen el tope de 15 días y la obligación de sustituir la medida al
-  // vencer, y una medida guardada como 'otra' se salta las dos.
-  if (!TIPOS_MEDIDA.includes(tipo))
-    return res.status(400).json({ message: `tipo inválido. Valores: ${TIPOS_MEDIDA.join(', ')}` });
-
-  // La ley admite la suspensión solo cuando no se puede resguardar a la persona
-  // afectada con otra medida. Exigir el fundamento por escrito es lo que hace
-  // auditable esa decisión; sin él, el expediente no puede sostenerla.
-  if (tipo === 'suspension' && !fundamento?.trim())
-    return res.status(400).json({
-      message:
-        'La suspensión requiere fundamentar por qué no es posible resguardar a la persona afectada con otra medida',
-    });
-
-  if (tipo === 'suspension') {
-    if (!dias_habiles)
-      return res.status(400).json({ message: 'La suspensión requiere indicar los días hábiles' });
-    if (dias_habiles > MAX_DIAS_SUSPENSION)
-      return res.status(400).json({
-        message: `La suspensión no puede extenderse por más de ${MAX_DIAS_SUSPENSION} días hábiles (art. 16 E letra j)`,
-      });
-  }
+  const invalida = errorDeMedida({ tipo, fundamento, dias_habiles });
+  if (invalida) return res.status(400).json({ message: invalida });
 
   const conn = await pool.getConnection();
   try {
@@ -156,64 +221,14 @@ const crear = async (req, res) => {
         return res.status(400).json({ message: 'El paso indicado no pertenece a este caso' });
     }
 
-    // El término se calcula, no se digita: es el plazo legal, no una fecha que
-    // alguien elija. Con feriados de la región del establecimiento.
-    let fecha_termino = null;
-    if (dias_habiles) {
-      const feriados = await cargarFeriados(req.id_establecimiento);
-      fecha_termino = calcularFechaLimite(
-        new Date(fecha_inicio + 'T12:00:00Z'), Number(dias_habiles), 'dias_habiles', feriados
-      ).toISOString().slice(0, 10);
-    }
-
     await conn.beginTransaction();
-
-    const [r] = await conn.query(
-      // El involucrado se resuelve solo desde (caso, estudiante): un caso con
-      // dos señalados no puede permitir atribuirle la medida al que no era.
-      // Queda en NULL si esa persona no figura como involucrada, que es la
-      // verdad y no una atribución inventada.
-      `INSERT INTO MEDIDA_PROTECCION
-         (id_protocolo_activado, id_establecimiento, id_estudiante, id_involucrado, tipo, descripcion,
-          fundamento, fecha_inicio, fecha_termino, dias_habiles, es_reaplicacion, id_usuario,
-          id_activado_paso)
-       VALUES (?, ?, ?,
-               (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
-                WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1),
-               ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.params.id, req.id_establecimiento, id_estudiante || null,
-       req.params.id, id_estudiante || null, tipo,
-       descripcion?.trim() || null, fundamento?.trim() || null,
-       fecha_inicio, fecha_termino, dias_habiles || null, es_reaplicacion ? 1 : 0, req.user.id,
-       id_activado_paso || null]
-    );
-
-    // Reaplicación por reiteración: la investigación tiene que concluir antes
-    // del término del nuevo plazo. Se toma el MENOR entre el techo que ya tenía
-    // el caso (2 meses) y este, porque el nuevo plazo solo puede adelantarlo.
-    if (es_reaplicacion && tipo === 'suspension' && fecha_termino) {
-      await conn.query(
-        `UPDATE PROTOCOLO_ACTIVADO
-         SET fecha_limite_investigacion = LEAST(COALESCE(fecha_limite_investigacion, ?), ?)
-         WHERE id_protocolo_activado = ?`,
-        [fecha_termino, fecha_termino, req.params.id]
-      );
-    }
-
-    await conn.query(
-      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
-         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
-       VALUES (?, ?, 'medida_proteccion_aplicada', ?, ?, NOW())`,
-      [req.params.id, req.id_establecimiento,
-       `${tipo}${fecha_termino ? ` hasta el ${fecha_termino}` : ''}`, req.user.id]
-    );
-
-    await conn.commit();
-    res.status(201).json({
-      id_medida_proteccion: r.insertId,
-      fecha_termino,
-      message: 'Medida de protección registrada',
+    const { id_medida_proteccion, fecha_termino } = await insertarMedida(conn, {
+      id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
+      id_usuario: req.user.id, tipo, descripcion, fundamento, id_estudiante,
+      fecha_inicio, dias_habiles, es_reaplicacion, id_activado_paso,
     });
+    await conn.commit();
+    res.status(201).json({ id_medida_proteccion, fecha_termino, message: 'Medida de protección registrada' });
   } catch (err) {
     await conn.rollback();
     console.error(err);
@@ -473,6 +488,7 @@ const registrarSeguimiento = async (req, res) => {
 };
 
 module.exports = {
+  errorDeMedida, insertarMedida,
   getByCaso, crear, actualizar, finalizar, registrarSeguimiento,
   MAX_DIAS_SUSPENSION, TIPOS_MEDIDA,
 };
