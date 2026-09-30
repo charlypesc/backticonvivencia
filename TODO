@@ -75,7 +75,24 @@ Protocolos (2026-09-28):
   ✔ el inspector no debe poder ver los protocolos activados @done
     No se le podía quitar protocolo_activado.ver: Inspectoría ejecuta 13 pasos en casos vivos y perdería acceso a ellos. Se creó protocolo_activado.ver_todos (115) para el listado/menú; sin él (INSPECTORIA, INSPECTOR_GENERAL) solo se ven los casos donde el usuario tiene un paso o es responsable, y el detalle de otro caso da 404.
 
+Colegio demo, dashboard, responsive y carga masiva (2026-09-30):
+  ✔ colegio ficticio COLEGIO MICONVIVENCIA (RBD 99001-9, id 12059, comuna Santiago) con 9 usuarios @miconvivencia.cl, clave 1351convivencia @done
+    Director, 2 profesores, inspector de pasillo (INSPECTORIA), asistente social (TRABAJADOR_SOCIAL), coordinador (ENCARGADO), inspector general, psicólogo y estudiante en práctica. Se crearon sin clave temporal (debe_cambiar_password = 0) para usarlo de demo. Con los 30 tipos de falta de la plantilla y los 17 protocolos del catálogo adoptados.
+    PROFESOR e INSPECTOR_GENERAL eran roles propios de otros colegios (6258 y 11895): se crearon copias para el 12059 con los mismos permisos. ESTUDIANTE_PRACTICA es un rol nuevo con los permisos de FUNCIONARIO.
+  ✔ dashboard: "Señalados en más de un registro" en vez de "Señalados por bullying" @done
+    La tarjeta de bullying marcaba en rojo con un solo registro; lo que interesa es la reiteración. Ahora es el mismo criterio que "Afectados en más de un registro" (HAVING veces >= 2) pero con rol senalado, y el bullying queda como etiqueta dentro de la fila.
+  ✔ dashboard: "Estudiantes involucrados" pasa a "Últimos registros" @done
+    Cada fila encabeza con el código y el asunto del registro; estudiantes, motivo y fecha van debajo.
+  ✔ sidebar retráctil y responsive @done
+    El layout no tenía ningún @media: el sidebar fijo de 220px y el margen del contenido se mantenían en el celular. Botón de menú en la navbar (SidebarService): en escritorio retrae a íconos (se recuerda en localStorage), bajo 900px el menú sale de la pantalla y se abre encima con fondo oscuro.
+  ✔ al escribir cambiaba el zoom de la página o del modal @done
+    Causa: iOS Safari hace zoom automático al enfocar un input con letra menor a 16px (acá eran 14px) y no lo deshace al salir. Se fuerza 16px en input/select/textarea en pantallas chicas o táctiles. No se usó maximum-scale=1 en el viewport porque en Android bloquea el pellizco. Además los modales usan 100dvh (el teclado achica la pantalla visible).
+  ✔ usuarios: carga masiva por Excel (plantilla + subir) @done
+    GET /usuarios/plantilla arma el Excel con hoja Usuarios vacía, Instrucciones y Roles del colegio; la columna Rol acepta nombre o código sin importar tildes/mayúsculas. POST /usuarios/importar valida TODO antes de escribir: si una fila falla devuelve los errores por fila y no crea a nadie (crear a medias obligaba a limpiar el Excel antes de resubir). Las claves las genera el servidor como en el alta de a uno y salen en un PDF con una hoja por persona (pdf-lib une los comprobantes).
+
 ## Registro de tiempo
+- 2026-09-30 09:21 → 10:20 (59m)
+- 2026-09-28 13:27 → 10:20 (44h53m)
 - 2026-09-24 08:49 → 14:53 (6h3m)
 - 2026-09-24 12:57 → 14:53 (1h55m)
 - 2026-09-23 15:13 → 17:04 (1h51m)
