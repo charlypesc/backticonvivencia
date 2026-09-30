@@ -441,8 +441,16 @@ const getDetalle = async (req, res) => {
               -- del selector.
               mp.id_medida_proteccion, mp.tipo AS medida_tipo,
               mp.fecha_inicio AS medida_fecha_inicio, mp.fecha_termino AS medida_fecha_termino,
-              mp.estado AS medida_estado
+              mp.estado AS medida_estado,
+              -- Lo mismo en el paso de resolución: la medida disciplinaria que
+              -- se le aplicó al señalado desde su tarjeta.
+              md.id_medida AS id_medida_disciplinaria, md.tipo_medida AS medida_disc_tipo,
+              md.fecha_aplicacion AS medida_disc_fecha, md.fecha_termino AS medida_disc_termino
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       LEFT JOIN MEDIDA_DISCIPLINARIA md ON md.id_medida = (
+              SELECT m.id_medida FROM MEDIDA_DISCIPLINARIA m
+               WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
+               ORDER BY m.id_medida DESC LIMIT 1)
        LEFT JOIN MEDIDA_PROTECCION mp ON mp.id_medida_proteccion = (
               SELECT m.id_medida_proteccion FROM MEDIDA_PROTECCION m
                WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado

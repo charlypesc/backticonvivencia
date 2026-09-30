@@ -86,6 +86,91 @@ const TIPOS_MEDIDA = [
 // hábiles.
 const TIPOS_CON_PLAZO = ['suspension', 'reduccion_jornada', 'separacion_temporal', 'asistencia_solo_evaluaciones'];
 
+/**
+ * Las reglas de una medida disciplinaria nueva. Devuelve el mensaje de error o
+ * null. La usan el alta suelta y la tarjeta de cada señalado en el paso de
+ * resolución, para que las dos vías exijan lo mismo.
+ */
+const errorDeMedidaDisciplinaria = ({ tipo_medida, fundamento, dias_habiles }) => {
+  const tipo = tipo_medida?.trim();
+  // El tipo dejó de ser texto libre: de él dependen la duración y la revisión
+  // semestral de la condicionalidad. Se rechaza un valor desconocido en vez de
+  // aplanarlo a 'otra' — aplanar en silencio es cómo se pierde el dato que
+  // después el informe de expulsión necesita.
+  if (tipo && !TIPOS_MEDIDA.includes(tipo))
+    return `tipo_medida inválido. Valores: ${TIPOS_MEDIDA.join(', ')}`;
+  const llevaPlazo = TIPOS_CON_PLAZO.includes(tipo || 'otra');
+  // Las medidas excepcionales exigen fundamento por escrito y días hábiles:
+  // sin esos dos datos el acta y el informe de expulsión no pueden sostener
+  // por qué correspondía justo esta medida (Circular 482 p. 47: "justificadas
+  // y debidamente acreditadas ANTES de su adopción").
+  if (llevaPlazo && !fundamento?.trim())
+    return 'Esta medida requiere fundamentar por qué correspondía (Circular 482 p. 47)';
+  if (llevaPlazo && !dias_habiles) return 'Esta medida requiere indicar los días hábiles';
+  return null;
+};
+
+/**
+ * Inserta la medida y su evento dentro de la transacción de quien llama. No
+ * valida (errorDeMedidaDisciplinaria) ni abre transacción.
+ *
+ * `id_involucrado` va directo cuando se conoce (la tarjeta del señalado sabe a
+ * quién sanciona); si no, se resuelve desde (paso, estudiante), y sin paso
+ * queda en NULL, como debe ser: la medida cuelga del registro, no del caso.
+ */
+const insertarMedidaDisciplinaria = async (conn, {
+  id_registro, id_establecimiento, id_usuario,
+  descripcion, tipo_medida, fundamento, fecha_aplicacion, fecha_revision = null,
+  dias_habiles = null, es_prorroga = false, id_medida_prorrogada = null,
+  id_estudiante = null, id_involucrado = null, id_activado_paso = null,
+}) => {
+  const tipo = tipo_medida?.trim() || 'otra';
+  // El término se calcula, no se digita: días hábiles desde fecha_aplicacion
+  // descontando los feriados de la región del establecimiento. Digitarla a
+  // mano es cómo se producen las suspensiones que en el papel duran tres
+  // días y en el calendario cinco.
+  let fecha_termino = null;
+  if (dias_habiles) {
+    const feriados = await cargarFeriados(id_establecimiento);
+    fecha_termino = calcularFechaLimite(
+      new Date(fecha_aplicacion + 'T12:00:00Z'), Number(dias_habiles), 'dias_habiles', feriados
+    ).toISOString().slice(0, 10);
+  }
+
+  const [r] = await conn.query(
+    `INSERT INTO MEDIDA_DISCIPLINARIA
+       (descripcion, fundamento, tipo_medida, dias_habiles, fecha_aplicacion, fecha_termino,
+        fecha_revision, es_prorroga, id_medida_prorrogada,
+        id_registro, id_estudiante, id_involucrado,
+        id_establecimiento, id_usuario, id_activado_paso)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+             COALESCE(?, (SELECT i.id_involucrado
+                          FROM PROTOCOLO_ACTIVADO_PASO p
+                          JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i
+                            ON i.id_protocolo_activado = p.id_protocolo_activado AND i.id_estudiante = ?
+                          WHERE p.id_activado_paso = ? LIMIT 1)),
+             ?, ?, ?)`,
+    [descripcion.trim(), fundamento?.trim() || null, tipo, dias_habiles || null,
+     fecha_aplicacion, fecha_termino, fecha_revision || null,
+     es_prorroga ? 1 : 0, id_medida_prorrogada || null,
+     id_registro, id_estudiante || null,
+     id_involucrado || null, id_estudiante || null, id_activado_paso || null,
+     id_establecimiento, id_usuario, id_activado_paso || null]
+  );
+
+  await conn.query(
+    `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+       (id_protocolo_activado, id_establecimiento, id_activado_paso, tipo_evento, descripcion, id_usuario, fecha)
+     SELECT p.id_protocolo_activado, ?, ?, 'medida_disciplinaria_aplicada', ?, ?, NOW()
+     FROM PROTOCOLO_ACTIVADO_PASO p WHERE p.id_activado_paso = ?`,
+    [id_establecimiento, id_activado_paso || null,
+     `${tipo}${fecha_termino ? ` hasta el ${fecha_termino}` : ''}`,
+     id_usuario, id_activado_paso || null]
+  );
+
+  return { id_medida: r.insertId, fecha_termino };
+};
+
 // POST /api/registros/:id/medidas-disciplinarias
 const crear = async (req, res) => {
   const {
@@ -96,26 +181,8 @@ const crear = async (req, res) => {
 
   if (!descripcion?.trim() || !fecha_aplicacion)
     return res.status(400).json({ message: 'descripcion y fecha_aplicacion son requeridos' });
-
-  // El tipo dejó de ser texto libre: de él dependen la duración y la revisión
-  // semestral de la condicionalidad. Se rechaza un valor desconocido en vez de
-  // aplanarlo a 'otra' — aplanar en silencio es cómo se pierde el dato que
-  // después el informe de expulsión necesita.
-  const tipo = tipo_medida?.trim();
-  if (tipo && !TIPOS_MEDIDA.includes(tipo))
-    return res.status(400).json({ message: `tipo_medida inválido. Valores: ${TIPOS_MEDIDA.join(', ')}` });
-
-  const llevaPlazo = TIPOS_CON_PLAZO.includes(tipo || 'otra');
-  // Las medidas excepcionales exigen fundamento por escrito y días hábiles:
-  // sin esos dos datos el acta y el informe de expulsión no pueden sostener
-  // por qué correspondía justo esta medida (Circular 482 p. 47: "justificadas
-  // y debidamente acreditadas ANTES de su adopción").
-  if (llevaPlazo && !fundamento?.trim())
-    return res.status(400).json({
-      message: 'Esta medida requiere fundamentar por qué correspondía (Circular 482 p. 47)',
-    });
-  if (llevaPlazo && !dias_habiles)
-    return res.status(400).json({ message: 'Esta medida requiere indicar los días hábiles' });
+  const invalida = errorDeMedidaDisciplinaria({ tipo_medida, fundamento, dias_habiles });
+  if (invalida) return res.status(400).json({ message: invalida });
 
   const conn = await pool.getConnection();
   try {
@@ -124,18 +191,6 @@ const crear = async (req, res) => {
       [req.params.id, req.id_establecimiento]
     );
     if (!registro) return res.status(404).json({ message: 'Registro no encontrado' });
-
-    // El término se calcula, no se digita: días hábiles desde fecha_aplicacion
-    // descontando los feriados de la región del establecimiento. Digitarla a
-    // mano es cómo se producen las suspensiones que en el papel duran tres
-    // días y en el calendario cinco.
-    let fecha_termino = null;
-    if (dias_habiles) {
-      const feriados = await cargarFeriados(req.id_establecimiento);
-      fecha_termino = calcularFechaLimite(
-        new Date(fecha_aplicacion + 'T12:00:00Z'), Number(dias_habiles), 'dias_habiles', feriados
-      ).toISOString().slice(0, 10);
-    }
 
     // La prórroga no se rechaza nunca: se advierte. El tope viene de una
     // circular, no de la ley, y bloquear el registro no consigue el
@@ -159,42 +214,15 @@ const crear = async (req, res) => {
 
     await conn.beginTransaction();
 
-    const [r] = await conn.query(
-      // Esta medida cuelga del registro y no del caso, así que el involucrado
-      // solo se puede resolver cuando viene atada a un paso: de ahí se llega al
-      // caso y de ahí a la persona. Sin paso queda en NULL, como debe ser.
-      `INSERT INTO MEDIDA_DISCIPLINARIA
-         (descripcion, fundamento, tipo_medida, dias_habiles, fecha_aplicacion, fecha_termino,
-          fecha_revision, es_prorroga, id_medida_prorrogada,
-          id_registro, id_estudiante, id_involucrado,
-          id_establecimiento, id_usuario, id_activado_paso)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-               (SELECT i.id_involucrado
-                FROM PROTOCOLO_ACTIVADO_PASO p
-                JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i
-                  ON i.id_protocolo_activado = p.id_protocolo_activado AND i.id_estudiante = ?
-                WHERE p.id_activado_paso = ? LIMIT 1),
-               ?, ?, ?)`,
-      [descripcion.trim(), fundamento?.trim() || null, tipo || 'otra', dias_habiles || null,
-       fecha_aplicacion, fecha_termino, fecha_revision || null,
-       es_prorroga ? 1 : 0, id_medida_prorrogada || null,
-       req.params.id, id_estudiante || null, id_estudiante || null, id_activado_paso || null,
-       req.id_establecimiento, req.user.id, id_activado_paso || null]
-    );
-
-    await conn.query(
-      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
-         (id_protocolo_activado, id_establecimiento, id_activado_paso, tipo_evento, descripcion, id_usuario, fecha)
-       SELECT p.id_protocolo_activado, ?, ?, 'medida_disciplinaria_aplicada', ?, ?, NOW()
-       FROM PROTOCOLO_ACTIVADO_PASO p WHERE p.id_activado_paso = ?`,
-      [req.id_establecimiento, id_activado_paso || null,
-       `${tipo || 'otra'}${fecha_termino ? ` hasta el ${fecha_termino}` : ''}`,
-       req.user.id, id_activado_paso || null]
-    );
+    const { id_medida, fecha_termino } = await insertarMedidaDisciplinaria(conn, {
+      id_registro: req.params.id, id_establecimiento: req.id_establecimiento, id_usuario: req.user.id,
+      descripcion, tipo_medida, fundamento, fecha_aplicacion, fecha_revision,
+      dias_habiles, es_prorroga, id_medida_prorrogada, id_estudiante, id_activado_paso,
+    });
 
     await conn.commit();
     res.status(201).json({
-      id_medida: r.insertId, fecha_termino, aviso: avisoProrroga,
+      id_medida, fecha_termino, aviso: avisoProrroga,
       message: 'Medida disciplinaria registrada',
     });
   } catch (err) {
@@ -229,4 +257,7 @@ const registrarResultado = async (req, res) => {
   }
 };
 
-module.exports = { getByRegistro, crear, registrarResultado, TIPOS_MEDIDA, TIPOS_CON_PLAZO };
+module.exports = {
+  getByRegistro, crear, registrarResultado, TIPOS_MEDIDA, TIPOS_CON_PLAZO,
+  errorDeMedidaDisciplinaria, insertarMedidaDisciplinaria,
+};

@@ -19,6 +19,7 @@
 //     caso al paso siguiente dejando a los otros dos sin hacer.
 const pool = require('../db/connection');
 const { errorDeMedida, insertarMedida } = require('./medidasProteccion.controller');
+const { errorDeMedidaDisciplinaria, insertarMedidaDisciplinaria } = require('./medidasDisciplinarias.controller');
 const {
   ROLES_INVOLUCRADO, TIPOS_PERSONA, MEDIOS_NOTIFICACION, SQL_ROL_ALCANZA_PASO,
 } = require('../utils/flujoProtocolo');
@@ -381,7 +382,10 @@ const quitar = async (req, res) => {
  * cerrar el caso.
  */
 const registrarGestion = async (req, res) => {
-  const { estado, fecha_gestion, observacion, fecha_notificacion, medio_notificacion, medida_proteccion } = req.body;
+  const {
+    estado, fecha_gestion, observacion, fecha_notificacion, medio_notificacion,
+    medida_proteccion, medida_disciplinaria,
+  } = req.body;
 
   if (estado && !['pendiente', 'cumplido', 'no_aplica'].includes(estado))
     return res.status(400).json({ message: "estado debe ser 'pendiente', 'cumplido' o 'no_aplica'." });
@@ -399,7 +403,10 @@ const registrarGestion = async (req, res) => {
               p.id_activado_paso, p.tipo_medida_requerida,
               (SELECT m.id_medida_proteccion FROM MEDIDA_PROTECCION m
                 WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
-                LIMIT 1) AS id_medida_proteccion
+                LIMIT 1) AS id_medida_proteccion,
+              (SELECT m.id_medida FROM MEDIDA_DISCIPLINARIA m
+                WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
+                LIMIT 1) AS id_medida_disciplinaria
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
        JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
        JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
@@ -428,9 +435,48 @@ const registrarGestion = async (req, res) => {
       if (invalida) return res.status(400).json({ message: `${fila.involucrado_nombre}: ${invalida}` });
     }
 
+    // Lo mismo en el paso de resolución, con cada señalado: la tarjeta dice
+    // qué se resolvió para esa persona. Tres salidas posibles: una medida
+    // (se registra), iniciar el procedimiento de expulsión o cancelación (la
+    // medida la registra después el director al decidir), o ninguna medida.
+    const resuelveSenalado = fila.tipo_medida_requerida === 'disciplinaria' && nuevoEstado === 'cumplido'
+      && !fila.id_medida_disciplinaria;
+    const modoResolucion = medida_disciplinaria?.modo ?? 'medida';
+    if (resuelveSenalado) {
+      if (!['medida', 'expulsion', 'sin_medida'].includes(modoResolucion))
+        return res.status(400).json({ message: "modo debe ser 'medida', 'expulsion' o 'sin_medida'." });
+      if (modoResolucion === 'medida') {
+        if (!medida_disciplinaria?.tipo_medida)
+          return res.status(400).json({
+            message: `Indica la medida aplicada a ${fila.involucrado_nombre}`,
+          });
+        const invalida = errorDeMedidaDisciplinaria(medida_disciplinaria);
+        if (invalida) return res.status(400).json({ message: `${fila.involucrado_nombre}: ${invalida}` });
+      }
+    }
+
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      if (resuelveSenalado && modoResolucion === 'medida') {
+        // La descripción es la de la tarjeta; si se dejó vacía, el nombre de
+        // la medida (la columna no admite vacío y "Amonestación" ya dice qué se
+        // hizo).
+        await insertarMedidaDisciplinaria(conn, {
+          id_registro: activado.id_registro,
+          id_establecimiento: req.id_establecimiento,
+          id_usuario: req.user.id,
+          descripcion: observacion?.trim() ||
+            etiquetaDe(medida_disciplinaria.tipo_medida, 'tipo_medida_disciplinaria'),
+          tipo_medida: medida_disciplinaria.tipo_medida,
+          fundamento: medida_disciplinaria.fundamento,
+          dias_habiles: medida_disciplinaria.dias_habiles || null,
+          fecha_aplicacion: (fecha_gestion || new Date().toISOString()).slice(0, 10),
+          id_estudiante: fila.id_estudiante,
+          id_involucrado: fila.id_involucrado,
+          id_activado_paso: fila.id_activado_paso,
+        });
+      }
       if (aplicaMedida) {
         // Descripción de la medida = la observación de la gestión: es lo que
         // se escribe en esa misma fila, no hace falta pedirlo dos veces.
@@ -466,10 +512,17 @@ const registrarGestion = async (req, res) => {
         descripcion:
           `${fila.paso_nombre} — ${fila.involucrado_nombre}: ${nuevoEstado}` +
           (fecha_gestion ? ` (gestión del ${fecha_gestion})` : '') +
-          (fecha_notificacion ? ` · notificada por ${medio_notificacion}` : ''),
+          (fecha_notificacion ? ` · notificada por ${medio_notificacion}` : '') +
+          (resuelveSenalado && modoResolucion === 'expulsion'
+            ? ' · se inicia el procedimiento de expulsión o cancelación de matrícula'
+            : resuelveSenalado && modoResolucion === 'sin_medida' ? ' · sin medida' : ''),
       });
       await conn.commit();
-      res.json({ message: aplicaMedida ? 'Gestión y medida de protección registradas' : 'Gestión registrada' });
+      res.json({
+        message: aplicaMedida ? 'Gestión y medida de protección registradas'
+          : resuelveSenalado && modoResolucion === 'medida' ? 'Gestión y medida disciplinaria registradas'
+          : 'Gestión registrada',
+      });
     } catch (err) {
       await conn.rollback();
       throw err;
