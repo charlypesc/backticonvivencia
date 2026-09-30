@@ -434,8 +434,19 @@ const getDetalle = async (req, res) => {
               -- cargo va junto al nombre por lo mismo que en el acta: importa en
               -- qué calidad notificó, y el rol puede cambiar después.
               ur.nombre AS notificador_nombre,
-              rn.nombre AS notificador_cargo
+              rn.nombre AS notificador_cargo,
+              -- La medida de protección que se le aplicó a esta persona en
+              -- este paso: en un paso de resguardo la tarjeta de la persona es
+              -- la vía para aplicarla, y una vez aplicada se muestra en vez
+              -- del selector.
+              mp.id_medida_proteccion, mp.tipo AS medida_tipo,
+              mp.fecha_inicio AS medida_fecha_inicio, mp.fecha_termino AS medida_fecha_termino,
+              mp.estado AS medida_estado
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       LEFT JOIN MEDIDA_PROTECCION mp ON mp.id_medida_proteccion = (
+              SELECT m.id_medida_proteccion FROM MEDIDA_PROTECCION m
+               WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
+               ORDER BY m.id_medida_proteccion DESC LIMIT 1)
        LEFT JOIN PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO_ARCHIVO a
               ON a.id_paso_involucrado = pi.id_paso_involucrado
        LEFT JOIN USUARIO ur ON ur.id_usuario = pi.id_usuario

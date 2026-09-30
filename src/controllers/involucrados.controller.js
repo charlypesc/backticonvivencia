@@ -18,6 +18,7 @@
 //     (`id_paso_actual` es uno solo): el primero en completarse arrastraría el
 //     caso al paso siguiente dejando a los otros dos sin hacer.
 const pool = require('../db/connection');
+const { errorDeMedida, insertarMedida } = require('./medidasProteccion.controller');
 const {
   ROLES_INVOLUCRADO, TIPOS_PERSONA, MEDIOS_NOTIFICACION, SQL_ROL_ALCANZA_PASO,
 } = require('../utils/flujoProtocolo');
@@ -380,7 +381,7 @@ const quitar = async (req, res) => {
  * cerrar el caso.
  */
 const registrarGestion = async (req, res) => {
-  const { estado, fecha_gestion, observacion, fecha_notificacion, medio_notificacion } = req.body;
+  const { estado, fecha_gestion, observacion, fecha_notificacion, medio_notificacion, medida_proteccion } = req.body;
 
   if (estado && !['pendiente', 'cumplido', 'no_aplica'].includes(estado))
     return res.status(400).json({ message: "estado debe ser 'pendiente', 'cumplido' o 'no_aplica'." });
@@ -394,7 +395,11 @@ const registrarGestion = async (req, res) => {
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
 
     const [filas] = await pool.query(
-      `SELECT pi.*, i.nombre AS involucrado_nombre, p.nombre AS paso_nombre, p.id_activado_paso
+      `SELECT pi.*, i.nombre AS involucrado_nombre, i.id_estudiante, p.nombre AS paso_nombre,
+              p.id_activado_paso, p.tipo_medida_requerida,
+              (SELECT m.id_medida_proteccion FROM MEDIDA_PROTECCION m
+                WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
+                LIMIT 1) AS id_medida_proteccion
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
        JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
        JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
@@ -406,9 +411,43 @@ const registrarGestion = async (req, res) => {
     const fila = filas[0];
 
     const nuevoEstado = estado ?? 'cumplido';
+
+    // En un paso de resguardo, la tarjeta de cada afectado ES la medida de
+    // protección: darla por cumplida sin decir qué medida se le aplicó dejaría
+    // el paso "cumplido" sin ningún resguardo registrado. Si la persona ya
+    // tiene su medida de este paso, no se pide otra (se corrige desde la
+    // tarjeta de medidas del caso).
+    const aplicaMedida = fila.tipo_medida_requerida === 'proteccion' && nuevoEstado === 'cumplido'
+      && !fila.id_medida_proteccion;
+    if (aplicaMedida) {
+      if (!medida_proteccion?.tipo)
+        return res.status(400).json({
+          message: `Indica la medida de protección aplicada a ${fila.involucrado_nombre}`,
+        });
+      const invalida = errorDeMedida(medida_proteccion);
+      if (invalida) return res.status(400).json({ message: `${fila.involucrado_nombre}: ${invalida}` });
+    }
+
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      if (aplicaMedida) {
+        // Descripción de la medida = la observación de la gestión: es lo que
+        // se escribe en esa misma fila, no hace falta pedirlo dos veces.
+        await insertarMedida(conn, {
+          id_protocolo_activado: activado.id_protocolo_activado,
+          id_establecimiento: req.id_establecimiento,
+          id_usuario: req.user.id,
+          tipo: medida_proteccion.tipo,
+          descripcion: observacion,
+          fundamento: medida_proteccion.fundamento,
+          dias_habiles: medida_proteccion.dias_habiles || null,
+          id_estudiante: fila.id_estudiante,
+          id_involucrado: fila.id_involucrado,
+          fecha_inicio: (fecha_gestion || new Date().toISOString()).slice(0, 10),
+          id_activado_paso: fila.id_activado_paso,
+        });
+      }
       await conn.query(
         `UPDATE PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO
          SET estado = ?,
@@ -430,7 +469,7 @@ const registrarGestion = async (req, res) => {
           (fecha_notificacion ? ` · notificada por ${medio_notificacion}` : ''),
       });
       await conn.commit();
-      res.json({ message: 'Gestión registrada' });
+      res.json({ message: aplicaMedida ? 'Gestión y medida de protección registradas' : 'Gestión registrada' });
     } catch (err) {
       await conn.rollback();
       throw err;
