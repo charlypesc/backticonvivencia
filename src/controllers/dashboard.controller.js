@@ -193,6 +193,19 @@ const getResumen = async (req, res) => {
                 r.es_confidencial, r.nota_confidencial,
                 COALESCE(u.nombre, u.correo) AS autor_nombre,
                 tf.nombre AS tipo_falta_nombre, tf.gravedad,
+                -- El protocolo que el reglamento asocia al motivo, si el
+                -- registro todavía no tiene ninguno activado: es lo primero
+                -- que el coordinador tiene que decidir al tomarlo.
+                (SELECT COALESCE(pe.nombre, cp.nombre)
+                   FROM TIPO_FALTA_PROTOCOLO tfp
+                   JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pe.id_protocolo_establecimiento = tfp.id_protocolo_establecimiento
+                   LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
+                  WHERE tfp.id_tipo_falta = r.id_tipo_falta
+                    AND NOT EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO pa
+                                     WHERE pa.id_registro = r.id_registro AND pa.estado <> 'anulado')
+                  ORDER BY tfp.obligatorio DESC LIMIT 1) AS protocolo_sugerido,
+                (SELECT MAX(tfp.obligatorio) FROM TIPO_FALTA_PROTOCOLO tfp
+                  WHERE tfp.id_tipo_falta = r.id_tipo_falta) AS protocolo_obligatorio,
                 GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
                              ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
          FROM REGISTRO_CONVIVENCIA r
