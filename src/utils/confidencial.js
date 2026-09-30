@@ -53,6 +53,12 @@ const reducirSiConfidencial = (req, registro) => {
     editor_nombre: registro.editor_nombre ?? null,
     es_confidencial: true,
     nota_confidencial: registro.nota_confidencial,
+    // Quién lo atiende y a quién se derivó tampoco es contenido: sin esto el
+    // listado marcaba "Por atender" a todo confidencial que no se puede leer.
+    id_usuario_atiende: registro.id_usuario_atiende ?? null,
+    ...(registro.derivado_a !== undefined
+      ? { derivado_a: registro.derivado_a, derivacion_limite: registro.derivacion_limite }
+      : {}),
     // Los involucrados no son el contenido reservado: lo reservado es qué pasó.
     // Saber que un estudiante figura en un caso confidencial es justamente lo
     // que el resto del equipo necesita para no tratarlo a ciegas. Solo se
