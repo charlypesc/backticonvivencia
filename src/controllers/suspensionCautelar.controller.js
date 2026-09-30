@@ -1,4 +1,5 @@
 const pool = require('../db/connection');
+const { formatearNombreCurso } = require('../utils/curso');
 const { calcularFechaLimite } = require('../utils/flujoProtocolo');
 const { cargarFeriados } = require('../services/feriados.service');
 const { comprimirArchivo } = require('../utils/comprimirArchivo');
@@ -640,11 +641,6 @@ const descargarDocumento = async (req, res) => {
   }
 };
 
-/** "7BasicoA" → "7 Basico A", igual que el pipe cursoNombre del front. */
-const formatearNombreCurso = (nombre) => {
-  const m = String(nombre ?? '').match(/^(\d+)(Basico|Medio)([A-Z])$/);
-  return m ? `${m[1]} ${m[2]} ${m[3]}` : nombre || '';
-};
 
 // GET /api/suspensiones-cautelares/:id/acta-consejo — el formato en blanco del
 // acta del Consejo, con los datos del caso ya puestos, para imprimir y firmar.
