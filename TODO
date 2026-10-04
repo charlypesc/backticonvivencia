@@ -94,7 +94,17 @@ Colegio demo, dashboard, responsive y carga masiva (2026-09-30):
   ✔ Geo solo para el ADMIN: quitar establecimiento.ver y sostenedor.ver al rol DIRECTOR @done
     Eran los únicos permisos de Geo fuera del ADMIN, y el menú Geo se abre con establecimiento.ver. Se quitaron del rol global DIRECTOR (rol 2, afecta a todos los colegios) con respaldo en backup-2026-09-30-director-geo.json del scratchpad. Los permisos viajan en el token: un director con sesión abierta sigue viendo Geo hasta volver a entrar. Los GET del directorio (/establecimientos, /geo/establecimientos) quedan abiertos a propósito: los usa el selector de establecimiento.
 
+Geo (2026-10-04):
+  ✔ Filtrar los establecimientos de la comuna por tipo de dependencia (Particular Subvencionado, Municipal DAEM, SLE…) @done
+    Selector en la barra de la comuna con los tipos presentes y su cantidad, sacados de los datos (no lista fija: el directorio de RBD trae sus propios textos). El filtro se mantiene al pasar de una comuna a otra.
+  ✔ Observaciones en la ficha del establecimiento @done
+    Columna nueva ESTABLECIMIENTO.observaciones (TEXT NULL, respaldo previo en backup_ESTABLECIMIENTO_2026-10-04.json del scratchpad). Se guardan con PATCH /geo/establecimientos/:id/observaciones, aparte del PUT, para que guardar el formulario de datos no las pise. En la tabla, un ícono de nota marca los colegios que tienen.
+
 ## Registro de tiempo
+- 2026-10-04 09:43 → 10:01 (17m)
+- 2026-09-30 10:26 → 09:43 (95h16m)
+- 2026-09-30 12:00 → 09:43 (93h42m)
+- 2026-09-30 11:55 → 09:43 (93h47m)
 - 2026-09-30 09:21 → 10:20 (59m)
 - 2026-09-28 13:27 → 10:20 (44h53m)
 - 2026-09-24 08:49 → 14:53 (6h3m)
