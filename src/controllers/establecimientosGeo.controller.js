@@ -62,15 +62,27 @@ const getAll = async (req, res) => {
       //
       // El segundo criterio cubre el RBD escrito sin dígito verificador
       // ("31338" para "31338-2"), que es como se dicta y se anota a mano.
+      //
+      // También busca por nombre: cada palabra tiene que aparecer, en
+      // cualquier orden ("san jose liceo" encuentra "Liceo San José"; la
+      // collation de la BD ya ignora tildes y mayúsculas). Sigue llegando como
+      // `rbd` para no romper el front ya desplegado mientras sube el back.
+      // La comuna va en la sugerencia porque los nombres se repiten mucho
+      // ("Escuela Básica", "Liceo Bicentenario") entre comunas.
+      const palabras = q.split(/\s+/).filter(Boolean);
+      const porNombre = palabras.map(() => 'e.nombre LIKE ?').join(' AND ');
       const [rows] = await pool.query(
-        `${SELECT_CON_USUARIOS}
-          WHERE e.rbd LIKE ?
-          ORDER BY (e.rbd = ?) DESC,
-                   (SUBSTRING_INDEX(e.rbd, '-', 1) = ?) DESC,
-                   (e.rbd LIKE ?) DESC,
-                   e.nombre
+        `SELECT b.*, c.nombre AS comuna_nombre
+           FROM (${SELECT_CON_USUARIOS}
+                  WHERE e.rbd LIKE ? OR (${porNombre})) b
+           LEFT JOIN COMUNA c ON c.id_comuna = b.id_comuna
+          ORDER BY (b.rbd = ?) DESC,
+                   (SUBSTRING_INDEX(b.rbd, '-', 1) = ?) DESC,
+                   (b.rbd LIKE ?) DESC,
+                   (b.nombre LIKE ?) DESC,
+                   b.nombre
           LIMIT 20`,
-        [`%${q}%`, q, q, `${q}%`]
+        [`%${q}%`, ...palabras.map((p) => `%${p}%`), q, q, `${q}%`, `${q}%`]
       );
       return res.json(rows);
     }

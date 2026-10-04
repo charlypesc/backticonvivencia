@@ -99,6 +99,8 @@ Geo (2026-10-04):
     Selector en la barra de la comuna con los tipos presentes y su cantidad, sacados de los datos (no lista fija: el directorio de RBD trae sus propios textos). El filtro se mantiene al pasar de una comuna a otra.
   ✔ Observaciones en la ficha del establecimiento @done
     Columna nueva ESTABLECIMIENTO.observaciones (TEXT NULL, respaldo previo en backup_ESTABLECIMIENTO_2026-10-04.json del scratchpad). Se guardan con PATCH /geo/establecimientos/:id/observaciones, aparte del PUT, para que guardar el formulario de datos no las pise. En la tabla, un ícono de nota marca los colegios que tienen.
+  ✔ Buscar en Geo también por nombre, con RBD, dirección y comuna en la sugerencia @done
+    El buscador solo hacía LIKE sobre el RBD. Ahora busca RBD o nombre (cada palabra en cualquier orden; la collation ya ignora tildes) y suma la comuna, porque nombres como "Liceo Bicentenario" se repiten. El parámetro sigue llamándose `rbd`: si el front se publicaba antes que el back con un parámetro nuevo, el back viejo lo ignoraba y devolvía los ~7.800 colegios.
 
 ## Registro de tiempo
 - 2026-10-04 09:43 → 10:01 (17m)
