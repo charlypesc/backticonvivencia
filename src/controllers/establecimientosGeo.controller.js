@@ -156,6 +156,28 @@ const cambiarAcceso = async (req, res) => {
   }
 };
 
+// Notas libres sobre el colegio (contactos, estado de la gestión comercial,
+// etc.). Endpoint propio y no parte del PUT: se editan desde la ficha, y así
+// guardar el formulario de datos no pisa una observación escrita en otra
+// pestaña. Vacío se guarda como NULL.
+const cambiarObservaciones = async (req, res) => {
+  const observaciones = String(req.body.observaciones ?? '').trim() || null;
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE ESTABLECIMIENTO SET observaciones = ? WHERE id_establecimiento = ?`,
+      [observaciones, req.params.id]
+    );
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Establecimiento no encontrado' });
+
+    res.json({ observaciones, message: 'Observaciones guardadas' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al guardar las observaciones' });
+  }
+};
+
 // Desde que ESTABLECIMIENTO es también la tabla de tenants, borrar una fila
 // dejó de ser inocuo: puede tener usuarios, cursos y estudiantes colgando. Las
 // FKs lo impedirían igual, pero con un 500 genérico que no explica el motivo.
@@ -342,4 +364,4 @@ const getProgresoImportacion = (req, res) => {
   res.json(job);
 };
 
-module.exports = { getAll, create, update, remove, cambiarAcceso, importarExcel, getProgresoImportacion };
+module.exports = { getAll, create, update, remove, cambiarAcceso, cambiarObservaciones, importarExcel, getProgresoImportacion };
