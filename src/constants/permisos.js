@@ -140,6 +140,9 @@ const Permiso = Object.freeze({
   UsuarioActivar   : 68,
   UsuarioAsignarRol: 69,
   UsuarioRestablecerPassword: 78,
+  // Borra la cuenta (no solo la suspende). Solo si no tiene historial: ver
+  // usuarios.controller → eliminar.
+  UsuarioEliminar           : 117,
   // Ajustar los permisos de UNA persona por encima de los de su rol. Es un
   // permiso aparte de asignar_rol: cambiar el rol elige entre plantillas ya
   // aprobadas, mientras que esto arma una combinación que no existe en ningún

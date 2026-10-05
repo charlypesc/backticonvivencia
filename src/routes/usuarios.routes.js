@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 const {
-  getAll, create, update, toggleActivo, resetPassword,
+  getAll, create, update, toggleActivo, resetPassword, eliminar,
   getRoles, asignarRol, quitarRol,
   getPermisos, setPermisos, guardarPermisosComoRol,
 } = require('../controllers/usuarios.controller');
@@ -40,6 +40,9 @@ router.post('/',            requirePermission(Permiso.UsuarioCrear),   create);
 // además usuario.asignar_rol, que se valida dentro del controller.
 router.put('/:id',          requirePermission(Permiso.UsuarioCrear),   update);
 router.patch('/:id/toggle', requirePermission(Permiso.UsuarioActivar), toggleActivo);
+// Borrar no es lo mismo que desactivar: va con permiso propio (ADMIN y
+// Coordinador de convivencia) y solo procede si la cuenta no tiene historial.
+router.delete('/:id',       requirePermission(Permiso.UsuarioEliminar), eliminar);
 
 // Permiso propio, separado de UsuarioCrear: emitir una clave nueva para la
 // cuenta de otro es tomar control de esa cuenta, no administrarla. Quien da de
