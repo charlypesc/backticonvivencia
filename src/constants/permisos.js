@@ -320,6 +320,7 @@ const CODIGO_POR_ID = Object.freeze({
  114: 'usuario.asignar_permiso',
  115: 'protocolo_activado.ver_todos',
  116: 'registro.derivar',
+ 117: 'usuario.eliminar',
 });
 
 const codigoDe = (id) => CODIGO_POR_ID[id] ?? `desconocido(${id})`;
