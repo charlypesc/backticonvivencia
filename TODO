@@ -79,7 +79,8 @@ Colegio demo, dashboard, responsive y carga masiva (2026-09-30):
   ✔ colegio ficticio COLEGIO MICONVIVENCIA (RBD 99001-9, id 12059, comuna Santiago) con 9 usuarios @miconvivencia.cl, clave 1351convivencia @done
     Director, 2 profesores, inspector de pasillo (INSPECTORIA), asistente social (TRABAJADOR_SOCIAL), coordinador (ENCARGADO), inspector general, psicólogo y estudiante en práctica. Se crearon sin clave temporal (debe_cambiar_password = 0) para usarlo de demo. El nombre de cada usuario es su cargo ("Director", "Profesor 1"...), sin nombres de personas. Con los 30 tipos de falta de la plantilla y los 17 protocolos del catálogo adoptados.
     PROFESOR e INSPECTOR_GENERAL eran roles propios de otros colegios (6258 y 11895): se crearon copias para el 12059 con los mismos permisos. ESTUDIANTE_PRACTICA es un rol nuevo con los permisos de FUNCIONARIO.
-    Cursos 5° Básico A y 1° Medio A con 25 estudiantes ficticios cada uno (RUN 17000001–17000050, cambiados desde 95xxxxxx para que se vean reales; activo = 0 como en la importación).
+    Cursos 5° Básico A y 1° Medio A con 25 estudiantes ficticios cada uno (RUN 90000001–90000050 con su DV correcto; activo = 0 como en la importación).
+    2026-10-04: pasaron de 17000001–17000050 a 90.000.001+. El índice uq_run (run, dv) es único en todo el sistema, así que un RUN de persona real en el demo bloqueaba la importación de ese estudiante en su colegio de verdad. Los registros y protocolos apuntan por id_estudiante: bastó con cambiar run/dv. Respaldo en backup_ESTUDIANTE_demo_12059_2026-10-04.json del scratchpad.
   ✔ dashboard: "Señalados en más de un registro" en vez de "Señalados por bullying" @done
     La tarjeta de bullying marcaba en rojo con un solo registro; lo que interesa es la reiteración. Ahora es el mismo criterio que "Afectados en más de un registro" (HAVING veces >= 2) pero con rol senalado, y el bullying queda como etiqueta dentro de la fila.
   ✔ dashboard: "Estudiantes involucrados" pasa a "Últimos registros" @done
@@ -101,6 +102,10 @@ Geo (2026-10-04):
     Columna nueva ESTABLECIMIENTO.observaciones (TEXT NULL, respaldo previo en backup_ESTABLECIMIENTO_2026-10-04.json del scratchpad). Se guardan con PATCH /geo/establecimientos/:id/observaciones, aparte del PUT, para que guardar el formulario de datos no las pise. En la tabla, un ícono de nota marca los colegios que tienen.
   ✔ Buscar en Geo también por nombre, con RBD, dirección y comuna en la sugerencia @done
     El buscador solo hacía LIKE sobre el RBD. Ahora busca RBD o nombre (cada palabra en cualquier orden; la collation ya ignora tildes) y suma la comuna, porque nombres como "Liceo Bicentenario" se repiten. El parámetro sigue llamándose `rbd`: si el front se publicaba antes que el back con un parámetro nuevo, el back viejo lo ignoraba y devolvía los ~7.800 colegios.
+
+Usuarios (2026-10-05):
+  ✔ eliminar usuarios, con permiso propio usuario.eliminar (117) para ADMIN y Coordinador de convivencia (ENCARGADO) @done
+    DELETE /usuarios/:id borra la cuenta solo si no tiene historial. No basta con dejar actuar a las FKs: varias son ON DELETE SET NULL (bitácora del protocolo, quién completó un paso, quién atendió un registro) y el borrado dejaba esos hechos sin autor. Se revisan antes todas las columnas que apuntan a USUARIO (leídas de information_schema, así una tabla nueva queda cubierta); con historial responde 409 y sugiere desactivar. Mismas guardias que restablecer clave: no a uno mismo, no a un ADMIN, solo dentro del propio colegio. Migración en docs/usuario_eliminar.sql, respaldo en backup_permisos_2026-10-05.json del scratchpad. El permiso viaja en el token: el coordinador ve el botón recién al volver a iniciar sesión.
 
 ## Registro de tiempo
 - 2026-10-04 09:43 → 10:01 (17m)

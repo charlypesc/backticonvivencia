@@ -826,8 +826,71 @@ const guardarPermisosComoRol = async (req, res) => {
   }
 };
 
+// Referencias a USUARIO que NO cuentan como historial: su propia configuración
+// (se borra en cascada con la cuenta) y quién le asignó un rol o permiso a otro,
+// que es metadato y queda en NULL.
+const REFERENCIAS_SIN_HISTORIAL = new Set([
+  'USUARIO_ROLES.id_usuario',
+  'USUARIO_PERMISOS.id_usuario',
+  'NOTIFICACION.id_usuario',
+  'USUARIO_ROLES.asignado_por',
+  'USUARIO_PERMISOS.asignado_por',
+]);
+
+/**
+ * DELETE /usuarios/:id — borra la cuenta de verdad.
+ *
+ * Solo si la persona no dejó rastro en ningún expediente. Las FKs no alcanzan
+ * como control: varias son ON DELETE SET NULL (bitácora del protocolo, quién
+ * completó un paso, quién atendió un registro) y el DELETE pasaría dejando esos
+ * hechos sin autor. Por eso se revisan antes todas las columnas que apuntan a
+ * USUARIO, leídas de information_schema para que una tabla nueva quede cubierta
+ * sin tocar este código. Con historial, lo que corresponde es desactivarla.
+ */
+const eliminar = async (req, res) => {
+  try {
+    if (Number(req.params.id) === Number(req.user.id))
+      return res.status(409).json({ message: 'No puedes eliminar tu propio usuario' });
+
+    // Mismo acotamiento por establecimiento y misma guardia sobre ADMIN que
+    // restablecer la contraseña o cambiar permisos.
+    const { destino, error } = await destinoAdministrable(req);
+    if (error) {
+      const message = error.status === 403 ? 'No puedes eliminar a un ADMIN' : error.message;
+      return res.status(error.status).json({ message });
+    }
+
+    const [refs] = await pool.query(
+      `SELECT TABLE_NAME AS t, COLUMN_NAME AS c
+         FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = 'USUARIO'`
+    );
+    for (const { t, c } of refs) {
+      if (REFERENCIAS_SIN_HISTORIAL.has(`${t}.${c}`)) continue;
+      const [[fila]] = await pool.query(
+        `SELECT 1 AS hay FROM \`${t}\` WHERE \`${c}\` = ? LIMIT 1`, [destino.id_usuario]
+      );
+      if (fila)
+        return res.status(409).json({
+          message: `${destino.nombre || destino.correo} tiene registros a su nombre y no se puede ` +
+                   'eliminar sin perder quién hizo cada cosa en los expedientes. Desactívalo: ' +
+                   'no podrá entrar y su historial se conserva.',
+        });
+    }
+
+    await pool.query(`DELETE FROM USUARIO WHERE id_usuario = ?`, [destino.id_usuario]);
+    res.json({ message: 'Usuario eliminado' });
+  } catch (err) {
+    // Red de seguridad por si entre la revisión y el DELETE alguien le cargó algo.
+    if (err.code === 'ER_ROW_IS_REFERENCED_2')
+      return res.status(409).json({ message: 'El usuario tiene registros a su nombre: desactívalo en su lugar.' });
+    console.error(err);
+    res.status(500).json({ message: 'Error al eliminar el usuario' });
+  }
+};
+
 module.exports = {
-  getAll, create, update, toggleActivo, resetPassword,
+  getAll, create, update, toggleActivo, resetPassword, eliminar,
   getRoles, asignarRol, quitarRol,
   getPermisos, setPermisos, guardarPermisosComoRol,
 };
