@@ -190,6 +190,30 @@ const cambiarObservaciones = async (req, res) => {
   }
 };
 
+// Marca si el colegio ya respondió el correo de contacto (gestión comercial).
+// Endpoint propio por la misma razón que las observaciones: se cambia desde la
+// ficha y no debe depender de guardar el formulario de datos.
+const cambiarCorreoRespondido = async (req, res) => {
+  const respondido = req.body.correo_respondido ? 1 : 0;
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE ESTABLECIMIENTO SET correo_respondido = ? WHERE id_establecimiento = ?`,
+      [respondido, req.params.id]
+    );
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Establecimiento no encontrado' });
+
+    res.json({
+      correo_respondido: respondido,
+      message: respondido ? 'Marcado como respondido' : 'Marcado como sin respuesta',
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al guardar la respuesta del correo' });
+  }
+};
+
 // Desde que ESTABLECIMIENTO es también la tabla de tenants, borrar una fila
 // dejó de ser inocuo: puede tener usuarios, cursos y estudiantes colgando. Las
 // FKs lo impedirían igual, pero con un 500 genérico que no explica el motivo.
@@ -376,4 +400,4 @@ const getProgresoImportacion = (req, res) => {
   res.json(job);
 };
 
-module.exports = { getAll, create, update, remove, cambiarAcceso, cambiarObservaciones, importarExcel, getProgresoImportacion };
+module.exports = { getAll, create, update, remove, cambiarAcceso, cambiarObservaciones, cambiarCorreoRespondido, importarExcel, getProgresoImportacion };
