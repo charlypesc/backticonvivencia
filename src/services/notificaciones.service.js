@@ -71,6 +71,7 @@ const destinatariosDePaso = async (ejecutor, id_activado_paso, tipos = ['ejecuto
  * @param {number} [datos.id_protocolo_activado] arma la url del caso
  * @param {number} [datos.id_activado_paso]
  * @param {number} [datos.id_registro] aviso de un registro (nuevo, derivado): arma la url del registro
+ * @param {string} [datos.url] url explícita, para avisos que no son de un caso ni de un registro (denuncias)
  * @param {number} [datos.excepto] no notificar a quien hizo la acción: ya lo sabe
  */
 const crear = async (ejecutor, {
@@ -82,6 +83,7 @@ const crear = async (ejecutor, {
   id_protocolo_activado = null,
   id_activado_paso = null,
   id_registro = null,
+  url: urlExplicita = null,
   excepto = null,
 }) => {
   const destinatarios = [...new Set(usuarios ?? [])].filter((id) => id && id !== excepto);
@@ -92,7 +94,7 @@ const crear = async (ejecutor, {
   // Un aviso de registro abre el formulario del registro: la lista de registros
   // es la dueña del modal y lo abre con ?abrir=, igual que desde el dashboard.
   const url = id_protocolo_activado ? `/protocolos-activados/${id_protocolo_activado}`
-    : id_registro ? `/registros?abrir=${id_registro}` : null;
+    : id_registro ? `/registros?abrir=${id_registro}` : urlExplicita;
 
   try {
     await ejecutor.query(

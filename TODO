@@ -106,8 +106,18 @@ Geo (2026-10-04):
 Usuarios (2026-10-05):
   ✔ eliminar usuarios, con permiso propio usuario.eliminar (117) para ADMIN y Coordinador de convivencia (ENCARGADO) @done
     DELETE /usuarios/:id borra la cuenta solo si no tiene historial. No basta con dejar actuar a las FKs: varias son ON DELETE SET NULL (bitácora del protocolo, quién completó un paso, quién atendió un registro) y el borrado dejaba esos hechos sin autor. Se revisan antes todas las columnas que apuntan a USUARIO (leídas de information_schema, así una tabla nueva queda cubierta); con historial responde 409 y sugiere desactivar. Mismas guardias que restablecer clave: no a uno mismo, no a un ADMIN, solo dentro del propio colegio. Migración en docs/usuario_eliminar.sql, respaldo en backup_permisos_2026-10-05.json del scratchpad. El permiso viaja en el token: el coordinador ve el botón recién al volver a iniciar sesión.
+    Bug al desplegar: el back no arrancaba en Render ("Cannot DELETE" porque seguía la versión anterior). Causa: el id 117 estaba en Permiso pero no en CODIGO_POR_ID, y requirePermission lanza al cargar las rutas si el id no está en ese catálogo. Al agregar un permiso hay que tocar los dos mapas de src/constants/permisos.js, y levantar el back en local antes de subir (el build del front no lo detecta).
+
+Canal de denuncias (2026-10-06):
+  ☐ probar en el navegador "QR denuncias" (ADMIN y ENCARGADO, re-login para el token nuevo): QR, link, afiche Imprimir/Descargar, bandeja, ver identidad, crear registro, desestimar
+    Ley 21.809 (art. 46 e LGE): canal seguro y confidencial con reserva de identidad. Formulario público /denuncia/:token sin login (anónima o con reserva), bandeja en /denuncias. Una denuncia no es un registro: entra a DENUNCIA (folio DEN-AAAA-NNN) y el coordinador crea el registro (POST /registros con id_denuncia, misma transacción) o la desestima con motivo; derivar va por el registro. Identidad en tabla aparte, solo por GET /denuncias/:id/identidad que deja constancia en DENUNCIA_IDENTIDAD_ACCESO. Sin IP ni user-agent guardados; rate limit en memoria. Permisos 118 denuncia.ver (ítem del menú), 119 denuncia.gestionar, 120 denuncia.ver_identidad. Migración en docs/canal_denuncias.sql, respaldo en backup_canal_denuncias_2026-10-06.json del scratchpad.
+  ☐ probar el formulario público desde el teléfono (foto pesada / HEIC, "estoy en peligro")
+  ☐ fase 2: código de seguimiento + PIN para que quien denunció vea el estado y responda preguntas sin revelar su identidad
+  ☐ fase 2: métricas del canal (tiempo al primer contacto, % que termina en registro)
 
 ## Registro de tiempo
+- 2026-10-04 11:19 → 16:17 (28h57m)
+- 2026-10-05 11:53 → 16:17 (4h23m)
 - 2026-10-04 09:43 → 10:01 (17m)
 - 2026-09-30 10:26 → 09:43 (95h16m)
 - 2026-09-30 12:00 → 09:43 (93h42m)

@@ -200,6 +200,12 @@ const Permiso = Object.freeze({
   SuspensionCautelarCrear                  : 111,
   SuspensionCautelarRegistrarReconsideracion: 112,
   SuspensionCautelarResolver               : 113,
+
+  // denuncia (art. 46 e LGE: canal seguro y confidencial con reserva de
+  // identidad). Ver lo pone en el menú como "QR denuncias".
+  DenunciaVer         : 118,
+  DenunciaGestionar   : 119,
+  DenunciaVerIdentidad: 120,
 });
 
 // Traducción inversa, para mensajes de error legibles y para el chequeo de
@@ -321,6 +327,9 @@ const CODIGO_POR_ID = Object.freeze({
  115: 'protocolo_activado.ver_todos',
  116: 'registro.derivar',
  117: 'usuario.eliminar',
+ 118: 'denuncia.ver',
+ 119: 'denuncia.gestionar',
+ 120: 'denuncia.ver_identidad',
 });
 
 const codigoDe = (id) => CODIGO_POR_ID[id] ?? `desconocido(${id})`;
