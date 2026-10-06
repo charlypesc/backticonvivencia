@@ -7,7 +7,7 @@ const {
   remove,
   cambiarAcceso,
   cambiarObservaciones,
-  cambiarCorreoRespondido,
+  cambiarEstadoCorreo,
   importarExcel,
   getProgresoImportacion,
 } = require('../controllers/establecimientosGeo.controller');
@@ -37,7 +37,7 @@ router.put('/:id',        requirePermission(Permiso.EstablecimientoEditar), upda
 // edición, no con el de eliminar.
 router.patch('/:id/acceso', requirePermission(Permiso.EstablecimientoEditar), cambiarAcceso);
 router.patch('/:id/observaciones', requirePermission(Permiso.EstablecimientoEditar), cambiarObservaciones);
-router.patch('/:id/correo-respondido', requirePermission(Permiso.EstablecimientoEditar), cambiarCorreoRespondido);
+router.patch('/:id/estado-correo', requirePermission(Permiso.EstablecimientoEditar), cambiarEstadoCorreo);
 router.delete('/:id',     requirePermission(Permiso.EstablecimientoEliminar), remove);
 
 module.exports = router;
