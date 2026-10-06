@@ -32,6 +32,79 @@ const getResumen = async (req, res) => {
   const id_est = req.id_establecimiento;
 
   try {
+    // ── Registros por atender (coordinador) ────────────────────────────────
+    // Los que llenó otro funcionario y ningún coordinador tomó todavía. Es la
+    // bandeja desde donde se "ataja" el registro para atenderlo o derivarlo.
+    const puedeDerivar = tienePermiso(req, Permiso.RegistroDerivar);
+    let por_atender = null;
+    let derivaciones = null;
+    if (puedeDerivar) {
+      const [filas] = await pool.query(
+        `SELECT r.id_registro, r.codigo, r.asunto, r.fecha_creacion, r.id_usuario,
+                r.es_confidencial, r.nota_confidencial,
+                COALESCE(u.nombre, u.correo) AS autor_nombre,
+                tf.nombre AS tipo_falta_nombre, tf.gravedad,
+                -- El protocolo que el reglamento asocia al motivo, si el
+                -- registro todavía no tiene ninguno activado: es lo primero
+                -- que el coordinador tiene que decidir al tomarlo.
+                (SELECT COALESCE(pe.nombre, cp.nombre)
+                   FROM TIPO_FALTA_PROTOCOLO tfp
+                   JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pe.id_protocolo_establecimiento = tfp.id_protocolo_establecimiento
+                   LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
+                  WHERE tfp.id_tipo_falta = r.id_tipo_falta
+                    AND NOT EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO pa
+                                     WHERE pa.id_registro = r.id_registro AND pa.estado <> 'anulado')
+                  ORDER BY tfp.obligatorio DESC LIMIT 1) AS protocolo_sugerido,
+                (SELECT MAX(tfp.obligatorio) FROM TIPO_FALTA_PROTOCOLO tfp
+                  WHERE tfp.id_tipo_falta = r.id_tipo_falta) AS protocolo_obligatorio,
+                GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
+                             ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
+         FROM REGISTRO_CONVIVENCIA r
+         JOIN USUARIO u ON u.id_usuario = r.id_usuario
+         JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
+         LEFT JOIN REGISTRO_ESTUDIANTE re ON re.id_registro = r.id_registro
+         LEFT JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+         WHERE r.id_establecimiento = ? AND r.id_usuario_atiende IS NULL
+         GROUP BY r.id_registro
+         ORDER BY r.fecha_creacion
+         LIMIT 20`,
+        [id_est]
+      );
+      por_atender = filas.map((r) => ocultarAsunto(req, r));
+
+      const [[d]] = await pool.query(
+        `SELECT
+           SUM(estado = 'pendiente' AND fecha_limite >= NOW()) AS en_plazo,
+           SUM(estado = 'pendiente' AND fecha_limite < NOW())  AS vencidas
+         FROM REGISTRO_DERIVACION WHERE id_establecimiento = ?`,
+        [id_est]
+      );
+      derivaciones = { en_plazo: Number(d.en_plazo ?? 0), vencidas: Number(d.vencidas ?? 0) };
+    }
+
+    // Lo que le derivaron a quien mira: su propia lista de pendientes.
+    const [mis_derivaciones] = await pool.query(
+      `SELECT d.id_registro, r.codigo, d.fecha_limite, d.instrucciones, (d.fecha_limite < NOW()) AS vencida,
+              COALESCE(uo.nombre, uo.correo) AS origen_nombre,
+              r.asunto, r.es_confidencial, r.nota_confidencial, r.id_usuario
+       FROM REGISTRO_DERIVACION d
+       JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = d.id_registro
+       JOIN USUARIO uo ON uo.id_usuario = d.id_usuario_origen
+       WHERE d.id_establecimiento = ? AND d.id_usuario_destino = ? AND d.estado = 'pendiente'
+       ORDER BY d.fecha_limite`,
+      [id_est, req.user.id]
+    );
+
+    // ── Resumen del colegio ─────────────────────────────────────────────────
+    // Inicio (dashboard.ver) es la entrada de todos: lo de arriba son los
+    // pendientes de quien mira. Todo lo que sigue son las cifras del
+    // establecimiento —el "Resumen del mes", alertas, cumplimiento, últimos
+    // registros y estadísticas— y van con su propio permiso.
+    const misDerivaciones = mis_derivaciones.map((r) => ocultarAsunto(req, r));
+    if (!tienePermiso(req, Permiso.DashboardVerResumen)) {
+      return res.json({ ver_resumen: false, por_atender, derivaciones, mis_derivaciones: misDerivaciones });
+    }
+
     const [[{ registros_mes }]] = await pool.query(
       `SELECT COUNT(*) AS registros_mes
        FROM REGISTRO_CONVIVENCIA r
@@ -183,69 +256,6 @@ const getResumen = async (req, res) => {
       [id_est, id_est, id_est, id_est, id_est, id_est, id_est, id_est]
     );
 
-    // ── Registros por atender (coordinador) ────────────────────────────────
-    // Los que llenó otro funcionario y ningún coordinador tomó todavía. Es la
-    // bandeja desde donde se "ataja" el registro para atenderlo o derivarlo.
-    const puedeDerivar = tienePermiso(req, Permiso.RegistroDerivar);
-    let por_atender = null;
-    let derivaciones = null;
-    if (puedeDerivar) {
-      const [filas] = await pool.query(
-        `SELECT r.id_registro, r.codigo, r.asunto, r.fecha_creacion, r.id_usuario,
-                r.es_confidencial, r.nota_confidencial,
-                COALESCE(u.nombre, u.correo) AS autor_nombre,
-                tf.nombre AS tipo_falta_nombre, tf.gravedad,
-                -- El protocolo que el reglamento asocia al motivo, si el
-                -- registro todavía no tiene ninguno activado: es lo primero
-                -- que el coordinador tiene que decidir al tomarlo.
-                (SELECT COALESCE(pe.nombre, cp.nombre)
-                   FROM TIPO_FALTA_PROTOCOLO tfp
-                   JOIN PROTOCOLO_ESTABLECIMIENTO pe ON pe.id_protocolo_establecimiento = tfp.id_protocolo_establecimiento
-                   LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
-                  WHERE tfp.id_tipo_falta = r.id_tipo_falta
-                    AND NOT EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO pa
-                                     WHERE pa.id_registro = r.id_registro AND pa.estado <> 'anulado')
-                  ORDER BY tfp.obligatorio DESC LIMIT 1) AS protocolo_sugerido,
-                (SELECT MAX(tfp.obligatorio) FROM TIPO_FALTA_PROTOCOLO tfp
-                  WHERE tfp.id_tipo_falta = r.id_tipo_falta) AS protocolo_obligatorio,
-                GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
-                             ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
-         FROM REGISTRO_CONVIVENCIA r
-         JOIN USUARIO u ON u.id_usuario = r.id_usuario
-         JOIN TIPO_FALTA tf ON tf.id_tipo_falta = r.id_tipo_falta
-         LEFT JOIN REGISTRO_ESTUDIANTE re ON re.id_registro = r.id_registro
-         LEFT JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
-         WHERE r.id_establecimiento = ? AND r.id_usuario_atiende IS NULL
-         GROUP BY r.id_registro
-         ORDER BY r.fecha_creacion
-         LIMIT 20`,
-        [id_est]
-      );
-      por_atender = filas.map((r) => ocultarAsunto(req, r));
-
-      const [[d]] = await pool.query(
-        `SELECT
-           SUM(estado = 'pendiente' AND fecha_limite >= NOW()) AS en_plazo,
-           SUM(estado = 'pendiente' AND fecha_limite < NOW())  AS vencidas
-         FROM REGISTRO_DERIVACION WHERE id_establecimiento = ?`,
-        [id_est]
-      );
-      derivaciones = { en_plazo: Number(d.en_plazo ?? 0), vencidas: Number(d.vencidas ?? 0) };
-    }
-
-    // Lo que le derivaron a quien mira: su propia lista de pendientes.
-    const [mis_derivaciones] = await pool.query(
-      `SELECT d.id_registro, r.codigo, d.fecha_limite, d.instrucciones, (d.fecha_limite < NOW()) AS vencida,
-              COALESCE(uo.nombre, uo.correo) AS origen_nombre,
-              r.asunto, r.es_confidencial, r.nota_confidencial, r.id_usuario
-       FROM REGISTRO_DERIVACION d
-       JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = d.id_registro
-       JOIN USUARIO uo ON uo.id_usuario = d.id_usuario_origen
-       WHERE d.id_establecimiento = ? AND d.id_usuario_destino = ? AND d.estado = 'pendiente'
-       ORDER BY d.fecha_limite`,
-      [id_est, req.user.id]
-    );
-
     // ── Alertas por estudiante ─────────────────────────────────────────────
     // Afectado en dos o más registros: el patrón que por separado no se ve.
     // Con más razón si alguno es de bullying, que por definición es reiterado.
@@ -337,13 +347,14 @@ const getResumen = async (req, res) => {
     // Quien no ve el listado de protocolos (Inspectoría) tampoco ve sus
     // números: el conteo y el cumplimiento son de los casos, no de sus pasos.
     res.json({
+      ver_resumen: true,
       registros_mes, estudiantes_con_registro,
       protocolos_activados: verProtocolos ? protocolos_activados : null,
       ultimos: ultimosFiltrados,
       cumplimiento: verProtocolos ? cumplimiento : null,
       por_atender,
       derivaciones,
-      mis_derivaciones: mis_derivaciones.map((r) => ocultarAsunto(req, r)),
+      mis_derivaciones: misDerivaciones,
       alertas: {
         afectados_reiterados: afectados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
         senalados_reiterados: senalados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
