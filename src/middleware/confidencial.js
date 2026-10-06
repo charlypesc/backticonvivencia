@@ -1,5 +1,5 @@
 const pool = require('../db/connection');
-const { puedeVerConfidencial } = require('../utils/confidencial');
+const { puedeVerConfidencial, registroVisible } = require('../utils/confidencial');
 
 // Ocultar el contenido en las lecturas no alcanza: sin esto, quien no puede ver
 // un registro confidencial igual podía editarlo o borrarlo a ciegas
@@ -43,7 +43,8 @@ const bloquearEscrituraConfidencial = async (req, res, next) => {
     // Un registro de otro colegio se responde como inexistente, igual que en
     // la lectura por id. Va acá porque este middleware es el paso común de
     // todas las escrituras de registros (editar, eliminar, confirmar).
-    if (!registro || registro.id_establecimiento !== req.id_establecimiento)
+    if (!registro || registro.id_establecimiento !== req.id_establecimiento
+        || !(await registroVisible(pool, req, registro.id_registro)))
       return res.status(404).json({ message: 'Registro no encontrado' });
 
     if (registro.es_confidencial && !puedeVerConfidencial(req, registro))

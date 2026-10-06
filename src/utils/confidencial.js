@@ -75,7 +75,59 @@ const reducirSiConfidencial = (req, registro) => {
   };
 };
 
+/**
+ * Qué registros puede siquiera VER EN UNA LISTA quien consulta (2026-10-06).
+ *
+ * reducirSiConfidencial recorta el contenido pero deja la fila a la vista, y
+ * eso no alcanzaba: un profesor veía en la ficha del estudiante que había un
+ * caso confidencial, y los registros nacidos del canal de denuncias aparecían
+ * completos. Ahora, sin el permiso correspondiente, la fila no existe:
+ *
+ *  - confidencial              → registro.ver_confidencial
+ *  - creado desde una denuncia → denuncia.ver (el canal tiene reserva de
+ *                                identidad; su registro hereda ese resguardo)
+ *
+ * El autor siempre ve lo suyo, y quien recibió una derivación ve ese registro
+ * (sin derivación no podría atender lo que se le pidió). Un confidencial
+ * derivado se le sigue mostrando recortado por reducirSiConfidencial.
+ *
+ * Devuelve un fragmento ` AND ...` para pegar al WHERE, con sus parámetros.
+ *
+ * @param {string} a alias de REGISTRO_CONVIVENCIA en la consulta
+ */
+const filtroRegistrosVisibles = (req, a = 'r') => {
+  const partes = [];
+  const params = [];
+  const propioODerivado = `${a}.id_usuario = ? OR EXISTS (
+      SELECT 1 FROM REGISTRO_DERIVACION dv
+       WHERE dv.id_registro = ${a}.id_registro AND dv.id_usuario_destino = ?)`;
+
+  if (!tienePermiso(req, Permiso.RegistroVerConfidencial)) {
+    partes.push(`(NOT ${a}.es_confidencial OR ${propioODerivado})`);
+    params.push(req.user.id, req.user.id);
+  }
+  if (!tienePermiso(req, Permiso.DenunciaVer)) {
+    partes.push(`(NOT EXISTS (SELECT 1 FROM DENUNCIA dn WHERE dn.id_registro = ${a}.id_registro)
+               OR ${propioODerivado})`);
+    params.push(req.user.id, req.user.id);
+  }
+  return { sql: partes.map((p) => ` AND ${p}`).join(''), params };
+};
+
+/** Mismo criterio para un registro puntual (detalle, PDF, escrituras). */
+const registroVisible = async (db, req, id_registro) => {
+  const f = filtroRegistrosVisibles(req, 'r');
+  if (!f.sql) return true;
+  const [[r]] = await db.query(
+    `SELECT 1 AS ok FROM REGISTRO_CONVIVENCIA r WHERE r.id_registro = ?${f.sql}`,
+    [id_registro, ...f.params]
+  );
+  return !!r;
+};
+
 module.exports = {
+  filtroRegistrosVisibles,
+  registroVisible,
   esAutor,
   autorCorreo,
   puedeVerConfidencial,
