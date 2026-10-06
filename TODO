@@ -125,6 +125,10 @@ Canal de denuncias (2026-10-06):
   ☐ fase 2: código de seguimiento + PIN para que quien denunció vea el estado y responda preguntas sin revelar su identidad
   ☐ fase 2: métricas del canal (tiempo al primer contacto, % que termina en registro)
 
+Datos de prueba (2026-10-06):
+  ✔ casos de prueba de LICEO MANUEL MONTT pasados a COLEGIO MICONVIVENCIA, sobre RUN del demo @done
+    Los 16 registros y 18 protocolos de prueba del Liceo (6258) colgaban de estudiantes reales importados (ABURTO, ABARCA, OLAVARRÍA...). Se movieron al demo (12059) en vez de copiarlos: mover conserva los ids y arrastra pasos, bitácora, archivos y medidas sin tocarlos. Lo que sí hubo que remapear porque es propio de cada colegio: motivo (por nombre), protocolo del colegio (por id_protocolo del catálogo; los propios "Prueba de protocolo nuevo" y "Seguimiento" se movieron enteros), usuarios por cargo (1→17, 2→22, 6→24, 8→18, 14→20) y los 11 estudiantes a 11 RUN distintos del demo (90000001–08 en 5° Básico A, 26–31 en 1° Medio A), con nombre/RUT/curso del involucrado y los nombres en la bitácora. Ojo con REGISTRO_CONVIVENCIA.fecha_modificacion: tiene ON UPDATE y hay que fijarla a sí misma en cada UPDATE. Los folios del Liceo quedaron igual (eran anteriores) y el registro/protocolo propio del demo pasó a REG-2026-017 / PROT-2026-019. El texto OCR de los 2 documentos digitalizados (REG-001 y 002) sigue con los nombres originales. Respaldo en backup_casos_liceo_a_demo_2026-10-06.json del scratchpad.
+
 ## Registro de tiempo
 - 2026-10-04 11:19 → 16:17 (28h57m)
 - 2026-10-05 11:53 → 16:17 (4h23m)
