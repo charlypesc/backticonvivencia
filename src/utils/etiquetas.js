@@ -335,6 +335,7 @@ const ETIQUETAS = {
     ver: 'Ver',
     ver_bitacora: 'Ver bitácora',
     ver_confidencial: 'Ver confidenciales',
+    ver_resumen: 'Ver resumen del mes',
     ver_todos: 'Ver todos',
   },
 };

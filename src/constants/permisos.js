@@ -131,8 +131,11 @@ const Permiso = Object.freeze({
   DocumentoVer  : 63,
   DocumentoSubir: 64,
 
-  // dashboard
-  DashboardVer: 65,
+  // dashboard. Ver es entrar a Inicio y ver los pendientes propios (registros
+  // por atender, derivaciones recibidas); VerResumen agrega las cifras del
+  // establecimiento: resumen del mes, alertas, cumplimiento y estadísticas.
+  DashboardVer       : 65,
+  DashboardVerResumen: 121,
 
   // usuario
   UsuarioVer       : 66,
@@ -330,6 +333,7 @@ const CODIGO_POR_ID = Object.freeze({
  118: 'denuncia.ver',
  119: 'denuncia.gestionar',
  120: 'denuncia.ver_identidad',
+ 121: 'dashboard.ver_resumen',
 });
 
 const codigoDe = (id) => CODIGO_POR_ID[id] ?? `desconocido(${id})`;
