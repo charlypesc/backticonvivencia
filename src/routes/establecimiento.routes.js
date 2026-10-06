@@ -1,12 +1,12 @@
 const router = require('express').Router();
-const { getMine, updateMine } = require('../controllers/establecimiento.controller');
-const { verifyToken, requirePermission } = require('../middleware/auth');
+const { getMine } = require('../controllers/establecimiento.controller');
+const { verifyToken } = require('../middleware/auth');
 const { resolverScope, requireEstablecimiento } = require('../middleware/scope');
-const { Permiso } = require('../constants/permisos');
 
 router.use(verifyToken, resolverScope, requireEstablecimiento);
 
-router.get('/',  getMine);                            // ambos roles
-router.put('/',  requirePermission(Permiso.MiEstablecimientoEditar), updateMine); // solo DIRECTOR
+// Solo lectura: los datos del colegio se editan desde Geo
+// (establecimiento.editar). Lo usa Usuarios para sugerir el dominio del correo.
+router.get('/', getMine);
 
 module.exports = router;

@@ -34,32 +34,6 @@ const getMine = async (req, res) => {
   }
 };
 
-const updateMine = async (req, res) => {
-  const { nombre, rbd, id_comuna, direccion, telefono, correo } = req.body;
-
-  if (!nombre || !rbd)
-    return res.status(400).json({ message: 'Nombre y RBD son requeridos' });
-
-  try {
-    await pool.query(
-      `UPDATE ESTABLECIMIENTO
-       SET nombre=?, rbd=?, id_comuna=COALESCE(?, id_comuna),
-           direccion=?, telefono=?, correo=?
-       WHERE id_establecimiento = ?`,
-      [nombre, rbd, id_comuna || null, direccion || null, telefono || null,
-       correo || null, req.id_establecimiento]
-    );
-    res.json({ message: 'Establecimiento actualizado' });
-  } catch (err) {
-    console.error(err);
-    if (err.code === 'ER_DUP_ENTRY')
-      return res.status(409).json({ message: 'El RBD ya está registrado' });
-    if (err.code === 'ER_NO_REFERENCED_ROW_2')
-      return res.status(400).json({ message: 'La comuna indicada no existe' });
-    res.status(500).json({ message: 'Error al actualizar' });
-  }
-};
-
 // --- Administración de tenants ---
 
 // Solo los colegios que usan el sistema. Sin el filtro es_tenant esto
@@ -209,4 +183,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getMine, updateMine, getAll, getById, create, update, remove };
+module.exports = { getMine, getAll, getById, create, update, remove };
