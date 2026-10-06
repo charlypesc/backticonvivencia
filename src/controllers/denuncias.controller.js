@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../db/connection');
 const notificaciones = require('../services/notificaciones.service');
-const { comprimirArchivo } = require('../utils/comprimirArchivo');
 
 // Canal de denuncias con reserva de identidad (art. 46 letra e LGE, texto de
 // la Ley 21.809). Ver docs/canal_denuncias.sql.
@@ -51,8 +50,13 @@ const canalPublico = async (req, res) => {
   }
 };
 
-// POST /api/canal-denuncia/:token — multipart: modo, relato, lugar,
-// fecha_hechos, personas_involucradas, urgente, nombre, curso, contacto, archivos[]
+// POST /api/canal-denuncia/:token — { modo, relato, urgente, nombre?, curso?, contacto? }
+//
+// Lo mínimo a propósito: la ley no exige ningún dato en particular, y pedirle
+// fecha, lugar, nombres y pruebas a quien lo está pasando mal es cargarle el
+// armado del caso (art. 46 e: "la no revictimización de los afectados"). Las
+// columnas lugar/fecha_hechos/personas_involucradas y DENUNCIA_ARCHIVO quedan
+// en la base sin uso desde el formulario.
 const enviarDenuncia = async (req, res) => {
   const b = req.body ?? {};
   const modo = MODOS.includes(b.modo) ? b.modo : null;
@@ -65,8 +69,7 @@ const enviarDenuncia = async (req, res) => {
   if (modo === 'reservada' && !nombre)
     return res.status(400).json({ message: 'Para la denuncia con reserva de identidad necesitamos tu nombre' });
 
-  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(b.fecha_hechos ?? '') ? b.fecha_hechos : null;
-  const urgente = b.urgente === true || b.urgente === 'true' || b.urgente === '1';
+  const urgente = b.urgente === true || b.urgente === 'true';
 
   let e;
   try {
@@ -76,10 +79,6 @@ const enviarDenuncia = async (req, res) => {
     return res.status(500).json({ message: 'Error al enviar la denuncia' });
   }
   if (!e) return res.status(404).json({ message: 'Este enlace de denuncias no existe o ya no está vigente' });
-
-  // Se comprime antes de abrir la transacción: sharp puede tardar con una foto
-  // pesada y no hay por qué tener una conexión tomada mientras tanto.
-  const archivos = await Promise.all((req.files ?? []).map(comprimirArchivo));
 
   const conn = await pool.getConnection();
   let id_denuncia, codigo;
@@ -92,11 +91,9 @@ const enviarDenuncia = async (req, res) => {
     for (let i = 1; ; i++) {
       try {
         [r] = await conn.query(
-          `INSERT INTO DENUNCIA
-             (id_establecimiento, modo, relato, lugar, fecha_hechos, personas_involucradas, urgente)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [e.id_establecimiento, modo, relato, recortar(b.lugar, 200), fecha,
-           recortar(b.personas_involucradas, 500), urgente]
+          `INSERT INTO DENUNCIA (id_establecimiento, modo, relato, urgente)
+           VALUES (?, ?, ?, ?)`,
+          [e.id_establecimiento, modo, relato, urgente]
         );
         break;
       } catch (err) {
@@ -109,13 +106,6 @@ const enviarDenuncia = async (req, res) => {
       await conn.query(
         'INSERT INTO DENUNCIA_IDENTIDAD (id_denuncia, nombre, curso, contacto) VALUES (?, ?, ?, ?)',
         [id_denuncia, nombre, recortar(b.curso, 60), recortar(b.contacto, 150)]
-      );
-
-    if (archivos.length > 0)
-      await conn.query(
-        `INSERT INTO DENUNCIA_ARCHIVO (id_denuncia, nombre_archivo, tipo_archivo, bytes, contenido)
-         VALUES ?`,
-        [archivos.map((a) => [id_denuncia, a.originalname, a.mimetype, a.size, a.buffer])]
       );
 
     [[{ codigo }]] = await conn.query('SELECT codigo FROM DENUNCIA WHERE id_denuncia = ?', [id_denuncia]);
