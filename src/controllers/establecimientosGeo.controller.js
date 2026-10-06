@@ -190,27 +190,52 @@ const cambiarObservaciones = async (req, res) => {
   }
 };
 
-// Marca si el colegio ya respondió el correo de contacto (gestión comercial).
-// Endpoint propio por la misma razón que las observaciones: se cambia desde la
-// ficha y no debe depender de guardar el formulario de datos.
-const cambiarCorreoRespondido = async (req, res) => {
-  const respondido = req.body.correo_respondido ? 1 : 0;
+// Estado del correo de contacto (gestión comercial): 0 sin enviar, 1 enviado,
+// 2 respondió. Endpoint propio por la misma razón que las observaciones: se
+// cambia desde la lista de Geo y no debe depender del formulario de datos.
+const MENSAJES_ESTADO_CORREO = ['Correo sin enviar', 'Correo enviado', 'Respondió el correo'];
+
+// Fecha de seguimiento al marcar "enviado": mañana a las 09:00 en hora de
+// Chile (el servidor corre en UTC, así que el "mañana" se calcula en Santiago).
+const fechaSeguimiento = () => {
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+  const [a, m, d] = hoy.split('-').map(Number);
+  const manana = new Date(Date.UTC(a, m - 1, d + 1));
+  const dd = String(manana.getUTCDate()).padStart(2, '0');
+  const mm = String(manana.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}-${mm}-${manana.getUTCFullYear()} 09:00`;
+};
+
+const cambiarEstadoCorreo = async (req, res) => {
+  const estado = Number(req.body.estado_correo);
+  if (![0, 1, 2].includes(estado))
+    return res.status(400).json({ message: 'Estado de correo inválido' });
 
   try {
-    const [result] = await pool.query(
-      `UPDATE ESTABLECIMIENTO SET correo_respondido = ? WHERE id_establecimiento = ?`,
-      [respondido, req.params.id]
+    const [[actual]] = await pool.query(
+      `SELECT estado_correo, observaciones FROM ESTABLECIMIENTO WHERE id_establecimiento = ?`,
+      [req.params.id]
     );
-    if (result.affectedRows === 0)
+    if (!actual)
       return res.status(404).json({ message: 'Establecimiento no encontrado' });
 
-    res.json({
-      correo_respondido: respondido,
-      message: respondido ? 'Marcado como respondido' : 'Marcado como sin respuesta',
-    });
+    // Solo al pasar a "enviado" (no si ya lo estaba): se agrega la fecha de
+    // seguimiento como una línea más, sin pisar lo que ya había escrito.
+    let observaciones = actual.observaciones;
+    if (estado === 1 && Number(actual.estado_correo) !== 1) {
+      const linea = `Correo enviado — seguimiento ${fechaSeguimiento()}`;
+      observaciones = observaciones ? `${observaciones}\n${linea}` : linea;
+    }
+
+    await pool.query(
+      `UPDATE ESTABLECIMIENTO SET estado_correo = ?, observaciones = ? WHERE id_establecimiento = ?`,
+      [estado, observaciones, req.params.id]
+    );
+
+    res.json({ estado_correo: estado, observaciones, message: MENSAJES_ESTADO_CORREO[estado] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error al guardar la respuesta del correo' });
+    res.status(500).json({ message: 'Error al guardar el estado del correo' });
   }
 };
 
@@ -400,4 +425,4 @@ const getProgresoImportacion = (req, res) => {
   res.json(job);
 };
 
-module.exports = { getAll, create, update, remove, cambiarAcceso, cambiarObservaciones, cambiarCorreoRespondido, importarExcel, getProgresoImportacion };
+module.exports = { getAll, create, update, remove, cambiarAcceso, cambiarObservaciones, cambiarEstadoCorreo, importarExcel, getProgresoImportacion };
