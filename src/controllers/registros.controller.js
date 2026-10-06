@@ -5,6 +5,8 @@ const {
   puedeVerConfidencial,
   puedeEditarConfidencialidad,
   reducirSiConfidencial,
+  filtroRegistrosVisibles,
+  registroVisible,
 } = require('../utils/confidencial');
 const { ROLES_INVOLUCRADO } = require('../utils/flujoProtocolo');
 const notificaciones = require('../services/notificaciones.service');
@@ -250,6 +252,12 @@ const getAll = async (req, res) => {
     `;
     const params = [req.id_establecimiento];
 
+    // Confidenciales y registros del canal de denuncias: sin el permiso, ni
+    // siquiera aparecen en la lista (ver filtroRegistrosVisibles).
+    const visibles = filtroRegistrosVisibles(req, 'r');
+    query += visibles.sql;
+    params.push(...visibles.params);
+
     // Antes esto era `rol === 'ENCARGADO'`, un chequeo restrictivo. Con
     // multi-rol, traducirlo literal habría restringido a quien tuviera
     // ENCARGADO *y* DIRECTOR, al revés de lo que se espera. Y con roles
@@ -295,7 +303,10 @@ const getById = async (req, res) => {
 
     // 404 y no 403 si es de otro colegio: quien pregunta no tiene por qué
     // enterarse de que el registro existe.
-    if (!registro || registro.id_establecimiento !== req.id_establecimiento)
+    // Uno que no puede ver en la lista (confidencial o del canal de denuncias
+    // sin permiso) responde igual que uno inexistente.
+    if (!registro || registro.id_establecimiento !== req.id_establecimiento
+        || !(await registroVisible(pool, req, registro.id_registro)))
       return res.status(404).json({ message: 'Registro no encontrado' });
 
     const [estudiantes] = await pool.query(
@@ -764,6 +775,9 @@ const registroDelScope = async (req) => {
        FROM REGISTRO_CONVIVENCIA WHERE id_registro = ? AND id_establecimiento = ?`,
     [req.params.id, req.id_establecimiento]
   );
+  // Atender, derivar y marcar atendida tampoco sirven para tocar un registro
+  // que no se puede ver (filtroRegistrosVisibles).
+  if (r && !(await registroVisible(pool, req, r.id_registro))) return null;
   return r ?? null;
 };
 
@@ -928,7 +942,8 @@ const getPdf = async (req, res) => {
        WHERE r.id_registro = ? AND r.id_establecimiento = ?`,
       [req.params.id, req.id_establecimiento]
     );
-    if (!registro) return res.status(404).json({ message: 'Registro no encontrado' });
+    if (!registro || !(await registroVisible(pool, req, registro.id_registro)))
+      return res.status(404).json({ message: 'Registro no encontrado' });
     // El PDF es el contenido completo: lo reservado no se imprime.
     if (registro.es_confidencial && !puedeVerConfidencial(req, registro))
       return res.status(403).json({ message: 'Este registro es confidencial' });

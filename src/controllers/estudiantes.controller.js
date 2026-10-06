@@ -1,5 +1,5 @@
 const pool = require('../db/connection');
-const { reducirSiConfidencial } = require('../utils/confidencial');
+const { reducirSiConfidencial, filtroRegistrosVisibles } = require('../utils/confidencial');
 const { COLUMNAS_ESTADO_PROTOCOLO } = require('../utils/sqlProtocolos');
 
 const getAll = async (req, res) => {
@@ -177,6 +177,9 @@ const consultarRut = async (req, res) => {
 
     const estudiante = estudiantes[0];
 
+    // El historial tampoco muestra confidenciales ni registros del canal de
+    // denuncias a quien no tiene el permiso: era por donde un profesor los veía.
+    const visibles = filtroRegistrosVisibles(req, 'r');
     const [registros] = await pool.query(
       // Las columnas de protocolo son las mismas que muestra la lista de
       // registros: desde la ficha del estudiante también se necesita ver si el
@@ -190,9 +193,9 @@ const consultarRut = async (req, res) => {
        JOIN TIPO_FALTA tf ON r.id_tipo_falta = tf.id_tipo_falta
        JOIN USUARIO u ON r.id_usuario = u.id_usuario
        LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
-       WHERE re.id_estudiante = ? AND r.id_establecimiento = ?
+       WHERE re.id_estudiante = ? AND r.id_establecimiento = ?${visibles.sql}
        ORDER BY r.fecha_incidente DESC`,
-      [estudiante.id_estudiante, req.id_establecimiento]
+      [estudiante.id_estudiante, req.id_establecimiento, ...visibles.params]
     );
 
     res.json({ estudiante, registros: registros.map((r) => reducirSiConfidencial(req, r)) });

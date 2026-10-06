@@ -1,5 +1,5 @@
 const pool = require('../db/connection');
-const { puedeVerConfidencial } = require('../utils/confidencial');
+const { puedeVerConfidencial, filtroRegistrosVisibles } = require('../utils/confidencial');
 const { tienePermiso } = require('../middleware/auth');
 const { Permiso } = require('../constants/permisos');
 
@@ -69,6 +69,7 @@ const getResumen = async (req, res) => {
     // devolvía una fila por estudiante y el LIMIT 5 contaba esas filas, no los
     // registros: un registro con 5 involucrados se comía la lista entera y los
     // registros anteriores desaparecían del dashboard.
+    const ultimosVisibles = filtroRegistrosVisibles(req, 'r');
     const [ultimos] = await pool.query(
       `SELECT r.id_registro, r.codigo, r.asunto, r.fecha_creacion,
               r.id_usuario, r.es_confidencial, r.nota_confidencial,
@@ -83,11 +84,11 @@ const getResumen = async (req, res) => {
        LEFT JOIN USUARIO um ON r.id_usuario_modificacion = um.id_usuario
        LEFT JOIN REGISTRO_ESTUDIANTE re ON r.id_registro = re.id_registro
        LEFT JOIN ESTUDIANTE e ON re.id_estudiante = e.id_estudiante
-       WHERE r.id_establecimiento = ?
+       WHERE r.id_establecimiento = ?${ultimosVisibles.sql}
        GROUP BY r.id_registro
        ORDER BY r.fecha_creacion DESC
        LIMIT 5`,
-      [id_est]
+      [id_est, ...ultimosVisibles.params]
     );
 
     // Lo que un registro confidencial oculta es el asunto (el contenido del
