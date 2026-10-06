@@ -52,10 +52,6 @@ const Permiso = Object.freeze({
   SostenedorEliminar              : 25,
   SostenedorAsignarEstablecimiento: 26,
 
-  // mi_establecimiento
-  MiEstablecimientoVer   : 27,
-  MiEstablecimientoEditar: 28,
-
   // curso
   CursoVer           : 29,
   CursoCrear         : 30,
@@ -240,8 +236,6 @@ const CODIGO_POR_ID = Object.freeze({
   24: 'sostenedor.editar',
   25: 'sostenedor.eliminar',
   26: 'sostenedor.asignar_establecimiento',
-  27: 'mi_establecimiento.ver',
-  28: 'mi_establecimiento.editar',
   29: 'curso.ver',
   30: 'curso.crear',
   31: 'curso.editar',
