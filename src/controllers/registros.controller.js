@@ -373,9 +373,19 @@ const getById = async (req, res) => {
 const create = async (req, res) => {
   const { fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, estudiantes,
           involucrados_personal, es_confidencial, nota_confidencial } = req.body;
+  // Registro creado desde la bandeja del canal de denuncias: la denuncia pasa a
+  // 'convertida' en la misma transacción, así nunca queda un registro sin su
+  // denuncia ni una denuncia "convertida" sin registro.
+  const id_denuncia = req.body.id_denuncia ? Number(req.body.id_denuncia) : null;
 
   if (!fecha_incidente || !asunto || !antecedentes || !id_tipo_falta)
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
+
+  if (id_denuncia && !tienePermiso(req, Permiso.DenunciaGestionar))
+    return res.status(403).json({
+      message: 'No tienes permisos para crear un registro a partir de una denuncia',
+      permiso_requerido: 'denuncia.gestionar',
+    });
 
   // Marcar un registro como confidencial ya al crearlo exige el mismo permiso
   // que levantarla o marcarla en uno ajeno (puedeEditarConfidencialidad, que
@@ -439,7 +449,7 @@ const create = async (req, res) => {
   // Sin ningún involucrado el alta es una sola consulta, y una consulta suelta
   // ya es atómica: envolverla en una transacción eran dos viajes más (BEGIN y
   // COMMIT) sin ninguna garantía extra a cambio.
-  if (!hayEstudiantes && !hayPersonal) {
+  if (!hayEstudiantes && !hayPersonal && !id_denuncia) {
     try {
       const [result] = await insertarConFolio(pool, sqlRegistro, paramsRegistro);
       if (result.affectedRows === 0)
@@ -467,6 +477,23 @@ const create = async (req, res) => {
     }
 
     const id_registro = result.insertId;
+
+    if (id_denuncia) {
+      const [d] = await conn.query(
+        `UPDATE DENUNCIA
+            SET estado = 'convertida', id_registro = ?, id_usuario_gestiona = ?, fecha_gestion = NOW()
+          WHERE id_denuncia = ? AND id_establecimiento = ? AND estado IN ('nueva','en_revision')`,
+        [id_registro, req.user.id, id_denuncia, req.id_establecimiento]
+      );
+      if (d.affectedRows === 0) {
+        await conn.rollback();
+        return res.status(409).json({ message: 'La denuncia no existe o ya fue gestionada' });
+      }
+      await conn.query(
+        `UPDATE NOTIFICACION SET leida = 1 WHERE tipo = 'denuncia_nueva' AND url = ?`,
+        [`/denuncias?abrir=${id_denuncia}`]
+      );
+    }
 
     if (hayEstudiantes) {
       const values = estudiantes.map(e => [id_registro, e.id_estudiante, e.rol_en_incidente]);
@@ -513,9 +540,19 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   const { fecha_incidente, asunto, antecedentes, acuerdos, id_tipo_falta, estudiantes,
           involucrados_personal, es_confidencial, nota_confidencial } = req.body;
+  // Registro creado desde la bandeja del canal de denuncias: la denuncia pasa a
+  // 'convertida' en la misma transacción, así nunca queda un registro sin su
+  // denuncia ni una denuncia "convertida" sin registro.
+  const id_denuncia = req.body.id_denuncia ? Number(req.body.id_denuncia) : null;
 
   if (!fecha_incidente || !asunto || !antecedentes || !id_tipo_falta)
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
+
+  if (id_denuncia && !tienePermiso(req, Permiso.DenunciaGestionar))
+    return res.status(403).json({
+      message: 'No tienes permisos para crear un registro a partir de una denuncia',
+      permiso_requerido: 'denuncia.gestionar',
+    });
 
   // Quien no puede tocar la confidencialidad conserva la que ya tenía el
   // registro, mande lo que mande en el body: el front le deshabilita el check,

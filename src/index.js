@@ -81,6 +81,10 @@ app.use('/api/expedientes', require('./routes/expedientes.routes'));
 // RICE y Plan de Gestión, y la constancia de que se entregaron (art. 16 G).
 app.use('/api/documentos-institucionales', require('./routes/documentosInstitucionales.routes'));
 app.use('/api/constancias', require('./routes/constancias.routes'));
+// Canal de denuncias con reserva de identidad (art. 46 e LGE). El formulario
+// público no lleva sesión; la bandeja sí.
+app.use('/api/canal-denuncia', require('./routes/canalDenuncia.routes'));
+app.use('/api/denuncias', require('./routes/denuncias.routes'));
 
 // Document IA
 app.use('/api/documents', documentosRoutes);
