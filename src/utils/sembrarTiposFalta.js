@@ -35,4 +35,42 @@ const sembrarTiposFalta = async (conn, id_establecimiento) => {
   return TIPOS_FALTA_PLANTILLA.length;
 };
 
-module.exports = { sembrarTiposFalta };
+/**
+ * Vincula cada motivo de la plantilla con el protocolo que manda activar
+ * (TIPO_FALTA_PROTOCOLO). Sin este vínculo el formulario de registros no
+ * preselecciona ningún protocolo al elegir el motivo: el colegio tenía los
+ * motivos y los protocolos, pero nadie los había unido a mano.
+ *
+ * El vínculo une dos cosas del colegio (su motivo y su copia del protocolo),
+ * así que solo puede crearse cuando ya adoptó ese protocolo. Por eso corre en
+ * dos momentos: al darse de alta y cada vez que adopta un genérico
+ * (`id_protocolo` acota a ese).
+ *
+ * Solo toca motivos que todavía no tienen ningún protocolo vinculado: si el
+ * colegio ya configuró los suyos en el mantenedor, eso manda. El motivo se
+ * busca por nombre, así que uno renombrado por el colegio queda afuera.
+ *
+ * @returns {Promise<number>} vínculos creados
+ */
+const vincularProtocolosPlantilla = async (ejecutor, id_establecimiento, id_protocolo = null) => {
+  const pares = TIPOS_FALTA_PLANTILLA
+    .filter((t) => t.protocolo_generico && (id_protocolo === null || t.protocolo_generico === Number(id_protocolo)))
+    .map((t) => [t.nombre, t.protocolo_generico]);
+  if (pares.length === 0) return 0;
+
+  const [r] = await ejecutor.query(
+    `INSERT INTO TIPO_FALTA_PROTOCOLO
+       (id_tipo_falta, id_protocolo_establecimiento, id_establecimiento, obligatorio)
+     SELECT tf.id_tipo_falta, pe.id_protocolo_establecimiento, tf.id_establecimiento, 0
+       FROM TIPO_FALTA tf
+       JOIN PROTOCOLO_ESTABLECIMIENTO pe
+         ON pe.id_establecimiento = tf.id_establecimiento
+      WHERE tf.id_establecimiento = ?
+        AND (tf.nombre, pe.id_protocolo) IN (?)
+        AND NOT EXISTS (SELECT 1 FROM TIPO_FALTA_PROTOCOLO x WHERE x.id_tipo_falta = tf.id_tipo_falta)`,
+    [id_establecimiento, pares]
+  );
+  return r.affectedRows;
+};
+
+module.exports = { sembrarTiposFalta, vincularProtocolosPlantilla };

@@ -11,6 +11,12 @@
 // nunca más se vuelve a leer desde acá. Cambiar esta lista solo afecta a los
 // establecimientos que se den de alta después.
 //
+// `protocolo_generico` es el id del CATALOGO_PROTOCOLOS_GENERICOS que esa
+// falta manda activar. Con él se siembra TIPO_FALTA_PROTOCOLO
+// (sembrarTiposFalta.js → vincularProtocolosPlantilla): sin ese vínculo el
+// formulario de registros no preselecciona ningún protocolo al elegir el
+// motivo. Las faltas sin protocolo propio no lo llevan.
+//
 // La clasificación leve / grave / gravísima y los ejemplos provienen de
 // reglamentos internos de convivencia escolar publicados en el CDN del MINEDUC
 // y del Ord. 476 de la Superintendencia de Educación Escolar.
@@ -96,6 +102,7 @@ const TIPOS_FALTA_PLANTILLA = [
   },
   {
     nombre: 'Consumo de tabaco o vapeo',
+    protocolo_generico: 10,
     gravedad: 'grave',
     descripcion: 'Fumar o vapear dentro del establecimiento o en cualquier actividad escolar, dentro o fuera de él.',
     medida_sugerida: 'Citación al apoderado y derivación psicosocial',
@@ -126,42 +133,49 @@ const TIPOS_FALTA_PLANTILLA = [
   // nunca fuera el que correspondía.
   {
     nombre: 'Agresión física entre estudiantes',
+    protocolo_generico: 46,
     gravedad: 'gravísima',
     descripcion: 'Golpes o agresión corporal de un estudiante a otro, dentro o fuera del establecimiento. Si el agresor o el afectado es un adulto, corresponde otro tipo de falta: la vía y el protocolo son distintos.',
     medida_sugerida: 'Suspensión de clases y citación al apoderado',
   },
   {
     nombre: 'Agresión de un estudiante a un funcionario',
+    protocolo_generico: 49,
     gravedad: 'gravísima',
     descripcion: 'Violencia física o psicológica de un estudiante hacia un docente, asistente de la educación u otro funcionario, ocurrida durante el ejercicio de sus funciones o como resultado de ellas, dentro o fuera del establecimiento.',
     medida_sugerida: 'Debido proceso con descargos y medida disciplinaria proporcional; acompañamiento al funcionario afectado. La Ley 21.809 la califica de especial gravedad.',
   },
   {
     nombre: 'Agresión verbal o amenazas',
+    protocolo_generico: 4,
     gravedad: 'gravísima',
     descripcion: 'Insultos, amenazas graves y explícitas o acciones que deshonren a un miembro de la comunidad educativa, por cualquier medio.',
     medida_sugerida: 'Suspensión de clases, citación al apoderado y medida reparatoria',
   },
   {
     nombre: 'Acoso escolar (bullying)',
+    protocolo_generico: 4,
     gravedad: 'gravísima',
     descripcion: 'Hostigamiento sistemático hacia un compañero, incluido el ciberbullying por redes sociales, chats o mensajería.',
     medida_sugerida: 'Activación de protocolo, derivación psicosocial y suspensión si corresponde',
   },
   {
     nombre: 'Acoso o abuso sexual',
+    protocolo_generico: 7,
     gravedad: 'gravísima',
     descripcion: 'Acoso o abuso sexual hacia cualquier miembro de la comunidad educativa.',
     medida_sugerida: 'Activación de protocolo y denuncia a la autoridad competente dentro de 24 horas',
   },
   {
     nombre: 'Discriminación arbitraria',
+    protocolo_generico: 47,
     gravedad: 'gravísima',
     descripcion: 'Trato discriminatorio hacia una persona por su origen, género, orientación, religión, discapacidad u otra condición.',
     medida_sugerida: 'Activación de protocolo, medida reparatoria y derivación psicosocial',
   },
   {
     nombre: 'Robo o hurto',
+    protocolo_generico: 44,
     gravedad: 'gravísima',
     descripcion: 'Sustraer dinero o bienes de cualquier miembro de la comunidad educativa o del establecimiento.',
     medida_sugerida: 'Restitución del bien, citación al apoderado y denuncia si constituye delito',
@@ -180,6 +194,7 @@ const TIPOS_FALTA_PLANTILLA = [
   },
   {
     nombre: 'Fuga del establecimiento',
+    protocolo_generico: 48,
     gravedad: 'gravísima',
     descripcion: 'Retirarse o salir del establecimiento sin la autorización correspondiente.',
     medida_sugerida: 'Citación inmediata al apoderado y suspensión de clases',
@@ -192,18 +207,21 @@ const TIPOS_FALTA_PLANTILLA = [
   },
   {
     nombre: 'Grabar o difundir sin consentimiento',
+    protocolo_generico: 28,
     gravedad: 'gravísima',
     descripcion: 'Fotografiar, grabar o filmar a personas de la comunidad educativa sin su consentimiento, o difundir ese material.',
     medida_sugerida: 'Suspensión de clases, citación al apoderado y eliminación del material',
   },
   {
     nombre: 'Alcohol o drogas',
+    protocolo_generico: 10,
     gravedad: 'gravísima',
     descripcion: 'Ingresar, consumir o participar bajo los efectos de alcohol o drogas en actividades del establecimiento.',
     medida_sugerida: 'Activación de protocolo, derivación a red de apoyo y suspensión de clases',
   },
   {
     nombre: 'Porte de armas',
+    protocolo_generico: 45,
     gravedad: 'gravísima',
     descripcion: 'Ingresar o fabricar armas o municiones al interior del establecimiento.',
     medida_sugerida: 'Denuncia a la autoridad competente y procedimiento de expulsión',
@@ -227,6 +245,7 @@ const TIPOS_FALTA_PLANTILLA = [
   // el campo que el equipo lee al registrar.
   {
     nombre: 'Agresión de un funcionario a un estudiante',
+    protocolo_generico: 43,
     gravedad: 'gravísima',
     descripcion: 'Maltrato físico o psicológico de un funcionario, docente, asistente de la educación o adulto de la comunidad hacia un estudiante. La responsabilidad es del adulto: el estudiante es la persona afectada, no la señalada.',
     medida_sugerida: 'Activación del protocolo, separación del trato directo con estudiantes y derivación al procedimiento laboral o administrativo. No corresponde medida disciplinaria contra el estudiante.',

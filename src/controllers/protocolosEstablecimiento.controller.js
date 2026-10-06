@@ -1,4 +1,5 @@
 const pool = require('../db/connection');
+const { vincularProtocolosPlantilla } = require('../utils/sembrarTiposFalta');
 
 // Un protocolo del establecimiento viene por una de dos vías:
 //
@@ -67,6 +68,14 @@ const create = async (req, res) => {
        VALUES (?, ?, ?, ?, ?)`,
       [req.id_establecimiento, id_protocolo, nombre || null, descripcion || null, generico.ambito]
     );
+    // Los motivos de la plantilla que mandan este protocolo quedan vinculados
+    // a él, así el registro lo preselecciona al elegir el motivo. Un fallo acá
+    // no deshace la adopción: el vínculo se puede armar a mano en Tipos de falta.
+    try {
+      await vincularProtocolosPlantilla(pool, req.id_establecimiento, id_protocolo);
+    } catch (err) {
+      console.error('No se pudieron vincular los motivos al protocolo adoptado:', err.message);
+    }
     res.status(201).json({ id_protocolo_establecimiento: result.insertId, message: 'Protocolo adoptado por el establecimiento' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY')

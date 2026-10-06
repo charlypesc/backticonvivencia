@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const pool = require('../db/connection');
-const { sembrarTiposFalta } = require('../utils/sembrarTiposFalta');
+const { sembrarTiposFalta, vincularProtocolosPlantilla } = require('../utils/sembrarTiposFalta');
 
 // ESTABLECIMIENTO es a la vez el directorio nacional de colegios (7.847
 // filas importadas del MINEDUC) y la tabla de tenants. `es_tenant` distingue
@@ -127,6 +127,9 @@ const create = async (req, res) => {
     // Un colegio recién dado de alta con el catálogo de faltas vacío no puede
     // registrar nada: el formulario de registros exige un id_tipo_falta.
     await sembrarTiposFalta(conn, id_establecimiento);
+    // Por si el colegio ya tenía protocolos adoptados (un re-alta): sin esto
+    // sus motivos no sugieren ningún protocolo en el registro.
+    await vincularProtocolosPlantilla(conn, id_establecimiento);
 
     const password_hash = await bcrypt.hash(password, 10);
     const [userResult] = await conn.query(
