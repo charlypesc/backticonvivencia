@@ -37,6 +37,13 @@ const pool = mysql.createPool({
   // las comparten todos los entornos (local, Render, scripts sueltos):
   // acaparar diez ociosas por proceso deja sin cupo al resto.
   maxIdle: 4,
+  // Sin keep-alive, una conexión ociosa del pool puede quedar muerta sin que
+  // mysql2 se entere (la corta un NAT o el proxy de Aiven mucho antes del
+  // wait_timeout), y la siguiente consulta que la toma falla con
+  // `read ECONNRESET` → un 500 aunque los datos estén bien. El log del job de
+  // vencimientos mostraba ese error una y otra vez.
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
 module.exports = pool;

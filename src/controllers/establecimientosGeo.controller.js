@@ -100,11 +100,35 @@ const getAll = async (req, res) => {
   }
 };
 
+// Largos de las columnas de ESTABLECIMIENTO. El servidor corre con
+// STRICT_ALL_TABLES: un texto más largo no se recorta, el INSERT falla entero
+// y terminaba en un 500 genérico sin decir qué campo sobraba (típico: dos
+// teléfonos escritos en el mismo campo).
+const LARGO_MAXIMO = {
+  nombre: ['El nombre', 200],
+  rbd: ['El RBD', 20],
+  direccion: ['La dirección', 200],
+  telefono: ['El teléfono', 30],
+  correo: ['El correo', 150],
+  tipo_dependencia: ['El tipo de dependencia', 100],
+};
+
+const campoDemasiadoLargo = (body) => {
+  for (const [campo, [etiqueta, max]] of Object.entries(LARGO_MAXIMO)) {
+    if (String(body[campo] ?? '').length > max)
+      return `${etiqueta} admite hasta ${max} caracteres`;
+  }
+  return null;
+};
+
 const create = async (req, res) => {
   const { nombre, rbd, direccion, telefono, correo, tipo_dependencia, id_comuna, id_sostenedor } = req.body;
 
   if (!nombre || !rbd || !id_comuna)
     return res.status(400).json({ message: 'Nombre, RBD y comuna son requeridos' });
+
+  const largo = campoDemasiadoLargo(req.body);
+  if (largo) return res.status(400).json({ message: largo });
 
   try {
     const [result] = await pool.query(
@@ -117,6 +141,8 @@ const create = async (req, res) => {
     console.error(err);
     if (err.code === 'ER_DUP_ENTRY')
       return res.status(409).json({ message: 'RBD ya registrado' });
+    if (err.code === 'ER_NO_REFERENCED_ROW_2')
+      return res.status(400).json({ message: 'La comuna o el sostenedor indicado no existe' });
     res.status(500).json({ message: 'Error al crear el establecimiento' });
   }
 };
@@ -126,6 +152,9 @@ const update = async (req, res) => {
 
   if (!nombre || !rbd || !id_comuna)
     return res.status(400).json({ message: 'Nombre, RBD y comuna son requeridos' });
+
+  const largo = campoDemasiadoLargo(req.body);
+  if (largo) return res.status(400).json({ message: largo });
 
   try {
     await pool.query(
@@ -139,6 +168,8 @@ const update = async (req, res) => {
     console.error(err);
     if (err.code === 'ER_DUP_ENTRY')
       return res.status(409).json({ message: 'RBD ya registrado' });
+    if (err.code === 'ER_NO_REFERENCED_ROW_2')
+      return res.status(400).json({ message: 'La comuna o el sostenedor indicado no existe' });
     res.status(500).json({ message: 'Error al actualizar' });
   }
 };
