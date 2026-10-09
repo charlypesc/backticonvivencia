@@ -88,10 +88,15 @@ const exigirEspejoEditable = async (pe) => {
 // Las funciones de validación trabajan con los nombres canónicos del grafo
 // (id_paso, id_paso_origen, id_paso_destino). El espejo usa id_paso_estab, así
 // que se aliasea en el SELECT en vez de traducir después en memoria.
+//
+// El editor guarda lo que este SELECT le entregó: una columna que falte acá
+// llega vacía al guardar y se borra. Así se perdían "a quién alcanza" y la
+// medida requerida al editar cualquier paso de un protocolo personalizado.
 const SELECT_PASOS = `
   SELECT id_paso_estab AS id_paso, id_paso_estab, id_protocolo_establecimiento,
          id_paso_origen_catalogo, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
-         accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual
+         plazo_desde, accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
+         por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida
   FROM PROTOCOLO_ESTABLECIMIENTO_PASO
   WHERE id_protocolo_establecimiento = ?
 `;
@@ -255,12 +260,12 @@ const personalizar = async (req, res) => {
         const [r] = await conn.query(
           `INSERT INTO PROTOCOLO_ESTABLECIMIENTO_PASO
              (id_protocolo_establecimiento, id_paso_origen_catalogo, nombre, descripcion, tipo_paso,
-              plazo_valor, plazo_unidad, accion_al_vencer, es_paso_inicial, es_paso_final, orden_visual,
-              por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              plazo_valor, plazo_unidad, plazo_desde, accion_al_vencer, es_paso_inicial, es_paso_final,
+              orden_visual, por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_protocolo_establecimiento, p.id_paso, p.nombre, p.descripcion, p.tipo_paso,
-            p.plazo_valor, p.plazo_unidad, p.accion_al_vencer,
+            p.plazo_valor, p.plazo_unidad, p.plazo_desde, p.accion_al_vencer,
             p.es_paso_inicial, p.es_paso_final, p.orden_visual,
             p.por_involucrado_rol, p.requiere_notificacion, p.requiere_medida,
             p.tipo_medida_requerida,

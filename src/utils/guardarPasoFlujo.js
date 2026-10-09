@@ -69,13 +69,17 @@ const COLUMNAS_PASO = [
   'nombre', 'descripcion', 'tipo_paso', 'plazo_valor', 'plazo_unidad',
   'accion_al_vencer', 'es_paso_inicial', 'es_paso_final', 'orden_visual',
   'por_involucrado_rol', 'requiere_notificacion', 'requiere_medida',
-  'tipo_medida_requerida',
+  'tipo_medida_requerida', 'plazo_desde',
 ];
 
-const valoresPaso = (p, plazo, tipoPorDefecto) => [
+// `previo` es la fila que ya estaba guardada (o nada, si el paso es nuevo). De
+// ella se toman los valores que el body no trae, en vez de pisarlos con el
+// default: un editor que todavía no conoce el campo no puede borrarlo al
+// guardar otra cosa.
+const valoresPaso = (p, plazo, previo = {}) => [
   p.nombre.trim(),
   p.descripcion?.trim() || null,
-  p.tipo_paso || tipoPorDefecto || 'informativo',
+  p.tipo_paso || previo.tipo_paso || 'informativo',
   plazo.valor,
   plazo.unidad,
   p.accion_al_vencer || 'notificar',
@@ -86,6 +90,7 @@ const valoresPaso = (p, plazo, tipoPorDefecto) => [
   p.requiere_notificacion ? 1 : 0,
   p.requiere_medida ? 1 : 0,
   normalizarMedidaRequerida(p),
+  p.plazo_desde || previo.plazo_desde || 'inicio_paso',
 ];
 
 /**
@@ -311,10 +316,10 @@ async function guardarPasoCompleto({ conn, dialecto: D, idProtocolo, idPaso, cue
 
   let idPasoFinal = idPaso;
   if (idPaso) {
-    // Se lee solo para el tipo previo: `tipo_paso` puede venir vacío en el
-    // body y en ese caso se conserva el que ya tenía.
+    // Se lee para lo que el body puede no traer: `tipo_paso` y `plazo_desde`
+    // vacíos conservan el valor que ya tenían.
     const [[actual]] = await conn.query(
-      `SELECT tipo_paso FROM ${D.tablaPaso} WHERE ${D.pkPaso} = ? AND ${D.fkProtocolo} = ?`,
+      `SELECT tipo_paso, plazo_desde FROM ${D.tablaPaso} WHERE ${D.pkPaso} = ? AND ${D.fkProtocolo} = ?`,
       [idPaso, idProtocolo]
     );
     if (!actual) throw new ErrorFlujo(404, 'Paso no encontrado en este protocolo');
@@ -322,7 +327,7 @@ async function guardarPasoCompleto({ conn, dialecto: D, idProtocolo, idPaso, cue
     await conn.query(
       `UPDATE ${D.tablaPaso} SET ${COLUMNAS_PASO.map((c) => `${c} = ?`).join(', ')}
        WHERE ${D.pkPaso} = ? AND ${D.fkProtocolo} = ?`,
-      [...valoresPaso(datosPaso, plazo, actual.tipo_paso), idPaso, idProtocolo]
+      [...valoresPaso(datosPaso, plazo, actual), idPaso, idProtocolo]
     );
   } else {
     const [r] = await conn.query(
