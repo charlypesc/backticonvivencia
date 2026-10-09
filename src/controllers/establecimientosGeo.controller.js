@@ -226,44 +226,20 @@ const cambiarObservaciones = async (req, res) => {
 // cambia desde la lista de Geo y no debe depender del formulario de datos.
 const MENSAJES_ESTADO_CORREO = ['Correo sin enviar', 'Correo enviado', 'Respondió el correo'];
 
-// Fecha de seguimiento al marcar "enviado": mañana a las 09:00 en hora de
-// Chile (el servidor corre en UTC, así que el "mañana" se calcula en Santiago).
-const fechaSeguimiento = () => {
-  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
-  const [a, m, d] = hoy.split('-').map(Number);
-  const manana = new Date(Date.UTC(a, m - 1, d + 1));
-  const dd = String(manana.getUTCDate()).padStart(2, '0');
-  const mm = String(manana.getUTCMonth() + 1).padStart(2, '0');
-  return `${dd}-${mm}-${manana.getUTCFullYear()} 09:00`;
-};
-
 const cambiarEstadoCorreo = async (req, res) => {
   const estado = Number(req.body.estado_correo);
   if (![0, 1, 2].includes(estado))
     return res.status(400).json({ message: 'Estado de correo inválido' });
 
   try {
-    const [[actual]] = await pool.query(
-      `SELECT estado_correo, observaciones FROM ESTABLECIMIENTO WHERE id_establecimiento = ?`,
-      [req.params.id]
+    const [r] = await pool.query(
+      `UPDATE ESTABLECIMIENTO SET estado_correo = ? WHERE id_establecimiento = ?`,
+      [estado, req.params.id]
     );
-    if (!actual)
+    if (r.affectedRows === 0)
       return res.status(404).json({ message: 'Establecimiento no encontrado' });
 
-    // Solo al pasar a "enviado" (no si ya lo estaba): se agrega la fecha de
-    // seguimiento como una línea más, sin pisar lo que ya había escrito.
-    let observaciones = actual.observaciones;
-    if (estado === 1 && Number(actual.estado_correo) !== 1) {
-      const linea = `Correo enviado — seguimiento ${fechaSeguimiento()}`;
-      observaciones = observaciones ? `${observaciones}\n${linea}` : linea;
-    }
-
-    await pool.query(
-      `UPDATE ESTABLECIMIENTO SET estado_correo = ?, observaciones = ? WHERE id_establecimiento = ?`,
-      [estado, observaciones, req.params.id]
-    );
-
-    res.json({ estado_correo: estado, observaciones, message: MENSAJES_ESTADO_CORREO[estado] });
+    res.json({ estado_correo: estado, message: MENSAJES_ESTADO_CORREO[estado] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al guardar el estado del correo' });
