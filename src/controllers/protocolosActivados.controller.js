@@ -227,15 +227,40 @@ const rolesDelPaso = async (id_activado_paso, tipo_participacion) => {
   return rows.map((r) => r.nombre).join(', ');
 };
 
+// El momento en que el establecimiento supo del hecho: lo primero entre la
+// denuncia recibida por el canal (si el registro salió de una), la creación del
+// registro y la activación del protocolo. Va por la conexión de la transacción
+// porque al activar, la fila del protocolo todavía no está commiteada.
+const momentoDeConocimiento = async (conn, id_protocolo_activado) => {
+  const [[fila]] = await conn.query(
+    `SELECT LEAST(pa.fecha_activacion,
+                  COALESCE(r.fecha_creacion, pa.fecha_activacion),
+                  COALESCE((SELECT MIN(d.fecha_creacion) FROM DENUNCIA d
+                            WHERE d.id_registro = pa.id_registro), pa.fecha_activacion)) AS desde
+     FROM PROTOCOLO_ACTIVADO pa
+     LEFT JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = pa.id_registro
+     WHERE pa.id_protocolo_activado = ?`,
+    [id_protocolo_activado]
+  );
+  return fila?.desde ?? null;
+};
+
 // Arranca un paso: lo pone en curso y le calcula el vencimiento. La fecha
 // límite se calcula acá y no al activar el protocolo porque un paso que espera
 // tres semanas en 'pendiente' no debería nacer ya vencido.
+//
+// La excepción son los pasos con plazo_desde = 'conocimiento' (la denuncia
+// del art. 176 CPP): esos sí pueden nacer vencidos, porque la ley cuenta las
+// 24 horas desde que el colegio supo del hecho y no desde que le tocó al paso.
 const iniciarPaso = async (conn, paso) => {
   const ahora = new Date();
+  const desde = paso.plazo_desde === 'conocimiento'
+    ? (await momentoDeConocimiento(conn, paso.id_protocolo_activado)) ?? ahora
+    : ahora;
   // Los feriados dependen de la región del establecimiento (hay feriados
   // regionales), así que se piden por caso y no una vez para todo el sistema.
   const feriados = await cargarFeriados(paso.id_establecimiento);
-  const limite = calcularFechaLimite(ahora, paso.plazo_valor, paso.plazo_unidad, feriados);
+  const limite = calcularFechaLimite(desde, paso.plazo_valor, paso.plazo_unidad, feriados);
   await conn.query(
     `UPDATE PROTOCOLO_ACTIVADO_PASO
      SET estado = 'en_curso', fecha_inicio = ?, fecha_limite = ?
@@ -615,7 +640,7 @@ const getBitacora = async (req, res) => {
 const cargarGrafoFuente = async (pe) => {
   const [espejo] = await pool.query(
     `SELECT id_paso_estab AS id_paso, nombre, descripcion, tipo_paso, plazo_valor, plazo_unidad,
-            accion_al_vencer, es_paso_inicial, es_paso_final, id_paso_origen_catalogo,
+            plazo_desde, accion_al_vencer, es_paso_inicial, es_paso_final, id_paso_origen_catalogo,
             por_involucrado_rol, requiere_notificacion, requiere_medida, tipo_medida_requerida
      FROM PROTOCOLO_ESTABLECIMIENTO_PASO WHERE id_protocolo_establecimiento = ?`,
     [pe.id_protocolo_establecimiento]
@@ -762,15 +787,15 @@ const activar = async (req, res) => {
           `INSERT INTO PROTOCOLO_ACTIVADO_PASO
              (id_protocolo_activado, id_establecimiento, id_paso_origen_catalogo, id_paso_origen_estab,
               nombre, descripcion, tipo_paso, estado, es_paso_inicial, es_paso_final,
-              plazo_valor, plazo_unidad, accion_al_vencer, por_involucrado_rol, requiere_notificacion,
-              requiere_medida, tipo_medida_requerida)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              plazo_valor, plazo_unidad, plazo_desde, accion_al_vencer, por_involucrado_rol,
+              requiere_notificacion, requiere_medida, tipo_medida_requerida)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_protocolo_activado, req.id_establecimiento,
             fuente.esEspejo ? p.id_paso_origen_catalogo : p.id_paso,
             fuente.esEspejo ? p.id_paso : null,
             p.nombre, p.descripcion, p.tipo_paso, p.es_paso_inicial, p.es_paso_final,
-            p.plazo_valor, p.plazo_unidad, p.accion_al_vencer,
+            p.plazo_valor, p.plazo_unidad, p.plazo_desde ?? 'inicio_paso', p.accion_al_vencer,
             p.por_involucrado_rol ?? null, p.requiere_notificacion ?? 0, p.requiere_medida ?? 0,
             p.tipo_medida_requerida ?? null,
           ]

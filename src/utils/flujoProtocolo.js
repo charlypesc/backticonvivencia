@@ -47,6 +47,13 @@ const TIPOS_PASO_APROBACION = ['aprobacion', 'medida_disciplinaria', 'medida_cau
 const esPasoDeAprobacion = (tipo_paso) => TIPOS_PASO_APROBACION.includes(tipo_paso);
 const UNIDADES_PLAZO = ['horas', 'dias_habiles', 'dias_corridos'];
 const ACCIONES_VENCER = ['notificar', 'escalar', 'marcar_alerta'];
+// Desde cuándo corre el plazo de un paso. Lo normal es desde que el paso
+// empieza; 'conocimiento' es para los plazos que la ley cuenta desde que el
+// establecimiento supo del hecho, como las 24 horas para denunciar del art.
+// 176 del Código Procesal Penal: si se contaran desde que arranca el paso, las
+// horas de los pasos previos quedarían fuera y la denuncia podría estar "en
+// plazo" en el sistema y fuera de plazo ante la ley.
+const PLAZO_DESDE = ['inicio_paso', 'conocimiento'];
 const TIPOS_PARTICIPACION = ['ejecutor', 'aprobador', 'notificado'];
 
 // Roles de un involucrado en el caso. Deliberadamente 'afectado' y 'senalado'
@@ -651,12 +658,14 @@ const validarPlazo = (plazo_valor, plazo_unidad) => {
 
 /** Validaciones de forma de un paso, sin mirar la BD. Devuelve mensaje o null. */
 const validarPaso = ({ nombre, tipo_paso, accion_al_vencer, por_involucrado_rol,
-                       tipo_medida_requerida }) => {
+                       tipo_medida_requerida, plazo_desde }) => {
   if (!nombre?.trim()) return 'Nombre es requerido';
   if (tipo_paso && !TIPOS_PASO.includes(tipo_paso))
     return `tipo_paso debe ser uno de: ${TIPOS_PASO.join(', ')}.`;
   if (accion_al_vencer && !ACCIONES_VENCER.includes(accion_al_vencer))
     return `accion_al_vencer debe ser uno de: ${ACCIONES_VENCER.join(', ')}.`;
+  if (plazo_desde && !PLAZO_DESDE.includes(plazo_desde))
+    return `plazo_desde debe ser uno de: ${PLAZO_DESDE.join(', ')}.`;
   if (por_involucrado_rol && !ROLES_PASO_INVOLUCRADO.includes(por_involucrado_rol))
     return `por_involucrado_rol debe ser uno de: ${ROLES_PASO_INVOLUCRADO.join(', ')}, o quedar vacío si el paso es del caso.`;
   if (tipo_medida_requerida && !TIPOS_MEDIDA_REQUERIDA.includes(tipo_medida_requerida))
@@ -795,6 +804,7 @@ module.exports = {
   esPasoDeAprobacion,
   UNIDADES_PLAZO,
   ACCIONES_VENCER,
+  PLAZO_DESDE,
   TIPOS_PARTICIPACION,
   TIPOS_MEDIDA_REQUERIDA,
   normalizarMedidaRequerida,
