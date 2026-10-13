@@ -208,8 +208,9 @@ const getResumen = async (req, res) => {
            WHERE id_establecimiento = ? AND estado IN ('vigente','vencida')
              AND fecha_termino IS NOT NULL AND fecha_termino < CURDATE()) AS medidas_vencidas,
 
-         -- Investigaciones que se pasaron del techo legal (2 meses, o el
-         -- término de una segunda suspensión).
+         -- Investigaciones que se pasaron del techo legal (2 meses desde el
+         -- registro, 60 días hábiles si es personal, o el término de una
+         -- segunda suspensión).
          (SELECT COUNT(*) FROM PROTOCOLO_ACTIVADO
            WHERE id_establecimiento = ? AND estado = 'activo'
              AND fecha_limite_investigacion IS NOT NULL
@@ -297,6 +298,31 @@ const getResumen = async (req, res) => {
       [id_est]
     );
 
+    // Casos con el plazo legal de investigación vencido o por vencer (menos de
+    // un mes). El contador de cumplimiento decía cuántos, pero no quiénes: con
+    // la lista, el coordinador ve a qué estudiantes se está dejando esperando.
+    let plazos_investigacion = [];
+    if (tienePermiso(req, Permiso.ProtocoloActivadoVerTodos)) {
+      const visibles = filtroRegistrosVisibles(req, 'r');
+      [plazos_investigacion] = await pool.query(
+        `SELECT pa.id_protocolo_activado, pa.codigo, pa.nombre_protocolo, pa.fecha_limite_investigacion,
+                DATEDIFF(pa.fecha_limite_investigacion, CURDATE()) AS dias_restantes,
+                GROUP_CONCAT(DISTINCT CONCAT(e.nombre, ' ', e.apellido)
+                             ORDER BY e.nombre SEPARATOR ', ') AS alumno_nombre
+         FROM PROTOCOLO_ACTIVADO pa
+         JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = pa.id_registro
+         LEFT JOIN REGISTRO_ESTUDIANTE re ON re.id_registro = r.id_registro
+         LEFT JOIN ESTUDIANTE e ON e.id_estudiante = re.id_estudiante
+         WHERE pa.id_establecimiento = ? AND pa.estado = 'activo'
+           AND pa.fecha_limite_investigacion IS NOT NULL
+           AND pa.fecha_limite_investigacion <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)${visibles.sql}
+         GROUP BY pa.id_protocolo_activado
+         ORDER BY pa.fecha_limite_investigacion
+         LIMIT 20`,
+        [id_est, ...visibles.params]
+      );
+    }
+
     // ── Gráficos (los del dashboard de MiConvivencia) ──────────────────────
     // Registros por mes del año en curso, protocolos activados por tipo, y el
     // volumen de lo que se ingresó por tipo de documento.
@@ -358,6 +384,7 @@ const getResumen = async (req, res) => {
       alertas: {
         afectados_reiterados: afectados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
         senalados_reiterados: senalados_reiterados.map((a) => ({ ...a, bullying: !!a.bullying })),
+        plazos_investigacion,
       },
       graficos: {
         anio: new Date().getFullYear(),

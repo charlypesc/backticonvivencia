@@ -370,6 +370,158 @@ async function procesarDerivacionesVencidas(lote = LOTE) {
   return { procesados: vencidas.length };
 }
 
+const fechaCorta = (iso) => String(iso).slice(0, 10).split('-').reverse().join('-');
+
+/**
+ * Plazo legal de la investigación (fecha_limite_investigacion, que corre desde
+ * el registro: 2 meses para estudiantes, 60 días hábiles para personal).
+ *
+ * Hasta ahora un caso que se pasaba del plazo solo sumaba uno en un contador
+ * del dashboard: nadie recibía nada, y el estudiante seguía esperando una
+ * resolución que no llegaba. Ahora hay tres avisos, cada uno marcado en su
+ * columna para no repetirse en cada corrida:
+ *
+ *  - Un mes antes: a quienes trabajan el caso y a los coordinadores, cuando
+ *    todavía hay tiempo de cerrarlo.
+ *  - Al vencer: solo a los coordinadores, con constancia en la bitácora.
+ *  - Cada 7 días mientras siga abierto: recordatorio a los coordinadores.
+ *
+ * El caso no se bloquea al vencer: trabar el avance solo lo atrasaría más.
+ */
+async function procesarPlazosInvestigacion(lote = LOTE) {
+  const [porVencer] = await pool.query(
+    `SELECT id_protocolo_activado, id_establecimiento, codigo, nombre_protocolo, fecha_limite_investigacion
+     FROM PROTOCOLO_ACTIVADO
+     WHERE estado = 'activo' AND fecha_limite_investigacion IS NOT NULL
+       AND aviso_plazo_previo_at IS NULL
+       AND fecha_limite_investigacion >= CURDATE()
+       AND fecha_limite_investigacion <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)
+     LIMIT ?`,
+    [lote]
+  );
+  for (const c of porVencer) {
+    // Marca primero, como las derivaciones: un aviso perdido es mejor que uno
+    // repetido cada quince minutos.
+    await pool.query(
+      'UPDATE PROTOCOLO_ACTIVADO SET aviso_plazo_previo_at = NOW() WHERE id_protocolo_activado = ?',
+      [c.id_protocolo_activado]
+    );
+    const usuarios = await notificaciones.destinatariosDeCaso(pool, c.id_protocolo_activado);
+    usuarios.push(...(await notificaciones.coordinadoresDeConvivencia(pool, c.id_establecimiento)));
+    await notificaciones.crear(pool, {
+      usuarios,
+      id_establecimiento: c.id_establecimiento,
+      tipo: 'plazo_investigacion_por_vencer',
+      titulo: `${c.codigo}: queda menos de un mes de plazo legal`,
+      mensaje: `${c.nombre_protocolo ?? 'El caso'}: la investigación tiene que concluir antes del ` +
+        `${fechaCorta(c.fecha_limite_investigacion)} (el plazo corre desde el registro).`,
+      id_protocolo_activado: c.id_protocolo_activado,
+    });
+  }
+
+  const [vencidos] = await pool.query(
+    `SELECT id_protocolo_activado, id_establecimiento, codigo, nombre_protocolo,
+            fecha_limite_investigacion, aviso_plazo_vencido_at,
+            DATEDIFF(CURDATE(), fecha_limite_investigacion) AS dias
+     FROM PROTOCOLO_ACTIVADO
+     WHERE estado = 'activo' AND fecha_limite_investigacion IS NOT NULL
+       AND fecha_limite_investigacion < CURDATE()
+       AND (aviso_plazo_vencido_at IS NULL OR aviso_plazo_vencido_at <= NOW() - INTERVAL 7 DAY)
+     LIMIT ?`,
+    [lote]
+  );
+  for (const c of vencidos) {
+    const primero = !c.aviso_plazo_vencido_at;
+    await pool.query(
+      'UPDATE PROTOCOLO_ACTIVADO SET aviso_plazo_vencido_at = NOW() WHERE id_protocolo_activado = ?',
+      [c.id_protocolo_activado]
+    );
+    // El vencimiento es un hecho del caso y queda en la bitácora (y así en el
+    // expediente); los recordatorios no, que serían ruido.
+    if (primero)
+      await pool.query(
+        `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+           (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+         VALUES (?, ?, 'plazo_investigacion_vencido', ?, NULL, NOW())`,
+        [c.id_protocolo_activado, c.id_establecimiento,
+         `Venció el plazo legal de la investigación (${fechaCorta(c.fecha_limite_investigacion)}) con el caso abierto`]
+      );
+    await notificaciones.crear(pool, {
+      usuarios: await notificaciones.coordinadoresDeConvivencia(pool, c.id_establecimiento),
+      id_establecimiento: c.id_establecimiento,
+      tipo: 'plazo_investigacion_vencido',
+      titulo: primero
+        ? `${c.codigo}: venció el plazo legal de investigación`
+        : `${c.codigo}: sigue fuera de plazo (${c.dias} días)`,
+      mensaje: `${c.nombre_protocolo ?? 'El caso'}: el plazo venció el ` +
+        `${fechaCorta(c.fecha_limite_investigacion)} y el caso sigue abierto. ` +
+        'Hay estudiantes esperando una resolución: concluye la investigación o deja constancia de por qué sigue abierta.',
+      id_protocolo_activado: c.id_protocolo_activado,
+    });
+  }
+
+  return { porVencer: porVencer.length, vencidos: vencidos.length };
+}
+
+/**
+ * Registros que llevan una semana pendientes: nadie los atendió, tienen una
+ * derivación sin atender, o su motivo obliga a un protocolo que no se activó.
+ * Es el mismo criterio que pinta de amarillo al estudiante (n_pendientes en
+ * estudiantes.controller), menos el protocolo en curso: ese tiene su propio
+ * reloj en procesarPlazosInvestigacion.
+ *
+ * Un solo aviso por registro, a los coordinadores (aviso_pendiente_at). Solo se
+ * miran los registros de entre 7 y 30 días: acota la consulta, que corre cada
+ * quince minutos, y deja margen de sobra si el job estuvo caído unos días.
+ */
+async function procesarRegistrosPendientes(lote = LOTE) {
+  const [pendientes] = await pool.query(
+    `SELECT r.id_registro, r.id_establecimiento, r.codigo,
+            r.id_usuario_atiende IS NULL AS sin_atender,
+            EXISTS (SELECT 1 FROM REGISTRO_DERIVACION d
+                     WHERE d.id_registro = r.id_registro AND d.estado = 'pendiente') AS derivacion_pendiente,
+            EXISTS (SELECT 1 FROM TIPO_FALTA_PROTOCOLO tfp
+                      LEFT JOIN PROTOCOLO_ACTIVADO pa
+                        ON pa.id_registro = r.id_registro
+                       AND pa.id_protocolo_establecimiento = tfp.id_protocolo_establecimiento
+                       AND pa.estado <> 'anulado'
+                     WHERE tfp.id_tipo_falta = r.id_tipo_falta AND tfp.obligatorio = 1
+                       AND pa.id_protocolo_activado IS NULL) AS falta_protocolo
+     FROM REGISTRO_CONVIVENCIA r
+     WHERE r.aviso_pendiente_at IS NULL
+       AND r.fecha_creacion BETWEEN NOW() - INTERVAL 30 DAY AND NOW() - INTERVAL 7 DAY
+     HAVING sin_atender OR derivacion_pendiente OR falta_protocolo
+     LIMIT ?`,
+    [lote]
+  );
+  if (pendientes.length === 0) return { procesados: 0 };
+
+  // fecha_modificacion se fija a sí misma: tiene ON UPDATE, y sin esto marcar
+  // el aviso haría figurar el registro como editado por alguien.
+  await pool.query(
+    `UPDATE REGISTRO_CONVIVENCIA SET aviso_pendiente_at = NOW(), fecha_modificacion = fecha_modificacion
+     WHERE id_registro IN (?)`,
+    [pendientes.map((r) => r.id_registro)]
+  );
+
+  for (const r of pendientes) {
+    const motivos = [
+      r.sin_atender && 'nadie lo ha atendido',
+      r.derivacion_pendiente && 'tiene una derivación sin atender',
+      r.falta_protocolo && 'su motivo obliga a activar un protocolo que no se ha activado',
+    ].filter(Boolean);
+    await notificaciones.crear(pool, {
+      usuarios: await notificaciones.coordinadoresDeConvivencia(pool, r.id_establecimiento),
+      id_establecimiento: r.id_establecimiento,
+      tipo: 'registro_pendiente',
+      titulo: `Registro ${r.codigo}: una semana pendiente`,
+      mensaje: `Lleva 7 días y ${motivos.join(', ')}.`,
+      id_registro: r.id_registro,
+    });
+  }
+  return { procesados: pendientes.length };
+}
+
 // Se puede desactivar con PROTOCOLOS_JOB_MINUTOS=0 y correr el service desde un
 // cron externo, que es lo que conviene si algún día hay más de una instancia:
 // con varias, todas despertarían a la vez sobre las mismas filas.
@@ -394,6 +546,14 @@ function iniciarJob() {
       const dv = await procesarDerivacionesVencidas();
       if (dv.procesados > 0)
         console.log(`[vencimientos] ${dv.procesados} derivación(es) de registro vencidas`);
+      const pi = await procesarPlazosInvestigacion();
+      if (pi.porVencer > 0 || pi.vencidos > 0)
+        console.log(
+          `[vencimientos] plazo de investigación: ${pi.porVencer} por vencer, ${pi.vencidos} vencido(s)`
+        );
+      const rp = await procesarRegistrosPendientes();
+      if (rp.procesados > 0)
+        console.log(`[vencimientos] ${rp.procesados} registro(s) con una semana pendientes`);
     } catch (err) {
       // Un fallo del job no puede tumbar el proceso: se reintenta solo en la
       // próxima corrida.
@@ -409,5 +569,5 @@ function iniciarJob() {
 
 module.exports = {
   procesarVencidos, procesarMedidasVencidas, procesarMedidasDisciplinariasVencidas,
-  procesarDerivacionesVencidas, iniciarJob,
+  procesarDerivacionesVencidas, procesarPlazosInvestigacion, procesarRegistrosPendientes, iniciarJob,
 };
