@@ -27,6 +27,15 @@ const getAll = async (req, res) => {
                                AND pa2.estado <> 'anulado'
                              WHERE tfp.id_tipo_falta = r.id_tipo_falta AND tfp.obligatorio = 1
                                AND pa2.id_protocolo_activado IS NULL))) AS n_pendientes,
+        -- Casos en curso que ya pasaron el plazo legal de investigación (corre
+        -- desde el registro): pinta al estudiante de rojo, porque ya no es un
+        -- pendiente más, es un estudiante esperando una resolución que la ley
+        -- dice que ya debió llegar.
+        (SELECT COUNT(DISTINCT pa.id_protocolo_activado)
+           FROM REGISTRO_ESTUDIANTE re
+           JOIN PROTOCOLO_ACTIVADO pa ON pa.id_registro = re.id_registro
+          WHERE re.id_estudiante = e.id_estudiante AND pa.estado = 'activo'
+            AND pa.fecha_limite_investigacion < CURDATE()) AS n_fuera_de_plazo,
         -- Señalado en un registro de bullying: se marca en rojo.
         EXISTS (SELECT 1 FROM REGISTRO_ESTUDIANTE re
                   JOIN REGISTRO_CONVIVENCIA r ON r.id_registro = re.id_registro

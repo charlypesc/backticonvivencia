@@ -793,11 +793,49 @@ const validarTechoLegal = (pasos, transiciones, ambito) => {
       ];
 };
 
+// El día de calendario en Chile, no en UTC: un registro creado a las 22:00 de
+// Santiago ya es el día siguiente en UTC, y el plazo partiría un día tarde.
+const diaEnChile = (fecha) =>
+  new Date(fecha).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+
+/**
+ * Fecha límite de la investigación de un caso (techo legal), como 'YYYY-MM-DD'.
+ *
+ * Corre desde que el establecimiento supo del hecho, no desde que se activó el
+ * protocolo: la ley fija el plazo de la investigación, y un protocolo activado
+ * un mes después del registro no puede regalarle ese mes al caso.
+ *
+ *  - Estudiante (y mixto, que tiene que caber en el más estricto): 2 meses de
+ *    calendario (art. 16 E letra g). Si el mes de destino es más corto, cae en
+ *    su último día: dos meses desde el 31 de diciembre es el 28 o 29 de
+ *    febrero, no el 3 de marzo.
+ *  - Personal: 60 días hábiles, el tope del sumario administrativo (ver
+ *    DIAS_HABILES_TECHO_PERSONAL).
+ *
+ * @param {Date|string} desde momento en que se supo del hecho
+ * @param {string} ambito 'estudiante' | 'personal' | 'mixto'
+ * @param {Set<string>} [feriados] obligatorio para 'personal'
+ */
+const calcularLimiteInvestigacion = (desde, ambito, feriados) => {
+  const inicio = new Date(`${diaEnChile(desde)}T00:00:00Z`);
+
+  if (ambito === 'personal')
+    return calcularFechaLimite(inicio, DIAS_HABILES_TECHO_PERSONAL, 'dias_habiles', feriados)
+      .toISOString().slice(0, 10);
+
+  const anio = inicio.getUTCFullYear();
+  const mes = inicio.getUTCMonth() + 2;
+  const ultimoDelMes = new Date(Date.UTC(anio, mes + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(anio, mes, Math.min(inicio.getUTCDate(), ultimoDelMes)))
+    .toISOString().slice(0, 10);
+};
+
 module.exports = {
   DIAS_TECHO_ESTUDIANTE,
   DIAS_HABILES_TECHO_PERSONAL,
   caminoMasLargoEnDias,
   validarTechoLegal,
+  calcularLimiteInvestigacion,
   TIPOS_CAMPO,
   TIPOS_PASO,
   TIPOS_PASO_APROBACION,

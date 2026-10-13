@@ -12,6 +12,7 @@ const {
 } = require('../utils/flujoProtocolo');
 const notificaciones = require('../services/notificaciones.service');
 const { cargarFeriados } = require('../services/feriados.service');
+const { limiteDelRegistro } = require('../services/plazoInvestigacion.service');
 const { reducirSiConfidencial } = require('../utils/confidencial');
 const { tienePermiso } = require('../middleware/auth');
 const { Permiso } = require('../constants/permisos');
@@ -758,15 +759,15 @@ const activar = async (req, res) => {
       // lo corregía después, un expediente de marzo terminaba mostrando un
       // nombre que no era el vigente el día en que el caso se activó.
       //
-      // fecha_limite_investigacion materializa el techo del art. 16 E letra g:
-      // 2 meses cuando el involucrado es estudiante. Para protocolos de
-      // personal no aplica — esos van por el Título V de la Ley 18.834 o la
-      // Ley 18.883, con sus propios plazos.
-      const limiteInvestigacion = pe.ambito === 'personal' ? null : (() => {
-        const f = new Date();
-        f.setUTCMonth(f.getUTCMonth() + 2);
-        return f.toISOString().slice(0, 10);
-      })();
+      // fecha_limite_investigacion materializa el techo legal: 2 meses si el
+      // involucrado es estudiante (art. 16 E letra g), 60 días hábiles si es
+      // personal (Título V de la Ley 18.834 / 18.883). Corre desde el registro,
+      // no desde la activación: activar tarde no le da más plazo al caso.
+      const { limite: limiteInvestigacion } = await limiteDelRegistro(conn, {
+        id_registro, id_establecimiento: req.id_establecimiento, ambito: pe.ambito,
+      });
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+      const activadoFueraDePlazo = limiteInvestigacion && limiteInvestigacion < hoy;
 
       const [cab] = await conn.query(
         `INSERT INTO PROTOCOLO_ACTIVADO
@@ -908,7 +909,11 @@ const activar = async (req, res) => {
           (involucrados.length
             ? ` — involucrados: ${involucrados
                 .map((i) => `${i.nombre} (${etiquetaDe(i.rol, 'rol_involucrado').toLowerCase()})`).join(', ')}`
-            : ' — sin involucrados registrados'),
+            : ' — sin involucrados registrados') +
+          (activadoFueraDePlazo
+            ? `. Se activó fuera del plazo legal de investigación, que venció el ${
+                limiteInvestigacion.split('-').reverse().join('-')}`
+            : ''),
       });
 
       // El paso inicial arranca en curso: un protocolo recién activado con
@@ -1685,8 +1690,46 @@ const sobreintervencion = async (req, res) => {
   }
 };
 
+/**
+ * GET /protocolos-activados/plazo-investigacion?id_registro=&id_protocolo_establecimiento=
+ *
+ * El límite legal que tendría el caso si se activa ahora. Lo consulta el front
+ * antes de activar sobre un registro ya existente: si el plazo venció, avisa
+ * que el protocolo nace fuera de plazo. No bloquea — investigar tarde es peor
+ * que no investigar, pero quien activa tiene que saberlo.
+ */
+const plazoInvestigacion = async (req, res) => {
+  const id_registro = Number(req.query.id_registro);
+  const id_pe = Number(req.query.id_protocolo_establecimiento);
+  if (!id_registro || !id_pe)
+    return res.status(400).json({ message: 'id_registro e id_protocolo_establecimiento son requeridos' });
+  try {
+    const [[pe]] = await pool.query(
+      `SELECT COALESCE(pe.ambito, cp.ambito, 'estudiante') AS ambito
+       FROM PROTOCOLO_ESTABLECIMIENTO pe
+       LEFT JOIN CATALOGO_PROTOCOLOS_GENERICOS cp ON cp.id_protocolo = pe.id_protocolo
+       WHERE pe.id_protocolo_establecimiento = ? AND pe.id_establecimiento = ?`,
+      [id_pe, req.id_establecimiento]
+    );
+    const [[reg]] = await pool.query(
+      'SELECT 1 AS ok FROM REGISTRO_CONVIVENCIA WHERE id_registro = ? AND id_establecimiento = ?',
+      [id_registro, req.id_establecimiento]
+    );
+    if (!pe || !reg) return res.status(404).json({ message: 'Registro o protocolo no encontrado' });
+
+    const { desde, limite } = await limiteDelRegistro(pool, {
+      id_registro, id_establecimiento: req.id_establecimiento, ambito: pe.ambito,
+    });
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+    res.json({ ambito: pe.ambito, desde, limite, vencido: !!limite && limite < hoy });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al calcular el plazo de investigación' });
+  }
+};
+
 module.exports = {
-  getAll, getByRegistro, getDetalle, getBitacora, sobreintervencion,
+  getAll, getByRegistro, getDetalle, getBitacora, sobreintervencion, plazoInvestigacion,
   create: activar,
   completarPaso, aprobarPaso, omitirPaso, reasignarPaso,
   cerrar, anular, agregarNota,
