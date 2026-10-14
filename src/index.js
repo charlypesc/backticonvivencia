@@ -62,6 +62,7 @@ app.use('/api/geo/regiones',   require('./routes/regiones.routes'));
 app.use('/api/geo/provincias', require('./routes/provincias.routes'));
 app.use('/api/geo/comunas',    require('./routes/comunas.routes'));
 app.use('/api/geo/establecimientos', require('./routes/establecimientosGeo.routes'));
+app.use('/api/geo/plantillas-correo', require('./routes/plantillasCorreo.routes'));
 // app.use('/api/estudiantes', require('./routes/estudiantes.routes'));
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));

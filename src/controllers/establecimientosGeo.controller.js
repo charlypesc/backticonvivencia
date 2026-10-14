@@ -221,25 +221,40 @@ const cambiarObservaciones = async (req, res) => {
   }
 };
 
-// Estado del correo de contacto (gestión comercial): 0 sin enviar, 1 enviado,
-// 2 respondió. Endpoint propio por la misma razón que las observaciones: se
-// cambia desde la lista de Geo y no debe depender del formulario de datos.
-const MENSAJES_ESTADO_CORREO = ['Correo sin enviar', 'Correo enviado', 'Respondió el correo'];
+// Estado del correo de contacto (gestión comercial): 0 sin enviar, 1 1er correo
+// enviado, 2 respondió, 3 2do correo enviado, 4 3er correo enviado. El 2 sigue
+// siendo "respondió" porque así estaba guardado antes de que hubiera tres
+// correos: el orden en pantalla lo arma el front. Endpoint propio por la misma
+// razón que las observaciones: se cambia desde la lista de Geo y no debe
+// depender del formulario de datos.
+const MENSAJES_ESTADO_CORREO = {
+  0: 'Correo sin enviar',
+  1: '1er correo enviado',
+  2: 'Respondió el correo',
+  3: '2do correo enviado',
+  4: '3er correo enviado',
+};
 
 const cambiarEstadoCorreo = async (req, res) => {
   const estado = Number(req.body.estado_correo);
-  if (![0, 1, 2].includes(estado))
+  if (!(estado in MENSAJES_ESTADO_CORREO))
     return res.status(400).json({ message: 'Estado de correo inválido' });
+
+  // fecha_estado_correo se muestra al lado del estado en Geo ("enviado el …").
+  // Se renueva en cada cambio, también al volver a marcar "enviado" (un
+  // reenvío), y se borra al volver a "sin enviar". Se fija acá y no con NOW()
+  // en el SQL para devolver al front el mismo valor que quedó guardado.
+  const fecha = estado === 0 ? null : new Date();
 
   try {
     const [r] = await pool.query(
-      `UPDATE ESTABLECIMIENTO SET estado_correo = ? WHERE id_establecimiento = ?`,
-      [estado, req.params.id]
+      `UPDATE ESTABLECIMIENTO SET estado_correo = ?, fecha_estado_correo = ? WHERE id_establecimiento = ?`,
+      [estado, fecha, req.params.id]
     );
     if (r.affectedRows === 0)
       return res.status(404).json({ message: 'Establecimiento no encontrado' });
 
-    res.json({ estado_correo: estado, message: MENSAJES_ESTADO_CORREO[estado] });
+    res.json({ estado_correo: estado, fecha_estado_correo: fecha, message: MENSAJES_ESTADO_CORREO[estado] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al guardar el estado del correo' });
