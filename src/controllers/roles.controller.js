@@ -1,6 +1,7 @@
 const pool = require('../db/connection');
 const { CODIGO_POR_ID, codigoDe } = require('../constants/permisos');
 const { esAdmin } = require('../middleware/auth');
+const { ROLES_SOLO_ADMIN, esRolSoloAdmin } = require('../constants/roles');
 
 // Catálogo de roles. Con roles dinámicos, esta lista es la fuente de verdad
 // para el selector de roles al crear/editar usuarios: ya no hay lista dura.
@@ -43,11 +44,15 @@ const getAll = async (req, res) => {
        LEFT JOIN ROL_PERMISOS rp ON rp.rol_id = r.rol_id
        LEFT JOIN ESTABLECIMIENTO e ON e.id_establecimiento = r.id_establecimiento
        WHERE r.activo = TRUE
-         ${esAdmin(req) ? '' : "AND r.codigo <> 'ADMIN'"}
+         ${esAdmin(req) ? '' : 'AND r.codigo NOT IN (?)'}
          AND (r.id_establecimiento IS NULL ${est == null ? '' : 'OR r.id_establecimiento = ?'})
        GROUP BY r.rol_id
        ORDER BY r.id_establecimiento IS NULL DESC, r.nombre`,
-      est == null ? [] : [est, est]
+      [
+        ...(est == null ? [] : [est]),
+        ...(esAdmin(req) ? [] : [ROLES_SOLO_ADMIN]),
+        ...(est == null ? [] : [est]),
+      ]
     );
 
     // `editable` se calcula acá y no en el frontend: la regla de quién puede
@@ -95,7 +100,8 @@ const permisosOtorgables = (req) => (esAdmin(req) ? null : new Set(req.user.perm
 const puedeAdministrarRol = (req, rol) =>
   esAdmin(req)
     ? alcanceValido(rol, req.id_establecimiento)
-    : rol.id_establecimiento !== null && rol.id_establecimiento === req.id_establecimiento;
+    : rol.id_establecimiento !== null && rol.id_establecimiento === req.id_establecimiento &&
+      !esRolSoloAdmin(rol.codigo);
 
 /**
  * Verifica que todos los ids estén dentro de lo que el solicitante puede
@@ -118,7 +124,7 @@ const getPermisos = async (req, res) => {
     // El detalle del ADMIN es solo para el ADMIN. Se responde 404 y no 403
     // porque para quien no es ADMIN ese rol directamente no existe: getAll ya
     // no se lo lista, y un 403 acá le confirmaría el id que el listado le oculta.
-    if (rol.codigo === 'ADMIN' && !esAdmin(req))
+    if (esRolSoloAdmin(rol.codigo) && !esAdmin(req))
       return res.status(404).json({ message: 'Rol no encontrado' });
 
     const [rows] = await pool.query(
@@ -235,7 +241,7 @@ const update = async (req, res) => {
 
   try {
     const [[rol]] = await pool.query(
-      `SELECT es_sistema, id_establecimiento FROM ROLES WHERE rol_id = ?`, [req.params.id]);
+      `SELECT codigo, es_sistema, id_establecimiento FROM ROLES WHERE rol_id = ?`, [req.params.id]);
     if (!rol) return res.status(404).json({ message: 'Rol no encontrado' });
     if (!puedeAdministrarRol(req, rol))
       return res.status(403).json({

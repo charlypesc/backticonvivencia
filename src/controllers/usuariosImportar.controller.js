@@ -6,6 +6,7 @@ const { establecimientoRequerido } = require('../middleware/scope');
 const { generarPassword } = require('../utils/password');
 const { construirCredencialesPdf } = require('../services/pdf/credenciales.pdf');
 const { sembrarTiposFalta } = require('../utils/sembrarTiposFalta');
+const { ROLES_SOLO_ADMIN } = require('../constants/roles');
 
 // Alta masiva de funcionarios desde un Excel.
 //
@@ -31,16 +32,16 @@ const normalizar = (s) =>
 
 /**
  * Roles que se pueden asignar en el colegio: los globales y los propios del
- * establecimiento. ADMIN nunca: dar acceso a todos los colegios no puede
- * colarse en una planilla que llenó otra persona.
+ * establecimiento. Los de ROLES_SOLO_ADMIN (ADMIN, VENTAS) nunca: dar acceso a
+ * todos los colegios no puede colarse en una planilla que llenó otra persona.
  */
 const rolesAsignables = async (conn, id_est) => {
   const [rows] = await conn.query(
     `SELECT rol_id, codigo, nombre FROM ROLES
-      WHERE activo = TRUE AND codigo <> 'ADMIN'
+      WHERE activo = TRUE AND codigo NOT IN (?)
         AND (id_establecimiento IS NULL OR id_establecimiento = ?)
       ORDER BY nombre`,
-    [id_est]
+    [ROLES_SOLO_ADMIN, id_est]
   );
   return rows;
 };
