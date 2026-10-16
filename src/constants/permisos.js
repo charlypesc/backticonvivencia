@@ -44,6 +44,9 @@ const Permiso = Object.freeze({
   EstablecimientoEditar  : 19,
   EstablecimientoEliminar: 20,
   EstablecimientoImportar: 21,
+  // Suspender/restablecer el acceso de todo un colegio (Geo). Aparte de editar:
+  // corregir la ficha es tarea comercial, dejar a un colegio sin entrar no.
+  EstablecimientoCambiarAcceso: 123,
 
   // sostenedor
   SostenedorVer                   : 22,
@@ -328,6 +331,7 @@ const CODIGO_POR_ID = Object.freeze({
  119: 'denuncia.gestionar',
  120: 'denuncia.ver_identidad',
  121: 'dashboard.ver_resumen',
+ 123: 'establecimiento.cambiar_acceso',
 });
 
 const codigoDe = (id) => CODIGO_POR_ID[id] ?? `desconocido(${id})`;

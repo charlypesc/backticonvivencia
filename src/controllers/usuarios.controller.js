@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const pool   = require('../db/connection');
 const { rolesDe, tienePermiso, esAdmin } = require('../middleware/auth');
 const { Permiso, codigoDe, CODIGO_POR_ID } = require('../constants/permisos');
+const { esRolSoloAdmin } = require('../constants/roles');
 // Compartidas con la pantalla de Roles a propósito: la derivación del código y
 // la guardia de "nadie otorga un permiso que no tiene" tienen que ser las mismas
 // acá que allá, o con el tiempo se separan. Ver roles.controller.
@@ -11,15 +12,31 @@ const { generarPassword } = require('../utils/password');
 const { credencialesPdfParaRespuesta } = require('../services/pdf/credenciales.pdf');
 const { sembrarTiposFalta } = require('../utils/sembrarTiposFalta');
 
-// Solo un ADMIN puede otorgar o quitar el rol ADMIN. Se valida en el servidor:
-// esconder la opción en el frontend no es un control de acceso.
+// Solo un ADMIN puede otorgar o quitar los roles de ROLES_SOLO_ADMIN (ADMIN y
+// VENTAS, ver constants/roles.js). Se valida en el servidor: esconder la
+// opción en el frontend no es un control de acceso.
 //
 // No se generaliza a "solo ADMIN toca roles con es_sistema": esa columna marca
 // los roles que no se pueden renombrar, no los que son sensibles de asignar.
-// Hoy la lleva únicamente ADMIN, pero atarse a ella dejaría la guardia a merced
-// de un cambio de datos en vez de una regla explícita.
+// Atarse a ella dejaría la guardia a merced de un cambio de datos en vez de una
+// regla explícita.
 const puedeTocarRol = (req, codigoRol) =>
-  codigoRol !== 'ADMIN' || rolesDe(req).includes('ADMIN');
+  !esRolSoloAdmin(codigoRol) || rolesDe(req).includes('ADMIN');
+
+/**
+ * El primer rol de ROLES_SOLO_ADMIN que tenga la cuenta, o null. Para quien no
+ * es ADMIN esas cuentas son intocables: no alcanza con no poder darles el rol,
+ * también hay que impedir editarlas, desactivarlas o quedarse con su clave.
+ */
+const rolProtegidoDe = async (conn, id_usuario) => {
+  const [rows] = await conn.query(
+    `SELECT r.codigo FROM USUARIO_ROLES ur
+     JOIN ROLES r ON r.rol_id = ur.rol_id
+     WHERE ur.id_usuario = ?`,
+    [id_usuario]
+  );
+  return rows.map((r) => r.codigo).find(esRolSoloAdmin) ?? null;
+};
 
 const getAll = async (req, res) => {
   try {
@@ -40,7 +57,10 @@ const getAll = async (req, res) => {
        ORDER BY u.correo`,
       params
     );
-    res.json(rows.map((r) => ({ ...r, roles: r.roles ? r.roles.split(',') : [] })));
+    const usuarios = rows.map((r) => ({ ...r, roles: r.roles ? r.roles.split(',') : [] }));
+    // Los vendedores viven en el Colegio MiConvivencia junto a las cuentas
+    // demo: quien administra ese colegio sin ser ADMIN no los ve.
+    res.json(esAdmin(req) ? usuarios : usuarios.filter((u) => !u.roles.some(esRolSoloAdmin)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener usuarios' });
@@ -226,6 +246,11 @@ const update = async (req, res) => {
       await conn.rollback();
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+    const protegido = esAdmin(req) ? null : await rolProtegidoDe(conn, destino.id_usuario);
+    if (protegido) {
+      await conn.rollback();
+      return res.status(403).json({ message: `No puedes editar una cuenta con rol ${protegido}` });
+    }
 
     let rolesRows = [];
     if (cambiaRoles) {
@@ -313,6 +338,10 @@ const toggleActivo = async (req, res) => {
     if (Number(req.params.id) === Number(req.user.id))
       return res.status(409).json({ message: 'No puedes desactivar tu propio usuario' });
 
+    const protegido = esAdmin(req) ? null : await rolProtegidoDe(pool, req.params.id);
+    if (protegido)
+      return res.status(403).json({ message: `No puedes desactivar una cuenta con rol ${protegido}` });
+
     const id_est = resolverEstablecimiento(req);
     const where  = id_est === null || id_est === undefined ? '' : 'AND id_establecimiento = ?';
     const params = where ? [req.params.id, id_est] : [req.params.id];
@@ -357,18 +386,13 @@ const resetPassword = async (req, res) => {
     );
     if (!destino) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-    // Solo un ADMIN le restablece la clave a otro ADMIN. Sin esta guardia,
-    // cualquiera con el permiso podría tomar control de la cuenta más
-    // privilegiada del sistema simplemente pidiendo un "restablecimiento".
-    const [rolesDestino] = await pool.query(
-      `SELECT r.codigo FROM USUARIO_ROLES ur
-       JOIN ROLES r ON r.rol_id = ur.rol_id
-       WHERE ur.id_usuario = ?`,
-      [destino.id_usuario]
-    );
-    if (rolesDestino.some((r) => !puedeTocarRol(req, r.codigo)))
+    // Solo un ADMIN le restablece la clave a un ADMIN o a un vendedor. Sin esta
+    // guardia, cualquiera con el permiso podría tomar control de esas cuentas
+    // simplemente pidiendo un "restablecimiento".
+    const protegido = esAdmin(req) ? null : await rolProtegidoDe(pool, destino.id_usuario);
+    if (protegido)
       return res.status(403).json({
-        message: 'No puedes restablecer la contraseña de un ADMIN',
+        message: `No puedes restablecer la contraseña de una cuenta con rol ${protegido}`,
       });
 
     const password = generarPassword();
@@ -423,13 +447,16 @@ const asignarRol = async (req, res) => {
   if (!codigo) return res.status(400).json({ message: 'El código de rol es requerido' });
 
   if (!puedeTocarRol(req, codigo))
-    return res.status(403).json({ message: 'No puedes asignar el rol ADMIN' });
+    return res.status(403).json({ message: `No puedes asignar el rol ${codigo}` });
 
   try {
     const [[destino]] = await pool.query(
       `SELECT id_establecimiento FROM USUARIO WHERE id_usuario = ?`, [req.params.id]
     );
     if (!destino) return res.status(404).json({ message: 'Usuario no encontrado' });
+    const protegido = esAdmin(req) ? null : await rolProtegidoDe(pool, req.params.id);
+    if (protegido)
+      return res.status(403).json({ message: `No puedes cambiar los roles de una cuenta con rol ${protegido}` });
 
     // El rol tiene que ser global o del mismo colegio que el usuario: si no, se
     // le estaría dando acceso a otro establecimiento por la puerta de atrás.
@@ -467,7 +494,10 @@ const quitarRol = async (req, res) => {
     // La guardia aplica igual al quitar: si no, cualquiera con usuario.asignar_rol
     // podría dejar el sistema sin ningún administrador.
     if (!puedeTocarRol(req, rol.codigo))
-      return res.status(403).json({ message: 'No puedes quitar el rol ADMIN' });
+      return res.status(403).json({ message: `No puedes quitar el rol ${rol.codigo}` });
+    const protegido = esAdmin(req) ? null : await rolProtegidoDe(pool, req.params.id);
+    if (protegido)
+      return res.status(403).json({ message: `No puedes cambiar los roles de una cuenta con rol ${protegido}` });
 
     if (rol.codigo === 'ADMIN') {
       const [[{ n }]] = await pool.query(
@@ -538,14 +568,15 @@ const destinoAdministrable = async (req) => {
   );
   if (!destino) return { error: { status: 404, message: 'Usuario no encontrado' } };
 
-  const [rolesDestino] = await pool.query(
-    `SELECT r.codigo FROM USUARIO_ROLES ur
-     JOIN ROLES r ON r.rol_id = ur.rol_id
-     WHERE ur.id_usuario = ?`,
-    [destino.id_usuario]
-  );
-  if (rolesDestino.some((r) => !puedeTocarRol(req, r.codigo)))
-    return { error: { status: 403, message: 'No puedes cambiar los permisos de un ADMIN' } };
+  const protegido = esAdmin(req) ? null : await rolProtegidoDe(pool, destino.id_usuario);
+  if (protegido)
+    return {
+      error: {
+        status: 403,
+        protegido,
+        message: `No puedes cambiar los permisos de una cuenta con rol ${protegido}`,
+      },
+    };
 
   return { destino };
 };
@@ -856,7 +887,9 @@ const eliminar = async (req, res) => {
     // restablecer la contraseña o cambiar permisos.
     const { destino, error } = await destinoAdministrable(req);
     if (error) {
-      const message = error.status === 403 ? 'No puedes eliminar a un ADMIN' : error.message;
+      const message = error.protegido
+        ? `No puedes eliminar una cuenta con rol ${error.protegido}`
+        : error.message;
       return res.status(error.status).json({ message });
     }
 
