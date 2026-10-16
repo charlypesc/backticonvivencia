@@ -1,6 +1,7 @@
 const pool = require('../db/connection');
 const XLSX = require('xlsx');
 const crypto = require('crypto');
+const { telefonoParaMarcar } = require('../utils/telefono');
 
 // Jobs de importación en memoria: { job_id -> estado }. Un solo proceso Node,
 // vida corta (minutos) — no hace falta persistirlo en BD ni en Redis.
@@ -40,10 +41,18 @@ const SELECT_CON_USUARIOS = `
   SELECT e.*,
          s.representante_legal AS sostenedor_nombre,
          s.rut                 AS sostenedor_rut,
+         ct.id_provincia       AS id_provincia_tel,
          (SELECT COUNT(*) FROM USUARIO u
            WHERE u.id_establecimiento = e.id_establecimiento) AS cantidad_usuarios
     FROM ESTABLECIMIENTO e
-    LEFT JOIN SOSTENEDOR s ON s.id_sostenedor = e.id_sostenedor`;
+    LEFT JOIN SOSTENEDOR s ON s.id_sostenedor = e.id_sostenedor
+    LEFT JOIN COMUNA ct    ON ct.id_comuna    = e.id_comuna`;
+
+// El teléfono listo para marcar (código de país y de área) va junto al
+// original, que no se toca: es lo que trae el directorio de MINEDUC. La
+// provincia solo se pide para calcularlo.
+const conTelefono = (rows) =>
+  rows.map(({ id_provincia_tel, ...e }) => ({ ...e, ...telefonoParaMarcar(e.telefono, id_provincia_tel) }));
 
 const getAll = async (req, res) => {
   try {
@@ -84,7 +93,7 @@ const getAll = async (req, res) => {
           LIMIT 20`,
         [`%${q}%`, ...palabras.map((p) => `%${p}%`), q, q, `${q}%`, `${q}%`]
       );
-      return res.json(rows);
+      return res.json(conTelefono(rows));
     }
 
     const where = id_comuna ? `WHERE e.id_comuna = ?` : '';
@@ -93,7 +102,7 @@ const getAll = async (req, res) => {
       `${SELECT_CON_USUARIOS} ${where} ORDER BY e.nombre`,
       params
     );
-    res.json(rows);
+    res.json(conTelefono(rows));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener los establecimientos' });
