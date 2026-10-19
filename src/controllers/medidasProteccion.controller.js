@@ -301,7 +301,7 @@ const actualizar = async (req, res) => {
       return res.status(409).json({
         message:
           `La medida está ${medida.estado} y ya no se puede corregir. ` +
-          'Registrá una medida nueva en su lugar.',
+          'Registra una medida nueva en su lugar.',
       });
     if (medida.seguimientos > 0)
       return res.status(409).json({

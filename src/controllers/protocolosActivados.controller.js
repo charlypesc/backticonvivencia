@@ -9,6 +9,7 @@ const {
   validarDatosSalida,
   involucradosDelPaso,
   esPasoDeAprobacion,
+  requiereMedida, normalizarMedidaRequerida, alcanceDelPaso,
 } = require('../utils/flujoProtocolo');
 const notificaciones = require('../services/notificaciones.service');
 const { cargarFeriados } = require('../services/feriados.service');
@@ -17,6 +18,17 @@ const { reducirSiConfidencial } = require('../utils/confidencial');
 const { tienePermiso } = require('../middleware/auth');
 const { Permiso } = require('../constants/permisos');
 const { etiquetaDe } = require('../utils/etiquetas');
+const {
+  TIPO_PASO_RELATOS, relatosDelCaso, faltantesDeRelatos, alcanceRelatosDe,
+} = require('./relatos.controller');
+const { esSupervisor, tieneAccesoCompleto } = require('../utils/accesoCaso');
+// Se carga al usarse y no arriba: medidasPaso → medidasDisciplinarias termina
+// requiriendo este archivo, y un require circular entrega un objeto a medio
+// llenar (las funciones llegaban undefined).
+const medidasPaso = () => require('./medidasPaso.controller');
+const TIPO_PASO_MEDIDAS = 'medidas';
+// Mismo motivo: pasa por medidasProteccion.controller.
+const proteccionPaso = () => require('./proteccionPaso.controller');
 
 // Motor de ejecución de protocolos.
 //
@@ -300,7 +312,7 @@ const medidasAbiertasAlCerrar = async (conn, id_protocolo_activado) => {
   if (abiertas.length === 0) return null;
   return `No se puede cerrar el caso: quedan ${abiertas.join(' y ')}. ` +
     'Solo pueden extenderse hasta la conclusión del procedimiento (art. 16 E letra j): ' +
-    'concluílas o resolvelas antes de cerrar.';
+    'concluye o resuelve esas medidas antes de cerrar.';
 };
 
 const cerrarProtocolo = (conn, id_protocolo_activado) =>
@@ -329,13 +341,27 @@ const participaSql = `
                     JOIN PROTOCOLO_ACTIVADO_PASO_ROL pr ON pr.id_activado_paso = px.id_activado_paso
                     JOIN USUARIO_ROLES ur ON ur.rol_id = pr.rol_id AND ur.id_usuario = ?
                      AND (ur.expira_at IS NULL OR ur.expira_at > NOW())
-                   WHERE px.id_protocolo_activado = pa.id_protocolo_activado))`;
+                   WHERE px.id_protocolo_activado = pa.id_protocolo_activado)
+       OR EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO_ACCESO ax
+                   WHERE ax.id_protocolo_activado = pa.id_protocolo_activado AND ax.id_usuario = ?)
+       OR EXISTS (SELECT 1 FROM PROTOCOLO_ACTIVADO_RELATO_DECISION dx
+                    JOIN PROTOCOLO_ACTIVADO_PASO px ON px.id_activado_paso = dx.id_activado_paso
+                   WHERE px.id_protocolo_activado = pa.id_protocolo_activado
+                     AND dx.id_usuario_responsable = ?))`;
 
-/** '' y sin parámetros para quien ve todo; el filtro de participación para el resto. */
+/**
+ * '' y sin parámetros para quien ve todos los casos; el filtro de participación
+ * para el resto.
+ *
+ * Ver todos los casos ya no lo da un permiso (protocolo_activado.ver_todos),
+ * sino la supervisión por rol (ADMIN, DIRECTOR, ENCARGADO: ver
+ * utils/accesoCaso.js). Los demás ven los casos de cuya lista de acceso forman
+ * parte, o donde tienen una tarjeta o un relato que hacer.
+ */
 const filtroParticipacion = (req) =>
-  tienePermiso(req, Permiso.ProtocoloActivadoVerTodos)
+  esSupervisor(req)
     ? { sql: '', params: [] }
-    : { sql: participaSql, params: [req.user.id, req.user.id, req.user.id] };
+    : { sql: participaSql, params: [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id] };
 
 const getAll = async (req, res) => {
   try {
@@ -453,6 +479,7 @@ const getDetalle = async (req, res) => {
     const [porPersona] = await pool.query(
       `SELECT pi.*, i.nombre AS involucrado_nombre, i.rol AS involucrado_rol,
               i.rut AS involucrado_rut, i.curso AS involucrado_curso,
+              i.tipo_persona AS involucrado_tipo_persona,
               (a.id_paso_involucrado IS NOT NULL) AS tiene_acta_firmada,
               -- Quién dejó la constancia. El dato ya se guardaba (pi.id_usuario)
               -- pero no salía a la pantalla, así que la notificación se leía
@@ -471,8 +498,15 @@ const getDetalle = async (req, res) => {
               -- Lo mismo en el paso de resolución: la medida disciplinaria que
               -- se le aplicó al señalado desde su tarjeta.
               md.id_medida AS id_medida_disciplinaria, md.tipo_medida AS medida_disc_tipo,
-              md.fecha_aplicacion AS medida_disc_fecha, md.fecha_termino AS medida_disc_termino
+              md.fecha_aplicacion AS medida_disc_fecha, md.fecha_termino AS medida_disc_termino,
+              -- Y la suspensión cautelar decretada desde la tarjeta del señalado.
+              sc.id_suspension_cautelar, sc.fecha_notificacion AS cautelar_fecha,
+              sc.fecha_limite_resolucion AS cautelar_limite_resolucion, sc.estado AS cautelar_estado
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
+       LEFT JOIN SUSPENSION_CAUTELAR sc ON sc.id_suspension_cautelar = (
+              SELECT s.id_suspension_cautelar FROM SUSPENSION_CAUTELAR s
+               WHERE s.id_activado_paso = pi.id_activado_paso AND s.id_involucrado = pi.id_involucrado
+               ORDER BY s.id_suspension_cautelar DESC LIMIT 1)
        LEFT JOIN MEDIDA_DISCIPLINARIA md ON md.id_medida = (
               SELECT m.id_medida FROM MEDIDA_DISCIPLINARIA m
                WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
@@ -524,6 +558,74 @@ const getDetalle = async (req, res) => {
     // esconde para que la línea de tiempo muestre el recorrido real.
     const descartados = pasosDescartados(pasos, transiciones);
 
+    // Los pasos de acogida de relatos: la lista es siempre la de todos los
+    // involucrados del caso, con su decisión y sus relatos (ver
+    // relatos.controller.js).
+    const hayRelatos = pasos.some((p) => p.tipo_paso === TIPO_PASO_RELATOS);
+    const deRelatos = hayRelatos
+      ? await relatosDelCaso(pool, req.params.id)
+      : { decisiones: [], relatos: [], versiones: [] };
+    // La tarjeta "Medidas": todos los involucrados con su medida o "Sin medidas".
+    const deMedidas = pasos.some((p) => p.tipo_paso === TIPO_PASO_MEDIDAS)
+      ? await medidasPaso().medidasDelCaso(pool, req.params.id)
+      : null;
+    // La tarjeta de protección decidida desde el afectado (pasos para las dos partes).
+    const deProteccion = pasos.some((p) => proteccionPaso().esProteccionPorAfectado(p))
+      ? await proteccionPaso().medidasDeProteccion(pool, req.params.id)
+      : null;
+
+    // Hasta dónde llega quien mira en los relatos de cada paso (ver
+    // alcanceRelatosDe). Se llama dentro del map de pasos, cuando `verProcesos`
+    // ya está definido.
+    const alcanceDe = (p) => alcanceRelatosDe({
+      verCompleto: verProcesos, paso: p, id_usuario: req.user.id, misRoles: req.user.roles ?? [],
+      rolesDelPaso: roles.filter((r) => r.id_activado_paso === p.id_activado_paso),
+      puedeCompletar: tienePermiso(req, Permiso.ProtocoloActivadoCompletarPaso),
+      decisiones: deRelatos.decisiones,
+    });
+    const personasDeRelato = (p) => {
+      // A quien le encargaron solo algunos relatos se le mandan solo esas
+      // personas: los demás relatos no salen del servidor. Quien ve el paso por
+      // su rol pero sin alcance recibe la lista sin el texto de ningún relato.
+      const alcance = alcanceDe(p);
+      const conRelatoEncargado = (i) => alcance.asignados.has(i.id_involucrado);
+      const lista = alcance.todo || alcance.asignados.size === 0
+        ? involucrados
+        : involucrados.filter(conRelatoEncargado);
+      return lista.map((i) => {
+      const leer = alcance.todo || conRelatoEncargado(i);
+
+      const d = deRelatos.decisiones.find(
+        (x) => x.id_activado_paso === p.id_activado_paso && x.id_involucrado === i.id_involucrado);
+      return {
+        id_involucrado: i.id_involucrado,
+        nombre: i.nombre,
+        rol: i.rol,
+        tipo_persona: i.tipo_persona,
+        curso: i.curso,
+        // null = todavía sin decidir; true/false = se le acoge o no.
+        se_acoge: d && d.se_acoge !== null ? !!d.se_acoge : null,
+        // A quién se le encargó este relato, y si quien mira puede trabajarlo.
+        id_usuario_responsable: d?.id_usuario_responsable ?? null,
+        responsable_nombre: d?.responsable_nombre ?? d?.responsable_correo ?? null,
+        puede_trabajar: leer,
+        motivo: d?.motivo ?? null,
+        relatos: deRelatos.relatos
+          .filter((r) => r.id_activado_paso === p.id_activado_paso && r.id_involucrado === i.id_involucrado)
+          .map((r) => ({
+            id_relato: r.id_relato,
+            relato: leer ? r.relato : null,
+            oculto: !leer,
+            fecha_registro: r.fecha_registro,
+            registrado_por: r.usuario_nombre ?? r.usuario_correo,
+            fecha_modificacion: r.fecha_modificacion,
+            modificado_por: r.modificado_por_nombre ?? r.modificado_por_correo,
+            versiones: deRelatos.versiones.filter((v) => v.id_relato === r.id_relato).length,
+          })),
+      };
+      });
+    };
+
     // A qué título puede actuar quien está mirando, paso por paso. Se calcula
     // acá con lo que ya se leyó (los roles del grafo y los del token) en vez de
     // consultar por paso: es la misma regla de puedeActuar, sin viajes extra.
@@ -564,19 +666,60 @@ const getDetalle = async (req, res) => {
       return puedeTomarAjenos ? 'en_lugar_de' : null;
     };
 
+    // "Paso 3 de 7": la posición se cuenta sobre el recorrido completo (sin la
+    // rama descartada) y ANTES de recortar, para que quien ve una sola tarjeta
+    // lea el mismo número que el coordinador.
+    const recorrido = pasos.filter((p) => !descartados.has(p.id_activado_paso));
+    const numeroDe = new Map(recorrido.map((p, i) => [p.id_activado_paso, i + 1]));
+
+    // Sin protocolo_activado.ver_procesos solo viajan las tarjetas que le tocan:
+    // por rol (ejecuta o aprueba) o porque se las asignaron. Se recorta acá y no
+    // en la pantalla: si los pasos ajenos llegaran en la respuesta, ocultarlos
+    // sería cosmético.
+    // Ver el caso completo: supervisión por rol o estar en su lista de acceso
+    // (utils/accesoCaso.js). Ya no lo da el permiso ver_procesos del rol.
+    const verProcesos = await tieneAccesoCompleto(pool, req, activado.id_protocolo_activado);
+    // Sin el caso completo: las tarjetas que le tocan por rol o asignación, y
+    // el paso de relatos si le encargaron el de alguien.
+    const esDeQuienMira = (p) =>
+      p.id_usuario_responsable === req.user.id ||
+      roles.some((r) => r.id_activado_paso === p.id_activado_paso && misRoles.includes(r.rol_codigo)) ||
+      deRelatos.decisiones.some(
+        (d) => d.id_activado_paso === p.id_activado_paso && d.id_usuario_responsable === req.user.id);
+    const pasosVisibles = verProcesos ? pasos : pasos.filter(esDeQuienMira);
+    const idsVisibles = new Set(pasosVisibles.map((p) => p.id_activado_paso));
+
     res.json({
       ...activado,
       registro: registro ? reducirSiConfidencial(req, registro) : null,
       involucrados,
       medidas_sin_resultado: medidasSinResultado,
       medidas_vencidas_sin_cerrar: medidasVencidasSinCerrar,
-      pasos: pasos.map((p) => {
+      ver_procesos: verProcesos,
+      // El botón "¿Quién puede ver este protocolo completo?" (lo administran
+      // los roles de supervisión).
+      puede_administrar_acceso: esSupervisor(req),
+      // El listado de la tarjeta "Medidas", agrupado como lo distingue la ley.
+      catalogo_medidas: medidasPaso().CATALOGO_MEDIDAS,
+      // Los permisos que valen en ESTE caso: los del rol más los que da el
+      // propio caso (router.param('id') en las rutas). La pantalla los usa
+      // mientras está abierta para habilitar los botones.
+      permisos_caso: req.user.permisos ?? [],
+      total_pasos: recorrido.length,
+      // El paso en curso aunque no sea de quien mira, solo su número y nombre:
+      // le dice en qué va el caso sin abrirle el contenido.
+      paso_en_curso: (() => {
+        const p = pasos.find((x) => ['en_curso', 'vencido'].includes(x.estado));
+        return p ? { numero: numeroDe.get(p.id_activado_paso) ?? null, nombre: p.nombre } : null;
+      })(),
+      pasos: pasosVisibles.map((p) => {
         const suyos = porPersona.filter((x) => x.id_activado_paso === p.id_activado_paso);
         const delPaso = roles.filter((r) => r.id_activado_paso === p.id_activado_paso);
         const nombresDe = (tipo) =>
           delPaso.filter((r) => r.tipo_participacion === tipo).map((r) => r.rol_nombre).join(', ');
         return {
           ...p,
+          numero: numeroDe.get(p.id_activado_paso) ?? null,
           roles: delPaso,
           // 'propio' | 'en_lugar_de' | null. La pantalla lo usa para decidir si
           // muestra el botón y si antes pide confirmación.
@@ -600,9 +743,17 @@ const getDetalle = async (req, res) => {
           // Igual mecánica que arriba pero sin distinguir por persona: la
           // medida es una sola por paso, no una por involucrado.
           medida_pendiente: medidaPendienteDe(p, clasesPorPaso),
+          ...(p.tipo_paso === TIPO_PASO_RELATOS ? { relatos_personas: personasDeRelato(p) } : {}),
+          ...(p.tipo_paso === TIPO_PASO_MEDIDAS && deMedidas
+            ? { medidas_personas: medidasPaso().personasDeMedidas(p, involucrados, deMedidas) }
+            : {}),
+          ...(deProteccion && proteccionPaso().esProteccionPorAfectado(p)
+            ? { proteccion_partes: proteccionPaso().partesDeProteccion(p, suyos, deProteccion) }
+            : {}),
         };
       }),
-      transiciones,
+      transiciones: transiciones.filter(
+        (t) => idsVisibles.has(t.id_paso_origen) && idsVisibles.has(t.id_paso_destino)),
     });
   } catch (err) {
     console.error(err);
@@ -614,6 +765,11 @@ const getBitacora = async (req, res) => {
   try {
     const activado = await buscarActivado(req.params.id, req.id_establecimiento);
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
+    // La bitácora es el recorrido completo contado de otra forma: quien solo ve
+    // su tarjeta no la puede leer, o se enteraría por acá de los pasos ajenos.
+    // Ver el caso completo lo decide su lista de acceso (utils/accesoCaso.js).
+    if (!(await tieneAccesoCompleto(pool, req, activado.id_protocolo_activado)))
+      return res.status(403).json({ message: 'Ver la bitácora requiere poder ver el caso completo' });
 
     const [eventos] = await pool.query(
       `SELECT e.*, u.nombre AS usuario_nombre, u.correo AS usuario_correo, p.nombre AS paso_nombre
@@ -779,6 +935,13 @@ const activar = async (req, res) => {
          pe.nombre, pe.version, pe.categoria_ley, req.user.id, limiteInvestigacion]
       );
       const id_protocolo_activado = cab.insertId;
+      // Quien activa el caso lo ve completo: es la lista de acceso del caso
+      // (utils/accesoCaso.js), que después se ajusta desde el propio caso.
+      await conn.query(
+        `INSERT INTO PROTOCOLO_ACTIVADO_ACCESO (id_protocolo_activado, id_usuario, id_usuario_otorga)
+         VALUES (?, ?, NULL)`,
+        [id_protocolo_activado, req.user.id]
+      );
 
       // Igual que al clonar el espejo: los ids son nuevos, así que hay que
       // traducir cada referencia del grafo fuente a su copia.
@@ -797,8 +960,10 @@ const activar = async (req, res) => {
             fuente.esEspejo ? p.id_paso : null,
             p.nombre, p.descripcion, p.tipo_paso, p.es_paso_inicial, p.es_paso_final,
             p.plazo_valor, p.plazo_unidad, p.plazo_desde ?? 'inicio_paso', p.accion_al_vencer,
-            p.por_involucrado_rol ?? null, p.requiere_notificacion ?? 0, p.requiere_medida ?? 0,
-            p.tipo_medida_requerida ?? null,
+            // El tipo de paso manda sobre la casilla (ver normalizarMedidaRequerida):
+            // una plantilla guardada antes de esa regla no deja al caso sin medida.
+            alcanceDelPaso(p), p.requiere_notificacion ?? 0, requiereMedida(p),
+            normalizarMedidaRequerida(p),
           ]
         );
         mapa.set(p.id_paso, r.insertId);
@@ -888,7 +1053,10 @@ const activar = async (req, res) => {
       // del grafo: lo que se multiplica es el registro de cumplimiento.
       const filasPorPersona = [];
       for (const p of fuente.pasos)
-        for (const i of involucradosDelPaso(p, involucrados))
+        // Con el mismo alcance que se guardó en el paso (alcanceDelPaso), no el
+        // de la plantilla: si no, un paso de medida sin alcance quedaba sin
+        // tarjetas.
+        for (const i of involucradosDelPaso({ ...p, por_involucrado_rol: alcanceDelPaso(p) }, involucrados))
           filasPorPersona.push([mapa.get(p.id_paso), i.id_involucrado]);
       if (filasPorPersona.length > 0)
         await conn.query(
@@ -1170,6 +1338,18 @@ const completarPaso = async (req, res) => {
     );
     const validados = validarDatosSalida(campos, req.body?.datos_salida);
     if (validados.error) return res.status(400).json({ message: validados.error });
+
+    // La acogida de relatos no se da por hecha mientras falte decidir a quién
+    // se le acoge o falte el relato de alguien elegido: es justo lo que el
+    // paso acredita.
+    if (paso.tipo_paso === TIPO_PASO_RELATOS) {
+      const faltan = await faltantesDeRelatos(pool, paso);
+      if (faltan.length) return res.status(409).json({ message: faltan.join(' ') });
+    }
+    if (paso.tipo_paso === TIPO_PASO_MEDIDAS) {
+      const faltan = await medidasPaso().faltantesDeMedidas(pool, paso);
+      if (faltan.length) return res.status(409).json({ message: faltan.join(' ') });
+    }
 
     const conn = await pool.getConnection();
     try {

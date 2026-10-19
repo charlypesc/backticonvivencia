@@ -1,5 +1,6 @@
 const pool = require('../db/connection');
 const { vincularProtocolosPlantilla } = require('../utils/sembrarTiposFalta');
+const { insertarPasoRelatos } = require('../constants/pasoRelatos');
 
 // Un protocolo del establecimiento viene por una de dos vías:
 //
@@ -97,16 +98,24 @@ const createPropio = async (req, res) => {
   if (!nombre?.trim())
     return res.status(400).json({ message: 'Nombre es requerido' });
 
+  // Nace con su paso de acogida de relatos, igual que un genérico nuevo.
+  const conn = await pool.getConnection();
   try {
-    const [result] = await pool.query(
+    await conn.beginTransaction();
+    const [result] = await conn.query(
       `INSERT INTO PROTOCOLO_ESTABLECIMIENTO (id_establecimiento, id_protocolo, nombre, descripcion)
        VALUES (?, NULL, ?, ?)`,
       [req.id_establecimiento, nombre.trim(), descripcion?.trim() || null]
     );
+    await insertarPasoRelatos(conn, 'establecimiento', result.insertId);
+    await conn.commit();
     res.status(201).json({ id_protocolo_establecimiento: result.insertId, message: 'Protocolo propio creado' });
   } catch (err) {
+    await conn.rollback();
     console.error(err);
     res.status(500).json({ message: 'Error al crear el protocolo' });
+  } finally {
+    conn.release();
   }
 };
 

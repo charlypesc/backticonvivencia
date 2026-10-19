@@ -124,35 +124,115 @@ const getByCaso = async (req, res) => {
   }
 };
 
+/**
+ * Lo que la ley exige para decretar la cautelar, sin tocar la base. Devuelve el
+ * mensaje del 400 o null. Lo usan el endpoint de abajo y la tarjeta del
+ * señalado en el paso del protocolo (involucrados.registrarGestion): las dos
+ * puertas tienen que pedir exactamente lo mismo.
+ */
+const errorDeCautelar = ({ fundamento, fecha_notificacion, medio_notificacion }) => {
+  // La ley manda notificar "la decisión de suspender, JUNTO A SUS FUNDAMENTOS".
+  // Sin fundamento escrito la medida no se puede sostener en una fiscalización,
+  // así que no se deja registrar a medias para completarla después.
+  if (!fundamento?.trim())
+    return 'La suspensión cautelar requiere fundamentos por escrito: la ley obliga a notificarlos ' +
+      'junto con la decisión (art. 6 letra d)';
+
+  if (!fecha_notificacion) return 'La fecha de notificación es requerida';
+
+  // Es la fecha que arranca los dos plazos legales. Una notificación futura
+  // dejaría plazos que todavía no corren y una alerta que miente.
+  if (String(fecha_notificacion).slice(0, 10) > new Date().toISOString().slice(0, 10))
+    return 'La fecha de notificación no puede ser futura';
+
+  if (!MEDIOS_NOTIFICACION.includes(medio_notificacion))
+    return 'El medio de notificación debe ser uno escrito (presencial con acta, correo, plataforma o carta): ' +
+      'la ley exige notificar por escrito';
+
+  return null;
+};
+
+/**
+ * Inserta la cautelar con sus dos plazos legales y la anota en la bitácora,
+ * dentro de la transacción de quien llama. Devuelve { error } (para un 409) si
+ * esa persona ya tiene una abierta en el caso.
+ *
+ * `id_involucrado` puede venir dado (la tarjeta del señalado ya sabe quién es);
+ * si no, se resuelve desde (caso, estudiante).
+ */
+const insertarSuspensionCautelar = async (conn, {
+  id_protocolo_activado, id_establecimiento, id_estudiante = null, id_involucrado = null,
+  fundamento, fecha_notificacion, medio_notificacion, id_usuario, id_activado_paso = null,
+}) => {
+  // Una sola cautelar abierta por persona y caso. Dos superpuestas dejarían
+  // dos plazos de diez días corriendo sobre el mismo procedimiento, y ninguno
+  // de los dos sería el que hay que defender.
+  const [[abierta]] = await conn.query(
+    `SELECT id_suspension_cautelar FROM SUSPENSION_CAUTELAR
+     WHERE id_protocolo_activado = ? AND estado IN (?)
+       AND ((id_estudiante IS NULL AND ? IS NULL) OR id_estudiante = ?)
+     LIMIT 1`,
+    [id_protocolo_activado, ABIERTAS, id_estudiante, id_estudiante]
+  );
+  if (abierta)
+    return {
+      error:
+        'Ya hay una suspensión cautelar sin resolver para esa persona en este caso. ' +
+        'Resuelve la anterior antes de decretar otra.',
+    };
+
+  // Los plazos se calculan, no se digitan: son los de la ley, no fechas que
+  // alguien elija. Con los feriados de la región del establecimiento.
+  const feriados = await cargarFeriados(id_establecimiento);
+  const desde = diaDe(fecha_notificacion);
+  const fecha_limite_resolucion = aISO(
+    calcularFechaLimite(desde, DIAS_HABILES_RESOLUCION, 'dias_habiles', feriados)
+  );
+  const fecha_limite_reconsideracion = aISO(
+    calcularFechaLimite(desde, DIAS_HABILES_RECONSIDERACION, 'dias_habiles', feriados)
+  );
+
+  const [r] = await conn.query(
+    // El involucrado se resuelve solo desde (caso, estudiante), igual que en
+    // MEDIDA_PROTECCION: un caso con dos señalados no puede permitir
+    // atribuirle la medida al que no era. Queda NULL si esa persona no figura
+    // como involucrada, que es la verdad y no una atribución inventada.
+    `INSERT INTO SUSPENSION_CAUTELAR
+       (id_protocolo_activado, id_establecimiento, id_estudiante, id_involucrado,
+        fundamento, fecha_notificacion, medio_notificacion,
+        fecha_limite_resolucion, fecha_limite_reconsideracion, id_usuario,
+        id_activado_paso)
+     VALUES (?, ?, ?,
+             COALESCE(?, (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
+                          WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1)),
+             ?, ?, ?, ?, ?, ?, ?)`,
+    [id_protocolo_activado, id_establecimiento, id_estudiante,
+     id_involucrado, id_protocolo_activado, id_estudiante,
+     fundamento.trim(), fecha_notificacion, medio_notificacion,
+     fecha_limite_resolucion, fecha_limite_reconsideracion, id_usuario,
+     id_activado_paso]
+  );
+
+  await conn.query(
+    `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
+       (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
+     VALUES (?, ?, 'suspension_cautelar_aplicada', ?, ?, NOW())`,
+    [id_protocolo_activado, id_establecimiento,
+     `Suspensión cautelar notificada por ${medio_notificacion}. ` +
+     `Plazo para resolver: ${fecha_limite_resolucion}`,
+     id_usuario]
+  );
+
+  return { id_suspension_cautelar: r.insertId, fecha_limite_resolucion, fecha_limite_reconsideracion };
+};
+
 // POST /api/protocolos-activados/:id/suspensiones-cautelares
 const crear = async (req, res) => {
   const { fundamento, fecha_notificacion, medio_notificacion, id_estudiante,
           id_activado_paso } = req.body;
 
-  // La ley manda notificar "la decisión de suspender, JUNTO A SUS FUNDAMENTOS".
-  // Sin fundamento escrito la medida no se puede sostener en una fiscalización,
-  // así que no se deja registrar a medias para completarla después.
-  if (!fundamento?.trim())
-    return res.status(400).json({
-      message:
-        'La suspensión cautelar requiere fundamentos por escrito: la ley obliga a notificarlos ' +
-        'junto con la decisión (art. 6 letra d)',
-    });
-
-  if (!fecha_notificacion)
-    return res.status(400).json({ message: 'La fecha de notificación es requerida' });
-
-  // Es la fecha que arranca los dos plazos legales. Una notificación futura
-  // dejaría plazos que todavía no corren y una alerta que miente.
-  if (String(fecha_notificacion).slice(0, 10) > new Date().toISOString().slice(0, 10))
-    return res.status(400).json({ message: 'La fecha de notificación no puede ser futura' });
-
-  if (!MEDIOS_NOTIFICACION.includes(medio_notificacion))
-    return res.status(400).json({
-      message:
-        'El medio de notificación debe ser uno escrito (presencial con acta, correo, plataforma o carta): ' +
-        'la ley exige notificar por escrito',
-    });
+  const invalida = errorDeCautelar({ fundamento, fecha_notificacion, medio_notificacion });
+  if (invalida) return res.status(400).json({ message: invalida });
 
   const conn = await pool.getConnection();
   try {
@@ -172,72 +252,22 @@ const crear = async (req, res) => {
         return res.status(400).json({ message: 'El paso indicado no pertenece a este caso' });
     }
 
-    // Una sola cautelar abierta por persona y caso. Dos superpuestas dejarían
-    // dos plazos de diez días corriendo sobre el mismo procedimiento, y ninguno
-    // de los dos sería el que hay que defender.
-    const [[abierta]] = await conn.query(
-      `SELECT id_suspension_cautelar FROM SUSPENSION_CAUTELAR
-       WHERE id_protocolo_activado = ? AND estado IN (?)
-         AND ((id_estudiante IS NULL AND ? IS NULL) OR id_estudiante = ?)
-       LIMIT 1`,
-      [req.params.id, ABIERTAS, id_estudiante || null, id_estudiante || null]
-    );
-    if (abierta)
-      return res.status(409).json({
-        message:
-          'Ya hay una suspensión cautelar sin resolver para esa persona en este caso. ' +
-          'Resolvé la anterior antes de decretar otra.',
-      });
-
-    // Los plazos se calculan, no se digitan: son los de la ley, no fechas que
-    // alguien elija. Con los feriados de la región del establecimiento.
-    const feriados = await cargarFeriados(req.id_establecimiento);
-    const desde = diaDe(fecha_notificacion);
-    const fecha_limite_resolucion = aISO(
-      calcularFechaLimite(desde, DIAS_HABILES_RESOLUCION, 'dias_habiles', feriados)
-    );
-    const fecha_limite_reconsideracion = aISO(
-      calcularFechaLimite(desde, DIAS_HABILES_RECONSIDERACION, 'dias_habiles', feriados)
-    );
-
     await conn.beginTransaction();
-
-    const [r] = await conn.query(
-      // El involucrado se resuelve solo desde (caso, estudiante), igual que en
-      // MEDIDA_PROTECCION: un caso con dos señalados no puede permitir
-      // atribuirle la medida al que no era. Queda NULL si esa persona no figura
-      // como involucrada, que es la verdad y no una atribución inventada.
-      `INSERT INTO SUSPENSION_CAUTELAR
-         (id_protocolo_activado, id_establecimiento, id_estudiante, id_involucrado,
-          fundamento, fecha_notificacion, medio_notificacion,
-          fecha_limite_resolucion, fecha_limite_reconsideracion, id_usuario,
-          id_activado_paso)
-       VALUES (?, ?, ?,
-               (SELECT id_involucrado FROM PROTOCOLO_ACTIVADO_INVOLUCRADO
-                WHERE id_protocolo_activado = ? AND id_estudiante = ? LIMIT 1),
-               ?, ?, ?, ?, ?, ?, ?)`,
-      [req.params.id, req.id_establecimiento, id_estudiante || null,
-       req.params.id, id_estudiante || null,
-       fundamento.trim(), fecha_notificacion, medio_notificacion,
-       fecha_limite_resolucion, fecha_limite_reconsideracion, req.user.id,
-       id_activado_paso || null]
-    );
-
-    await conn.query(
-      `INSERT INTO PROTOCOLO_ACTIVADO_EVENTO
-         (id_protocolo_activado, id_establecimiento, tipo_evento, descripcion, id_usuario, fecha)
-       VALUES (?, ?, 'suspension_cautelar_aplicada', ?, ?, NOW())`,
-      [req.params.id, req.id_establecimiento,
-       `Suspensión cautelar notificada por ${medio_notificacion}. ` +
-       `Plazo para resolver: ${fecha_limite_resolucion}`,
-       req.user.id]
-    );
+    const r = await insertarSuspensionCautelar(conn, {
+      id_protocolo_activado: Number(req.params.id), id_establecimiento: req.id_establecimiento,
+      id_estudiante: id_estudiante || null, fundamento, fecha_notificacion, medio_notificacion,
+      id_usuario: req.user.id, id_activado_paso: id_activado_paso || null,
+    });
+    if (r.error) {
+      await conn.rollback();
+      return res.status(409).json({ message: r.error });
+    }
 
     await conn.commit();
     res.status(201).json({
-      id_suspension_cautelar: r.insertId,
-      fecha_limite_resolucion,
-      fecha_limite_reconsideracion,
+      id_suspension_cautelar: r.id_suspension_cautelar,
+      fecha_limite_resolucion: r.fecha_limite_resolucion,
+      fecha_limite_reconsideracion: r.fecha_limite_reconsideracion,
       message: 'Suspensión cautelar registrada',
     });
   } catch (err) {
@@ -329,7 +359,7 @@ const actualizar = async (req, res) => {
         return res.status(409).json({
           message:
             'Ya hay una suspensión cautelar sin resolver para esa persona en este caso. ' +
-            'Resolvé la anterior antes de traspasarle esta.',
+            'Resuelve la anterior antes de traspasarle esta.',
         });
     }
 
@@ -494,7 +524,7 @@ const resolver = async (req, res) => {
 
     if (hubo_reconsideracion && !['acogida', 'rechazada'].includes(resultado_reconsideracion))
       return res.status(400).json({
-        message: 'Indicá si la reconsideración se acoge o se rechaza',
+        message: 'Indica si la reconsideración se acoge o se rechaza',
       });
 
     const fecha = fecha_resolucion || new Date().toISOString().slice(0, 10);
@@ -693,4 +723,5 @@ module.exports = {
   getByCaso, crear, actualizar, registrarReconsideracion, resolver,
   subirDocumento, descargarDocumento, generarActaConsejo, TIPOS_DOCUMENTO,
   DIAS_HABILES_RESOLUCION, DIAS_HABILES_RECONSIDERACION, MEDIOS_NOTIFICACION,
+  errorDeCautelar, insertarSuspensionCautelar,
 };

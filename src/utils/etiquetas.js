@@ -20,6 +20,8 @@ const ETIQUETAS = {
     medida_proteccion: 'Medidas de protección',
     medida_disciplinaria: 'Medidas disciplinarias',
     medida_cautelar: 'Medida cautelar',
+    acogida_relatos: 'Acogida de relatos',
+    medidas: 'Medidas',
   },
 
   // En minúscula: se leen dentro de una frase ("2 días hábiles").
@@ -107,8 +109,12 @@ const ETIQUETAS = {
 
   medio_notificacion: {
     presencial: 'Presencial',
-    correo: 'Correo',
+    videollamada: 'Videollamada',
+    whatsapp: 'WhatsApp',
     telefono: 'Teléfono',
+    acta: 'Acta firmada',
+    // Valores antiguos: siguen en filas viejas y en la suspensión cautelar.
+    correo: 'Correo',
     plataforma: 'Plataforma',
     carta: 'Carta',
   },
@@ -228,6 +234,10 @@ const ETIQUETAS = {
     suspension_cautelar_resuelta: 'Suspensión cautelar resuelta',
     suspension_cautelar_documento: 'Documento de la reconsideración',
     plazo_investigacion_vencido: 'Plazo legal de investigación vencido',
+    relato_decision: 'A quién se le acoge el relato',
+    relato_acogido: 'Relato acogido',
+    relato_editado: 'Relato corregido',
+    sin_medida: 'Sin medidas',
     nota: 'Nota',
   },
 

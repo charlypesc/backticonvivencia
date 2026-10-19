@@ -178,7 +178,7 @@ async function procesarMedidasVencidas(lote = LOTE) {
       titulo: m.tipo === 'suspension' ? 'Venció la suspensión' : 'Venció una medida de protección',
       mensaje: m.tipo === 'suspension'
         ? 'El procedimiento sigue abierto: hay que adoptar otra medida de protección, no se puede extender la suspensión.'
-        : 'Revisá si corresponde adoptar otra medida.',
+        : 'Revisa si corresponde adoptar otra medida.',
       id_protocolo_activado: m.id_protocolo_activado,
     });
   }

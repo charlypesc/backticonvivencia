@@ -34,6 +34,12 @@ const TIPOS_PASO = [
   'informativo', 'formulario', 'adjunto', 'aprobacion', 'notificacion_externa',
   'seguimiento', 'notificacion_apoderado', 'notificacion_estudiante',
   'medida_proteccion', 'medida_disciplinaria', 'medida_cautelar',
+  // Paso estándar de todos los protocolos: el relato de cada involucrado, con
+  // su fecha y hora de ingreso (ver relatos.controller.js).
+  'acogida_relatos',
+  // Todos los involucrados, cada uno con su medida o "Sin medidas" (ver
+  // medidasPaso.controller.js).
+  'medidas',
 ];
 
 // Pasos que se resuelven aprobando o rechazando, no completando un formulario.
@@ -111,8 +117,39 @@ const TIPOS_MEDIDA_REQUERIDA = ['proteccion', 'cautelar', 'disciplinaria', 'cual
  * propio y marca "ordena una medida" sin elegir clase está diciendo justamente
  * eso, y el comportamiento viejo era ese.
  */
-const normalizarMedidaRequerida = ({ requiere_medida, tipo_medida_requerida }) =>
+const normalizarMedidaRequerida = ({ tipo_paso, requiere_medida, tipo_medida_requerida }) =>
+  MEDIDA_DEL_TIPO_PASO[tipo_paso] ??
   (requiere_medida ? (tipo_medida_requerida || 'cualquiera') : null);
+
+// Un paso de tipo "Medida de …" ES la medida: el tipo manda sobre la casilla.
+// Antes dependía de que alguien marcara además "ordena una medida" (la
+// plantilla lo hacía, cambiar el tipo a mano no), y el paso quedaba sin
+// formulario de medida en la tarjeta de cada persona: había que ir a buscarla
+// con otro botón.
+const MEDIDA_DEL_TIPO_PASO = Object.freeze({
+  medida_proteccion: 'proteccion',
+  medida_disciplinaria: 'disciplinaria',
+  medida_cautelar: 'cautelar',
+});
+
+// A quién alcanza un paso de medida que no lo dice: la medida se registra en la
+// tarjeta de cada persona, y un paso "al caso" no tiene ninguna.
+//
+// La de protección alcanza a las DOS partes: protege al afectado, pero muchas
+// recaen sobre el señalado (la suspensión, la separación de aula). A la parte
+// sobre la que no se adopta nada se le marca "No corresponde".
+const ALCANCE_DE_MEDIDA = Object.freeze({
+  proteccion: 'todos',
+  disciplinaria: 'senalado',
+  cautelar: 'senalado',
+});
+
+/** El alcance del paso, o el de su medida si es un paso de medida sin alcance. */
+const alcanceDelPaso = (paso) =>
+  paso.por_involucrado_rol || ALCANCE_DE_MEDIDA[MEDIDA_DEL_TIPO_PASO[paso.tipo_paso]] || null;
+
+/** 1/0 para la columna requiere_medida, con la misma regla que la clase. */
+const requiereMedida = (paso) => (normalizarMedidaRequerida(paso) ? 1 : 0);
 
 // El mismo criterio que `involucradosDelPaso`, en SQL, para las consultas que
 // materializan o borran filas de cumplimiento. Va acá y no copiado en cada
@@ -128,7 +165,11 @@ const TIPOS_PERSONA = ['estudiante', 'funcionario', 'externo'];
 // fiscaliza que exista constancia de que se notificó, cuándo y cómo — no un
 // papel firmado. Las únicas dos actuaciones que sí exigen firma son la expulsión
 // y la cancelación de matrícula, que viven en INFORME_EXPULSION.
-const MEDIOS_NOTIFICACION = ['presencial', 'correo', 'telefono', 'plataforma', 'carta'];
+// Cómo se le notificó a la persona en la tarjeta de notificación. 'acta' es la
+// notificación por escrito que firma (antes 'carta'). Los valores antiguos
+// ('correo', 'plataforma', 'carta') siguen en el ENUM por las filas viejas y
+// por la suspensión cautelar, pero ya no se aceptan desde la tarjeta.
+const MEDIOS_NOTIFICACION = ['presencial', 'videollamada', 'whatsapp', 'telefono', 'acta'];
 
 /**
  * Involucrados del caso a los que les toca un paso.
@@ -789,7 +830,7 @@ const validarTechoLegal = (pasos, transiciones, ambito) => {
     : [
         `El camino más largo del protocolo suma ~${Math.round(dias)} días de calendario y la ` +
         `investigación de un caso con estudiantes no puede exceder 2 meses (~${DIAS_TECHO_ESTUDIANTE} días, ` +
-        'art. 16 E letra g). Acortá los plazos de los pasos o marcá el protocolo como de ámbito personal.',
+        'art. 16 E letra g). Acorta los plazos de los pasos o marca el protocolo como de ámbito personal.',
       ];
 };
 
@@ -831,6 +872,9 @@ const calcularLimiteInvestigacion = (desde, ambito, feriados) => {
 };
 
 module.exports = {
+  requiereMedida,
+  alcanceDelPaso,
+  MEDIDA_DEL_TIPO_PASO,
   DIAS_TECHO_ESTUDIANTE,
   DIAS_HABILES_TECHO_PERSONAL,
   caminoMasLargoEnDias,

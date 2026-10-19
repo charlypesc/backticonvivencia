@@ -264,7 +264,7 @@ const eliminarTodos = async (req, res) => {
       return res.status(409).json({
         message:
           `No se puede eliminar: ${bloqueados} estudiante(s) están asociados a registros de ` +
-          `convivencia. Eliminá primero esos registros si realmente querés borrarlos.`,
+          `convivencia. Elimina primero esos registros si realmente quieres borrarlos.`,
         estudiantes_con_registros: bloqueados,
       });
     }

@@ -37,11 +37,13 @@ const getMine = async (req, res) => {
 // --- Administración de tenants ---
 
 // Solo los colegios que usan el sistema. Sin el filtro es_tenant esto
-// devolvería las 7.847 filas del directorio nacional.
+// devolvería las 7.847 filas del directorio nacional. Los que tienen el acceso
+// suspendido desde Geo tampoco salen: cerrado el colegio, el admin no tiene
+// nada que hacer en él hasta reabrirlo (y eso se hace desde Geo).
 const getAll = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `${SELECT_ESTABLECIMIENTO} WHERE g.es_tenant = TRUE ORDER BY g.nombre`
+      `${SELECT_ESTABLECIMIENTO} WHERE g.es_tenant = TRUE AND g.acceso_bloqueado = 0 ORDER BY g.nombre`
     );
     res.json(rows);
   } catch (err) {

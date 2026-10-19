@@ -4,7 +4,7 @@ const { puedeVerConfidencial, registroVisible } = require('../utils/confidencial
 // Ocultar el contenido en las lecturas no alcanza: sin esto, quien no puede ver
 // un registro confidencial igual podía editarlo o borrarlo a ciegas
 // llamando al endpoint directo (el front no lo ofrece, pero la API sí lo
-// aceptaba). Actuar sobre algo que no podés leer es el mismo problema de fondo.
+// aceptaba). Actuar sobre algo que no puedes leer es el mismo problema de fondo.
 //
 // Deja el registro ya cargado en req.registroActual para que el controlador no
 // tenga que volver a consultarlo.

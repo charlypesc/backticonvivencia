@@ -4,6 +4,9 @@ const { pasosDescartados } = require('../utils/flujoProtocolo');
 const { construirExpedientePdf } = require('../services/pdf/expediente.pdf');
 const { enviarPdf } = require('../services/pdf/comun');
 const { ETIQUETAS, etiquetaDe, humanizar } = require('../utils/etiquetas');
+const { relatosDelCaso } = require('./relatos.controller');
+const { medidasDelCaso, previasDePersona, DOCUMENTO_DE_MEDIDA } = require('./medidasPaso.controller');
+const { tieneAccesoCompleto, esSupervisor } = require('../utils/accesoCaso');
 
 // Expediente de un caso: lo que se le entrega a la Superintendencia cuando pide
 // "los antecedentes y documentación necesarios" (art. 61 de la Ley 20.529).
@@ -197,6 +200,14 @@ const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
         [idsPaso])
     : [[]];
 
+  // Los relatos acogidos, a quién no se le acogió y por qué, y lo que decía
+  // cada relato antes de cada corrección: el expediente tiene que poder
+  // mostrar el texto tal como se escribió, no solo la última versión.
+  const relatos = await relatosDelCaso(pool, id_protocolo_activado);
+  // La tarjeta "Medidas": qué se le aplicó a cada involucrado, o que no se le
+  // aplicó ninguna. Sin esto, quien no tiene medida no aparece en ningún lado.
+  const medidasPaso = await medidasDelCaso(pool, id_protocolo_activado);
+
   const [bitacora] = await pool.query(
     `SELECT ev.tipo_evento, ev.descripcion, ev.fecha, u.nombre, u.correo
      FROM PROTOCOLO_ACTIVADO_EVENTO ev
@@ -289,7 +300,7 @@ const armarExpediente = async (id_protocolo_activado, id_establecimiento) => {
   );
   const cargos = new Map(cuentas.map((c) => [c.correo, c.cargo]));
 
-  return { caso, pasos, descartados, campos, involucrados, gestiones, bitacora, documentosSuspension,
+  return { caso, pasos, descartados, campos, involucrados, gestiones, relatos, medidasPaso, bitacora, documentosSuspension,
            medidasProteccion, seguimientos, suspensionesCautelares,
            medidasDisciplinarias, informe: informe ?? null, documentosOrigen, cargos };
 };
@@ -361,7 +372,9 @@ const formatear = (datos, { redactado }) => {
   const { caso, pasos: todosLosPasos, descartados, campos, involucrados,
           gestiones: todasLasGestiones, bitacora,
           medidasProteccion, seguimientos, suspensionesCautelares,
-          medidasDisciplinarias, informe, documentosOrigen, documentosSuspension = [] } = datos;
+          medidasDisciplinarias, informe, documentosOrigen, documentosSuspension = [],
+          relatos = { decisiones: [], relatos: [], versiones: [] },
+          medidasPaso = { medidas: [], sin: [], previas: [], mantenidas: [] } } = datos;
 
   // El expediente cuenta el camino que el caso siguió. Los pasos de una rama
   // descartada van aparte, dichos como lo que son, y no cuentan como pendientes
@@ -382,7 +395,13 @@ const formatear = (datos, { redactado }) => {
     if (redactado) return redactarCorreo();
     const cargo = cargos.get(correo) || null;
     // Una cuenta con nombre genérico ("Coordinador") repetiría el cargo.
-    if (nombre && cargo && !cargo.toLowerCase().startsWith(nombre.toLowerCase())) return `${nombre}, ${cargo}`;
+    // Se comparan sin tildes ni mayúsculas: "Psicólogo" y el cargo "Psicologo"
+    // son lo mismo, y salía "Psicólogo, Psicologo".
+    const llano = (x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (nombre && cargo && !llano(cargo).startsWith(llano(nombre))) return `${nombre}, ${cargo}`;
+    // Nombre y cargo iguales salvo tildes: va el nombre, que es el que está
+    // bien escrito ("Psicólogo" y no el código del rol "Psicologo").
+    if (nombre && cargo && llano(cargo) === llano(nombre)) return nombre;
     if (cargo) return cargo;
     return nombre || cargo || correo || null;
   };
@@ -428,6 +447,41 @@ const formatear = (datos, { redactado }) => {
           }
         : null,
     }));
+
+  // Por cada involucrado del caso: si se le acogió el relato (o por qué no),
+  // y sus relatos con la fecha y hora en que se ingresaron, quién lo hizo y
+  // cada texto anterior a una corrección. Quien no tiene decisión también
+  // sale: que falte es un dato.
+  const relatosDe = (paso) => {
+    if (paso.tipo_paso !== 'acogida_relatos') return [];
+    return involucrados.map((i) => {
+      const d = relatos.decisiones.find(
+        (x) => x.id_activado_paso === paso.id_activado_paso && x.id_involucrado === i.id_involucrado);
+      return {
+        involucrado: persona(i.id_involucrado),
+        se_acoge: d && d.se_acoge !== null ? !!d.se_acoge : null,
+        motivo: d?.motivo ?? null,
+        relatos: relatos.relatos
+          .filter((r) => r.id_activado_paso === paso.id_activado_paso && r.id_involucrado === i.id_involucrado)
+          .map((r) => ({
+            fecha_registro: r.fecha_registro,
+            registrado_por: funcionario(r.usuario_nombre, r.usuario_correo),
+            relato: r.relato,
+            fecha_modificacion: r.fecha_modificacion,
+            modificado_por: r.fecha_modificacion
+              ? funcionario(r.modificado_por_nombre, r.modificado_por_correo)
+              : null,
+            versiones_anteriores: relatos.versiones
+              .filter((v) => v.id_relato === r.id_relato)
+              .map((v) => ({
+                fecha: v.fecha,
+                escrito_por: funcionario(v.usuario_nombre, v.usuario_correo),
+                relato: v.relato,
+              })),
+          })),
+      };
+    });
+  };
 
   const faltaNotificar = (g, paso) =>
     paso.requiere_notificacion && g.estado !== 'no_aplica' && !g.fecha_notificacion;
@@ -506,6 +560,29 @@ const formatear = (datos, { redactado }) => {
       // persona y el array queda vacío, que es correcto: investigar se hace una
       // vez, no una vez por involucrado.
       gestiones: gestionesDe(p.id_activado_paso),
+      relatos: relatosDe(p),
+      // Solo en la tarjeta "Medidas": por cada involucrado, lo que se le aplicó.
+      medidas_personas: p.tipo_paso === 'medidas'
+        ? involucrados.map((i) => ({
+            involucrado: persona(i.id_involucrado),
+            medidas: medidasPaso.medidas
+              .filter((m) => m.id_activado_paso === p.id_activado_paso && m.id_involucrado === i.id_involucrado)
+              .map((m) => ({
+                etiqueta: m.etiqueta, dias_habiles: m.dias_habiles, fundamento: m.fundamento, fecha: m.fecha,
+                // 'resolucion_director' si la medida pide la resolución firmada.
+                documento: m.tabla === 'd' ? DOCUMENTO_DE_MEDIDA[m.tipo] ?? null : null,
+                documento_firmado: !!m.documento_subido,
+              })),
+            sin_medida: (() => {
+              const s = medidasPaso.sin.find((x) => x.id_activado_paso === p.id_activado_paso && x.id_involucrado === i.id_involucrado);
+              return s ? { motivo: s.motivo } : null;
+            })(),
+            // Las de protección de pasos anteriores que en esta tarjeta se decidió mantener.
+            mantenidas: previasDePersona(p, i, medidasPaso)
+              .filter((m) => m.mantenida)
+              .map((m) => ({ etiqueta: m.etiqueta, paso: m.paso_nombre, fecha: m.fecha, estado: m.estado })),
+          }))
+        : [],
     })),
     // No es lo mismo que un paso omitido: a este el flujo nunca llegó, porque
     // la condición de la rama se resolvió por el otro lado. Se listan igual —
@@ -621,6 +698,12 @@ const prepararExpediente = async (req, res) => {
     res.status(404).json({ message: 'Caso no encontrado' });
     return null;
   }
+  // El expediente es el caso entero, relatos incluidos: lo exporta solo quien
+  // ve el caso completo (utils/accesoCaso.js), además del permiso de exportar.
+  if (!(await tieneAccesoCompleto(pool, req, datos.caso.id_protocolo_activado))) {
+    res.status(403).json({ message: 'Solo quien ve el caso completo puede exportar su expediente.' });
+    return null;
+  }
 
   // Un caso confidencial no deja de serlo porque se pida como expediente:
   // esta es una lectura más y pasa por el mismo control que el resto.
@@ -720,6 +803,12 @@ const exportarMasivo = async (req, res) => {
   const categorias = req.query.categoria
     ? String(req.query.categoria).split(',')
     : ['acoso', 'violencia_fisica', 'discriminacion'];
+
+  // Son todos los casos del período, cada uno con sus relatos: es la remisión
+  // institucional, y la hace la supervisión (utils/accesoCaso.js), no alguien
+  // que solo ve los casos de su lista.
+  if (!esSupervisor(req))
+    return res.status(403).json({ message: 'La exportación masiva la hace la dirección o convivencia.' });
 
   try {
     const [casos] = await pool.query(

@@ -33,9 +33,9 @@ router.post('/',          requirePermission(Permiso.EstablecimientoCrear), creat
 router.post('/importar',  requirePermission(Permiso.EstablecimientoImportar), uploadExcel.single('archivo'), importarExcel);
 router.get('/importar/:jobId/progreso', requirePermission(Permiso.EstablecimientoImportar), getProgresoImportacion);
 router.put('/:id',        requirePermission(Permiso.EstablecimientoEditar), update);
-// Suspender/restablecer el acceso no borra datos: va con el mismo permiso de
-// edición, no con el de eliminar.
-router.patch('/:id/acceso', requirePermission(Permiso.EstablecimientoEditar), cambiarAcceso);
+// Suspender/restablecer el acceso no borra datos, pero tampoco es editar: deja
+// a todo un colegio sin entrar. Por eso lleva su propio permiso.
+router.patch('/:id/acceso', requirePermission(Permiso.EstablecimientoCambiarAcceso), cambiarAcceso);
 router.patch('/:id/observaciones', requirePermission(Permiso.EstablecimientoEditar), cambiarObservaciones);
 router.patch('/:id/estado-correo', requirePermission(Permiso.EstablecimientoEditar), cambiarEstadoCorreo);
 router.delete('/:id',     requirePermission(Permiso.EstablecimientoEliminar), remove);

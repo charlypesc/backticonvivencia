@@ -11,6 +11,7 @@ const {
   validarCampo,
   normalizarOpciones,
   normalizarMedidaRequerida,
+  requiereMedida,
   validarTechoLegal,
   esPasoDeAprobacion,
 } = require('../utils/flujoProtocolo');
@@ -153,7 +154,7 @@ const crearPaso = async (req, res) => {
         tipo_paso || 'informativo', plazo.valor, plazo.unidad,
         accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiereMedida(req.body),
         normalizarMedidaRequerida(req.body),
       ]
     );
@@ -204,8 +205,8 @@ const actualizarPaso = async (req, res) => {
         nombre.trim(), descripcion?.trim() || null, tipo_paso || paso.tipo_paso,
         plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
-        normalizarMedidaRequerida(req.body),
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiereMedida({ ...req.body, tipo_paso: tipo_paso || paso.tipo_paso }),
+        normalizarMedidaRequerida({ ...req.body, tipo_paso: tipo_paso || paso.tipo_paso }),
         id_paso, id_protocolo,
       ]
     );

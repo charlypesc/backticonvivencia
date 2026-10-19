@@ -68,7 +68,7 @@ console.log('llegando al EP')
         return res.status(400).json({
           mensaje:
             'El archivo es demasiado grande para procesarlo aunque se comprimió. ' +
-            'Probá subiendo las páginas por separado o una foto en vez del PDF completo.',
+            'Prueba subiendo las páginas por separado o una foto en vez del PDF completo.',
         });
       }
     }
