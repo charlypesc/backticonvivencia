@@ -125,6 +125,10 @@ const Permiso = Object.freeze({
   ProtocoloActivadoAnular       : 91,
   ProtocoloActivadoVerBitacora  : 92,
   ProtocoloActivadoVerTodos     : 115,
+  // Ver el recorrido completo del caso (todas las tarjetas de pasos). Sin él,
+  // la persona ve solo los pasos que le tocan por rol o que le asignaron: se le
+  // encarga una tarea sin abrirle lo que se hizo antes en el procedimiento.
+  ProtocoloActivadoVerProcesos  : 122,
 
   // documento
   DocumentoVer  : 63,
@@ -331,6 +335,7 @@ const CODIGO_POR_ID = Object.freeze({
  119: 'denuncia.gestionar',
  120: 'denuncia.ver_identidad',
  121: 'dashboard.ver_resumen',
+ 122: 'protocolo_activado.ver_procesos',
  123: 'establecimiento.cambiar_acceso',
 });
 

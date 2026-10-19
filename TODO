@@ -1,156 +1,98 @@
+Protocolos activados — tarjetas por paso (rama protocolo-tarjetas, back y front):
+  ☐ probar en local (BD copia TiConvivencia_dev en MariaDB) el flujo coordinador → asignar tarjeta → funcionario la completa
+  ☐ antes de subir: INSERT en PERMISOS de producción del id 122 'protocolo_activado.ver_procesos' + ROL_PERMISOS para ADMIN(1), DIRECTOR(2), ENCARGADO(3) — hacerlo junto con el deploy del back: si la fila y permisos.js no coinciden, el back aborta al arrancar
+  ☐ volver el .env del back a producción (bloque comentado "Producción (Aiven)")
 
-Exportación del expediente:
-  ✔ mostrar el nombre del funcionario (no el correo ni el id) en "Protocolo activado por", "Registrado por", responsables, bitácora, suspensiones y seguimientos @done
-    Causa: las consultas del expediente traían solo `u.correo`, y USUARIO ya tiene `nombre`. Se agregó `u.nombre` a cada JOIN y un helper `funcionario(nombre, correo)` que decide una sola vez cómo se nombra a un funcionario (correo solo de respaldo, null en modo redactado). Se replicó la regla en la ficha del caso, la bitácora en pantalla y "Registrado por" del registro.
-  ✔ ocultar la fila "Documento de origen" cuando no hay documento digitalizado @done
-  ✔ sacar las comillas de los nombres de paso y el "(rama por defecto)" de la bitácora @done
-    Causa: el motor escribía las descripciones para sí mismo (`Inicia 'paso 1'`, `... (rama por defecto)`). Se corrigió en la generación (protocolosActivados/involucrados) y, para los eventos ya guardados, con `limpiarDescripcion()` al emitir el expediente — la fila del evento no se reescribe, es rastro de auditoría.
-  ✔ acentos rotos en el nombre del acta ("MARIÌ•A") @done
-    Causa: doble problema. multer entrega `originalname` con los bytes UTF-8 leídos como latin-1, y macOS manda las tildes descompuestas (I + acento suelto); el filtro Latin-1 de jsPDF se llevaba el acento y partía la palabra. Se agregó `nombreLegible()` en comprimirArchivo (reinterpreta latin-1→utf8 solo si el viaje de ida y vuelta es exacto, y normaliza a NFC) y `.normalize('NFC')` en el `plano()` del expediente y del acta.
-  ✔ notificaciones: decir siempre fecha Y vía ("Notificado el 03/09/2026 por carta") @done
-  ✔ anexar las actas firmadas al final del PDF del expediente @done
-    Se arma el expediente con jsPDF y se pegan las actas con pdf-lib (nueva dependencia del front): una hoja separadora por acta ("ANEXO n", paso y persona), los PDF se copian página por página y las imágenes se ajustan a la hoja. Si un acta falla, se emite igual con la hoja que dice qué faltó. En modo redactado no se anexa ninguna: el escaneo trae nombre, RUT y firma.
-  ✔ correr el ALTER de docs/informe_expulsion_medio_notificacion.sql (vía de notificación al apoderado en INFORME_EXPULSION) @done
+Protocolos activados — vista de diagrama (misma rama protocolo-tarjetas, solo front):
+  ☐ probar en local: completar el paso actual desde su caja del diagrama (modal), y revisar que los pasos que vienen muestren sus preguntas bloqueadas
+  ☐ decidir si el diagrama queda como vista por defecto también en celular (en pantallas chicas hay que scrollear hacia el lado)
+  ✔ sacadas de la pantalla del caso las tarjetas de Medidas de protección / disciplinarias / Suspensión cautelar, y el botón "Ver lista" (el diagrama es la única vista del coordinador) @done(2026-10-18)
+  ☐ revisar con más detalle dónde quedan las acciones que solo vivían en esas tarjetas: editar/terminar una medida, prórroga, acta de la suspensión, "Decretar suspensión" fuera de un paso
 
-Medidas vinculadas al paso que las ordena:
-  ✔ vincular medidas de protección y suspensiones cautelares al paso (las disciplinarias ya podían) @done
-    Causa: solo MEDIDA_DISCIPLINARIA tenía `id_activado_paso`, así que `requiere_medida` solo se podía satisfacer con una medida disciplinaria. Un paso de resguardo quedaba reclamando para siempre una medida que sí estaba cargada, pero en otra tabla. Se agregó la columna en las otras dos (docs/medidas_vinculo_paso.sql), los `crear` la aceptan validando que el paso sea del caso, y `pasosConMedidaRegistrada()` cuenta las tres con un UNION.
-  ✔ marcar requiere_medida en los cinco pasos de resguardo del catálogo @done
-    Son los del art. 16 E letra j: acoso, vulneración de derechos, connotación sexual, agresión física y discriminación. La bandera existía en la BD desde la migración de plazos pero el seed nunca la escribía (ni la columna estaba en el INSERT), así que ningún paso la tenía en 1.
-  ✔ correr el ALTER + los dos UPDATE de docs/medidas_vinculo_paso.sql @done
-    Se aplicaron el 2026-09-07. Síntoma que los destapó: el detalle del caso devolvía 500 y la pantalla no cargaba — el código ya consultaba MEDIDA_PROTECCION.id_activado_paso y la columna no existía. Lección: al agregar una consulta que depende de una columna nueva, la migración deja de ser opcional; o se aplica junto con el deploy o el endpoint se cae entero.
-  ✔ bloquear el cierre del caso si quedan medidas de protección vigentes o cautelares sin resolver @done
-    La ley las acota: "podrán extenderse hasta la conclusión del procedimiento respectivo" (art. 16 E letra j). Cerrar con una suspensión de protección corriendo es la infracción, y `cerrar()` solo miraba MEDIDA_DISCIPLINARIA — ni consultaba MEDIDA_PROTECCION ni SUSPENSION_CAUTELAR.
-    Causa: había DOS puertas de cierre (el cierre a mano y el automático de `avanzar()` al completar un paso final) y ninguna miraba esas tablas. Se agregó `medidasAbiertasAlCerrar()` y la llaman las dos. A diferencia del resto de los faltantes del cierre, no se salva con motivo: es 409 hasta concluirlas/resolverlas, porque el motivo no deshace la infracción. En `avanzar()` devuelve `{ error }` y el que llama hace rollback, así que el paso final tampoco queda completado a medias. En los datos de prueba ya había un caso cerrado (id 33) con una cautelar abierta: el bug existía.
+Protocolos — la medida se registra en la tarjeta del paso (misma rama protocolo-tarjetas):
+  ☐ al subir, corregir en producción los pasos de tipo medida_* que quedaron sin su medida (backup primero): UPDATE PROTOCOLO_ESTABLECIMIENTO_PASO / CATALOGO_PROTOCOLO_PASO / PROTOCOLO_ACTIVADO_PASO SET requiere_medida=1, tipo_medida_requerida=SUBSTRING(tipo_paso,8) WHERE tipo_paso IN ('medida_proteccion','medida_disciplinaria','medida_cautelar') — en la copia local fueron 2 de establecimiento y 4 activados
+  ☐ probar en local: crear un paso "Medida cautelar" en el editor y activar el protocolo; la tarjeta del señalado debe pedir fundamento + medio escrito
 
-Diagrama del flujo:
-  ✔ el diagrama salía en blanco en los protocolos del establecimiento que heredan el flujo del catálogo @done
-    Causa: `idPaso()` en protocolo-flujo.ts elegía el nombre del campo por la RUTA (`esEstablecimiento` → `id_paso_estab`), no por el origen de los datos. Un protocolo del colegio sin personalizar devuelve las filas del catálogo tal cual, con `id_paso`: los 12 nodos quedaban con `id: undefined` y el grafo no dibujaba nada. Se cambió a `p?.id_paso_estab ?? p?.id_paso` (igual para transiciones y campos). Las aristas ya estaban bien porque ambas tablas nombran igual `id_paso_origen`/`id_paso_destino`.
-    Lección: cuando un endpoint puede devolver filas de dos tablas distintas según el estado (acá `origen: catalogo | establecimiento`), el cliente tiene que decidir por lo que trae la respuesta, no por la ruta que usó para pedirla. El síntoma parecía caprichoso — se veía bien en los protocolos ya personalizados y en blanco en los heredados.
-    Pista falsa que costó tiempo: se buscó primero por el lado de permisos. El coordinador ya tenía el 82 y ya entraba; la pantalla cargaba y solo el lienzo estaba vacío. Antes de revisar RBAC conviene confirmar si la pantalla carga o no: si carga, el problema no es de permisos.
+Protocolos — tarjeta estándar "Acogida de relatos" (misma rama protocolo-tarjetas, back y front):
+  ✔ tipo de paso acogida_relatos + tablas PROTOCOLO_ACTIVADO_RELATO / _DECISION / _VERSION aplicadas en la BD local (docs/acogida_relatos.sql) @done(2026-10-18)
+  ✔ lista de verificación por involucrado (se acoge / no se acoge + motivo), botón "Acoger relato", corrección con versión anterior, todo en bitácora y expediente (JSON y PDF) @done(2026-10-18)
+  ✔ todo protocolo nuevo (genérico o propio) nace con el paso "Acogida de relatos" como inicial, con el ENCARGADO de ejecutor @done(2026-10-18)
+  ✔ cada relato registra si el apoderado del estudiante estuvo o se excusó con causa, y si es el relato del profesional afectado (Ley 21.809 art. 16 E i; Ley 21.827) @done(2026-10-18)
+    La modalidad (presencial/telemática) se sacó: la Ley 21.827 la admite para la comparecencia del apoderado, pero no exige registrarla en cada relato. Venía marcada por defecto y dejaba en el expediente un dato que nadie elegía.
+  ✔ se sacó la casilla "profesional afectado": la Ley 21.827 (art. 8 bis inc. 10° del Estatuto Docente) le da ese peso al relato por sí sola y no pide marcarlo, y la casilla salía para cualquier funcionario aunque no fuera profesional de la educación. Queda solo un aviso con la norma en el relato de un funcionario @done(2026-10-18)
+  ✔ se sacó el selector "¿Estuvo su apoderado?": la ley no exige su presencia en la entrevista del estudiante (Ley 21.809 art. 16 E i pide que pueda ser oído en el procedimiento; Circular 482 solo permite que el estudiante esté acompañado "si es necesario"). Quién acompañó se escribe en el relato @done(2026-10-18)
+  ☐ BD local: las columnas PROTOCOLO_ACTIVADO_RELATO.apoderado_comparecencia y apoderado_excusa quedaron sin uso — borrarlas junto con modalidad y es_profesional_afectado. En producción no existen
+  ☐ BD local: la columna PROTOCOLO_ACTIVADO_RELATO.es_profesional_afectado también quedó sin uso — borrarla junto con modalidad. En producción no existe
+  ☐ BD local: la columna PROTOCOLO_ACTIVADO_RELATO.modalidad quedó sin uso (solo datos de prueba) — borrarla con confirmación. En producción no existe: ya no está en docs/acogida_relatos.sql
+  ✔ el texto de los relatos solo lo leen quien ve todo el recorrido (ver_procesos) y el responsable asignado del paso; el resto ve que existen pero no su contenido (Ley 21.719 art. 16 quáter) @done(2026-10-18)
+  ✔ el relato de cada persona se puede encargar a un funcionario: le llega notificación y en Protocolos activados ve solo ese relato (no los demás ni los otros pasos) @done(2026-10-18)
+  ✔ acceso al caso completo por caso, no por rol: botón "¿Quién puede ver este protocolo completo?" (docs/protocolo_acceso.sql). Siempre lo ven ADMIN, DIRECTOR y ENCARGADO; quien activa el caso entra solo a la lista @done(2026-10-18)
+    Antes ver_procesos (permiso 122) y ver_todos (115) eran de rol: cualquier rol con el permiso veía todos los casos. Ahora la regla vive en src/utils/accesoCaso.js y esos dos permisos dejaron de decidir el acceso. El expediente (individual y masivo) también exige ver el caso completo.
+  ✔ estar en la lista de acceso de un caso da, SOLO en ese caso, los permisos para trabajarlo (ver, editar, completar y omitir pasos, encargar tarjetas, bitácora, expediente) aunque el rol no los tenga, y abre "Protocolos activados" en el menú. Aprobar, cerrar y anular siguen siendo del rol @done(2026-10-18)
+    Causa: la lista decidía qué casos se veían, pero cada ruta seguía pidiendo el permiso del rol (requirePermission), así que profesor1 quedaba en la lista sin menú ni botones. Se resolvió con router.param('id') en protocolosActivados.routes.js: suma PERMISOS_DEL_CASO a la copia de req.user de esa petición, y todo lo que ya chequeaba permisos los ve sin tocarlo. El front los recibe en permisos_caso y AuthService.permisosDelCaso los aplica mientras la pantalla del caso está abierta.
+  ✔ expediente PDF: los relatos salen en su propia sección "Acogida de relatos", un bloque por persona con cada relato numerado, quién lo tomó, el texto y sus versiones anteriores @done(2026-10-18)
+  ✔ diagrama del editor (genéricos y del establecimiento) con el mismo modelo del caso: cajas grandes con sus preguntas; cada flecha de retroceso con su propio color @done(2026-10-18)
+  ✔ caso 51 de prueba con una historia coherente (atraso a prueba de Matemática): relatos, nombres, registro 94 y bitácora sin el ruido de las pruebas @done(2026-10-18)
+  ✔ tarjeta de notificación: "¿Se notificó al apoderado?", "¿Por qué medio?" (presencial, videollamada, WhatsApp, teléfono, acta firmada) y la observación; con acta, se imprime en la misma tarjeta con la observación bajo "SE NOTIFICA", sin el modal del plazo @done(2026-10-18)
+  ☐ al subir: correr docs/medios_notificacion.sql (backup primero): agrega los medios nuevos y pasa 'carta' a 'acta'
+  ✔ tarjeta nueva "Medidas" (tipo de paso 'medidas'): todos los involucrados, cada uno con su medida (protección / formativas / disciplinarias / excepcionales, según la ley) o "Sin medidas". Guarda en MEDIDA_PROTECCION y MEDIDA_DISCIPLINARIA; "sin medidas" en PROTOCOLO_ACTIVADO_SIN_MEDIDA (docs/tarjeta_medidas.sql) @done(2026-10-18)
+    Bug de paso: medidasPaso → medidasDisciplinarias → … → protocolosActivados era un require circular y las funciones llegaban undefined (500 en el detalle). Se resolvió cargando medidasPaso al usarse (función medidasPaso()) en protocolosActivados.controller.js.
+  ✔ documento firmado por medida: resolución para firma del director (excepcionales y condicionalidad). Se imprime/descarga, se sube firmado y se ve, en la misma tarjeta; el expediente dice si está firmada @done(2026-10-18)
+    El acta del equipo de convivencia para las formativas se sacó: papeleo que la ley no pide.
+    Ley: la firma del director solo es obligatoria en expulsión, cancelación de matrícula y suspensión cautelar (DFL 2 art. 6 d). Para las medidas de la tarjeta lo define el reglamento; se pidió igual en las más graves. Las formativas las define el equipo de convivencia (Ley 21.809 art. 16 E i); el Comité de Buena Convivencia no decide medidas.
+  ☐ al subir: correr docs/tarjeta_medidas.sql (después de docs/acogida_relatos.sql), backup primero
+  ☐ DECIDIR: eliminar las tarjetas antiguas medida_proteccion / medida_disciplinaria / medida_cautelar (hay protocolos y casos que las usan)
+  ☐ borrar en local los casos de prueba 53 y 54 y los protocolos 96 y 97 (tarjeta Medidas)
+  ☐ borrar en local el caso de prueba 52 y el protocolo 95 "Notificación de atrasos reiterados" (creados para probar la tarjeta de notificación)
+  ☐ al subir: correr docs/protocolo_acceso.sql DESPUÉS de docs/acogida_relatos.sql (backup primero). El INSERT de permiso 122 del inicio de este TODO ya no hace falta para el acceso, pero permisos.js lo sigue declarando: insertarlo igual o el back aborta al arrancar
+  ☐ revisar qué roles tenían protocolo_activado.ver_todos (115) en producción: con el cambio dejan de ver todos los casos salvo que sean ADMIN/DIRECTOR/ENCARGADO
+  ☐ DECIDIR: agregar la acogida de relatos a los protocolos que ya existen (catálogo y de establecimiento) — hoy solo la traen los nuevos
+  ☐ al subir: correr docs/acogida_relatos.sql en producción (backup primero) ANTES del deploy del back
+  ☐ borrar en local el protocolo de prueba "PRUEBA acogida de relatos" (protocolo establecimiento 94, caso 51)
+  ☐ en local las horas salen 3 h corridas: el MariaDB local corre en -03 y el pool asume UTC (timezone 'Z', como Aiven). No pasa en producción
 
-Preparación para vender (2026-09-23):
-  ✔ respaldo y restauración propios (scripts/backup.js, scripts/restaurar.js) @done
-    No hay mysqldump en la máquina y las actas/escaneos viven como BLOB en la base: perder la base es perder la prueba documental. backup.js vuelca DDL + filas (BLOB en hex, columnas generadas excluidas, vistas sin DEFINER) paginado y con backpressure; restaurar.js se niega a pisar DB_NAME o una base con tablas. Probado: restaurado en TiConvivencia_prueba_restauracion, 52 tablas con el mismo conteo y BLOB idénticos por MD5.
-  ☐ BORRAR LA BASE TiConvivencia_prueba_restauracion (quedó de la prueba de restauración; DROP DATABASE requiere confirmación)
-  ☐ PROGRAMAR EL RESPALDO DIARIO (cron o Render Cron Job con --retener) Y DECIDIR DÓNDE SE GUARDAN: contienen datos de menores, no pueden ir a un lugar público
-  ☐ SEPARAR PRODUCCIÓN: base propia en Aiven para producción (restaurar el esquema + catálogos), y que local/scripts dejen de apuntar a la misma base que Render
-  ✔ login: límite de intentos, helmet y CORS configurable @done
-    10 intentos fallidos por IP cada 15 min (express-rate-limit, skipSuccessfulRequests para que un colegio entero en la misma red no se bloquee). `trust proxy` porque en Render todas las IP llegarían como la del proxy. helmet con CORP cross-origin: el front está en otro dominio y abre PDFs/imágenes de la API.
-  ☐ DEFINIR CORS_ORIGINS EN RENDER con el dominio del front (mientras no esté, sigue abierto y avisa en el log)
-  ✔ clave temporal obligatoria de cambiar (recuperación la gestiona el encargado, sin correo) @done
-    El encargado restablece desde Usuarios y ve la clave impresa: si la persona no la cambia, el encargado conoce su contraseña para siempre. USUARIO.debe_cambiar_password (docs/usuario_debe_cambiar_password.sql, aplicado 2026-09-23) se pone en 1 al crear y al restablecer; va en el token y verifyToken rechaza todo salvo /auth/me y /auth/password. El cambio devuelve un token nuevo sin la marca, así no hay que volver a entrar. El bloqueo es en el backend y no solo en el modal porque la API se llama directo con el token. Las 8 cuentas existentes quedaron en 0.
+Protocolos — piloto: catálogo 4 "Acoso escolar / bullying" rearmado con las tarjetas nuevas (solo BD local):
+  ✔ aplicado en local y validado con el validador del editor (publicable, sin problemas) @done(2026-10-18)
+    Medidas de resguardo → medida_proteccion · Declaración afectada + Declaraciones de testigos → una Acogida de relatos · Resolución → tarjeta Medidas (ENCARGADO ejecutor) · Notificación → notificacion_apoderado · Seguimiento → seguimiento. Se mantienen descargos (derecho a defensa) y la denuncia externa. "Apelación" pasó a "reconsideración" (término de la Ley 21.809 art. 16 E i).
+    Bug encontrado: la rama "No reviste delito" saltaba directo a la investigación, sin protección al afectado ni relatos. Ahora las dos ramas pasan por Medidas de protección.
+  ✔ tarjeta Medidas: muestra por persona las medidas de protección vigentes de pasos anteriores, con "Mantener" (cuenta como su medida) o "Concluir" @done(2026-10-18)
+    Causa: la tarjeta solo leía las medidas de su propio paso, así que la protección adoptada al inicio no aparecía y la persona salía "sin medida" (había que duplicarla o marcar "Sin medidas"), y al final el cierre se trababa por esa medida vigente olvidada. Se agregó PROTOCOLO_ACTIVADO_MEDIDA_MANTENIDA (pasos 6-7 de docs/tarjeta_medidas.sql, ya aplicados en local): la medida no cambia de paso, solo consta que aquí se mantuvo; cuenta mientras siga vigente. Concluir una suspensión vencida usa como sustituta la de protección registrada en la misma tarjeta (art. 16 E j). Expediente: "se mantiene X (adoptada en «paso»)".
+  ✔ tarjeta Medidas de protección: alcanza a las dos partes y cada medida se registra sobre quien recae @done(2026-10-18)
+    Causa: la tarjeta solo alcanzaba al afectado, así que una suspensión quedaba anotada como si se hubiera suspendido a la víctima. La ley (art. 16 E j) dice que la medida es PARA el afectado, pero pone de ejemplo suspender al denunciado. Ahora: por_involucrado_rol 'todos' por defecto; tiposProteccionPara (constants/medidasProteccion.js) define qué medida puede recaer sobre quién (apoyo → afectado; suspensión → señalado estudiante; separación de funciones/teletrabajo → señalado funcionario; las que separan a las partes → cualquiera) y el back lo valida en las dos tarjetas. A la parte sin medida se le marca "No corresponde".
+  ✔ (prueba) la tarjeta de protección para las dos partes es una LISTA de acciones ya redactadas con el nombre de cada persona ("Suspender a Lucas", "Prohibir a Lucas el contacto con Renata y Mateo", "Acompañamiento psicosocial para Renata"); se marcan y se aplican juntas, o "No se aplican medidas" con motivo. Cada parte queda resuelta sola @done(2026-10-18)
+    Diagnóstico: la primera versión ("¿cómo se protege a Renata?" + "¿sobre quién recae?" + "¿a quién protege?") se volvió confusa: tres preguntas para una decisión, y permitía combinaciones sin sentido (mover a una víctima "para proteger" a otra). Se resolvió quitando todas las preguntas: cada línea ya dice qué y a quién; lo que va sobre el señalado protege a todos los afectados, lo de un afectado es solo suyo. Quedan fuera de la lista "otra medida" y cambiar de curso a la víctima.
+    Solo en pasos de protección con por_involucrado_rol 'todos' (src/controllers/proteccionPaso.controller.js); los de 'afectado' siguen con la fila por persona. Nueva tabla MEDIDA_PROTECCION_PROTEGIDO (docs/proteccion_por_afectado.sql, aplicada en local): MEDIDA_PROTECCION.id_involucrado = sobre quién recae; la tabla = a quién(es) protege. Es tabla y no columna porque una medida puede proteger a varios afectados: la suspensión de Lucas para Renata y Mateo es UNA medida (antes había que registrarla dos veces: dos plazos, dos vencimientos). Las de apoyo no se comparten.
+  ☐ caso 55 de prueba: se le agregó Mateo José Sepúlveda como segundo afectado (también quedó en el registro 69, REG-2026-005); borrar junto con el caso
+  ☐ al subir (si la prueba convence): correr docs/proteccion_por_afectado.sql en producción, backup primero
+  ☐ falta en esta prueba: corregir o concluir una medida desde la tarjeta, y que el expediente diga "para proteger a X"
+  ☐ ver en local el protocolo de prueba "PRUEBA · Medidas de protección" (protocolo establecimiento 98, caso 55 PROT-2026-026, registro REG-2026-005 con Renata afectada y Lucas señalado); después borrar ambos
+  ☐ piloto acoso (catálogo 4, paso 491): sigue con por_involucrado_rol 'afectado'; pasarlo a 'todos' si la prueba anterior convence
+  ☐ probar en local: activar un caso con el protocolo de acoso de COLEGIO MICONVIVENCIA (protocolo establecimiento 77, hereda del catálogo) y recorrerlo entero, incluida la vuelta por reconsideración acogida
+  ☐ si el piloto queda bien: migrar el resto del catálogo con el mismo criterio y llevarlo a producción (backup primero)
+  ☐ si no: restaurar con el backup (scratchpad de la sesión del 2026-10-18, backup_protocolo4_local_2026-10-18.sql)
 
-Registros (2026-09-28):
-  ✔ cambiar la etiqueta "tipo de falta" por "motivo del registro" @done
-    Solo en pantalla (formulario, listado, historial del estudiante, PDF y mensaje de error); en la base sigue siendo TIPO_FALTA. El mantenedor del menú todavía se llama "Tipos de falta".
-  ✔ buscador de texto en el selector de motivo @done
-    El <select> se cambió por <app-buscador> con minimoCaracteres=0 (al enfocar lista todo) y búsqueda por palabra sin tildes sobre nombre, gravedad y descripción.
-  ✔ al agregar un funcionario, no perder lo escrito en "otros involucrados" @done
-    Causa: el panel de funcionario/externo tenía su propio botón "Agregar" y guardar() no lo miraba: lo tipeado y no agregado se descartaba en silencio. Ahora guardar() revisa si el panel quedó a medias: si está completo lo agrega solo, si falta algo muestra qué y hace scroll a esa sección.
-  ✔ mostrar más grande quién llenó el registro @done
-    Bloque destacado con avatar y nombre en el encabezado del formulario, y columna "Registrado por" en negrita en el listado.
-  ✔ imprimir el registro inicial puro @done
-    GET /registros/:id/pdf (services/pdf/registro.pdf.js, jsPDF como el acta): hecho, involucrados, antecedentes, acuerdos y firmas, sin protocolo. Botón "Imprimir" en el formulario → popover Imprimir/Descargar. Imprime la versión guardada actual (si se editó, sale lo editado).
-  ✔ derivar un registro a otro funcionario con plazo + notificación @done
-    Tabla REGISTRO_DERIVACION (docs/registro_derivacion.sql). Derivar de nuevo anula la pendiente anterior. El destinatario ve el registro aunque no tenga ver_todos, y lo marca "atendido" (avisa a quien derivó). Si vence el plazo, el job de 15 min avisa UNA vez (aviso_vencida_at) al funcionario ("no has atendido") y al coordinador que derivó + coordinadores ("vuelve a tomarlo").
-  ✔ notificar a los coordinadores cuando se llena un registro nuevo, y mostrarlo en el dashboard para atajarlo @done
-    REGISTRO_CONVIVENCIA.id_usuario_atiende/fecha_atencion. Lo que llena un coordinador (permiso registro.derivar) nace atendido; lo de cualquier otro avisa a los ENCARGADO y aparece en "Registros nuevos por atender" con botón Atender (solo si nadie lo tomó: 409 si otro llegó antes).
-  ✔ marcar como atendidos los 12 registros viejos @done
-    Nacieron antes de la columna id_usuario_atiende y salían todos "por atender", pintando de amarillo a sus estudiantes. Se dejaron atendidos por el coordinador del establecimiento 6258 (usuario 2), con fecha_atencion = fecha_creacion (aplicado 2026-09-28, respaldo en backup-2026-09-28-atencion-registros.json del scratchpad).
-
-Dashboard y estados del estudiante (2026-09-28):
-  ✔ colores de estado: verde = convivencia sana, amarillo = tiene registros pendientes @done
-    Reemplaza el badge activo/inactivo. Pendiente = sin atender, derivación pendiente, protocolo en curso u obligatorio sin activar (n_pendientes en GET /estudiantes).
-  ✔ alerta en el dashboard cuando un estudiante aparece afectado 2 o más veces, con más razón si es bullying @done
-    Tarjeta "Afectados en más de un registro" con etiqueta roja "Bullying". Bullying se detecta por nombre (motivo o protocolo que calce con bullying|acoso escolar|ciberacoso|hostigamiento): no hay código común entre colegios.
-  ✔ señalados por bullying: alerta y marcados en rojo @done
-    Tarjeta roja en el dashboard + badge rojo en el listado de estudiantes y la ficha.
-  ✔ gráfico de convivencia como el del proyecto en clean architecture @done
-    Era MiConvivencia/convivencia-backend (.NET). Se replicaron sus tres gráficos: registros por mes, protocolos activados por tipo e ingresos por tipo de documento (la dona pasó a barras horizontales). CSS puro, sin librería.
-
-Protocolos (2026-09-28):
-  ✔ al activar un 2do protocolo sobre el mismo estudiante, modal de sobreintervención @done
-    GET /protocolos-activados/sobreintervencion?estudiantes= devuelve los protocolos 'activo' de esos estudiantes (por involucrado del caso o del registro). Se consulta antes de activar, desde el registro y desde la pantalla de protocolos; es advertencia (confirmarAccion), no bloqueo.
-  ✔ el inspector no debe poder ver los protocolos activados @done
-    No se le podía quitar protocolo_activado.ver: Inspectoría ejecuta 13 pasos en casos vivos y perdería acceso a ellos. Se creó protocolo_activado.ver_todos (115) para el listado/menú; sin él (INSPECTORIA, INSPECTOR_GENERAL) solo se ven los casos donde el usuario tiene un paso o es responsable, y el detalle de otro caso da 404.
-
-Colegio demo, dashboard, responsive y carga masiva (2026-09-30):
-  ✔ colegio ficticio COLEGIO MICONVIVENCIA (RBD 99001-9, id 12059, comuna Santiago) con 9 usuarios @miconvivencia.cl, clave 1351convivencia @done
-    Director, 2 profesores, inspector de pasillo (INSPECTORIA), asistente social (TRABAJADOR_SOCIAL), coordinador (ENCARGADO), inspector general, psicólogo y estudiante en práctica. Se crearon sin clave temporal (debe_cambiar_password = 0) para usarlo de demo. El nombre de cada usuario es su cargo ("Director", "Profesor 1"...), sin nombres de personas. Con los 30 tipos de falta de la plantilla y los 17 protocolos del catálogo adoptados.
-    PROFESOR e INSPECTOR_GENERAL eran roles propios de otros colegios (6258 y 11895): se crearon copias para el 12059 con los mismos permisos. ESTUDIANTE_PRACTICA es un rol nuevo con los permisos de FUNCIONARIO.
-    Cursos 5° Básico A y 1° Medio A con 25 estudiantes ficticios cada uno (RUN 90000001–90000050 con su DV correcto; activo = 0 como en la importación).
-    2026-10-04: pasaron de 17000001–17000050 a 90.000.001+. El índice uq_run (run, dv) es único en todo el sistema, así que un RUN de persona real en el demo bloqueaba la importación de ese estudiante en su colegio de verdad. Los registros y protocolos apuntan por id_estudiante: bastó con cambiar run/dv. Respaldo en backup_ESTUDIANTE_demo_12059_2026-10-04.json del scratchpad.
-  ✔ dashboard: "Señalados en más de un registro" en vez de "Señalados por bullying" @done
-    La tarjeta de bullying marcaba en rojo con un solo registro; lo que interesa es la reiteración. Ahora es el mismo criterio que "Afectados en más de un registro" (HAVING veces >= 2) pero con rol senalado, y el bullying queda como etiqueta dentro de la fila.
-  ✔ dashboard: "Estudiantes involucrados" pasa a "Últimos registros" @done
-    Cada fila encabeza con el código y el asunto del registro; estudiantes, motivo y fecha van debajo.
-  ✔ sidebar retráctil y responsive @done
-    El layout no tenía ningún @media: el sidebar fijo de 220px y el margen del contenido se mantenían en el celular. Botón de menú en la navbar (SidebarService): en escritorio retrae a íconos (se recuerda en localStorage), bajo 900px el menú sale de la pantalla y se abre encima con fondo oscuro.
-  ✔ al escribir cambiaba el zoom de la página o del modal @done
-    Causa: iOS Safari hace zoom automático al enfocar un input con letra menor a 16px (acá eran 14px) y no lo deshace al salir. Se fuerza 16px en input/select/textarea en pantallas chicas o táctiles. No se usó maximum-scale=1 en el viewport porque en Android bloquea el pellizco. Además los modales usan 100dvh (el teclado achica la pantalla visible).
-  ✔ usuarios: carga masiva por Excel (plantilla + subir) @done
-    GET /usuarios/plantilla arma el Excel con hoja Usuarios vacía, Instrucciones y Roles del colegio; la columna Rol acepta nombre o código sin importar tildes/mayúsculas. POST /usuarios/importar valida TODO antes de escribir: si una fila falla devuelve los errores por fila y no crea a nadie (crear a medias obligaba a limpiar el Excel antes de resubir). Las claves las genera el servidor como en el alta de a uno y salen en un PDF con una hoja por persona (pdf-lib une los comprobantes).
-
-  ✔ Geo solo para el ADMIN: quitar establecimiento.ver y sostenedor.ver al rol DIRECTOR @done
-    Eran los únicos permisos de Geo fuera del ADMIN, y el menú Geo se abre con establecimiento.ver. Se quitaron del rol global DIRECTOR (rol 2, afecta a todos los colegios) con respaldo en backup-2026-09-30-director-geo.json del scratchpad. Los permisos viajan en el token: un director con sesión abierta sigue viendo Geo hasta volver a entrar. Los GET del directorio (/establecimientos, /geo/establecimientos) quedan abiertos a propósito: los usa el selector de establecimiento.
-
-Geo (2026-10-04):
-  ✔ Filtrar los establecimientos de la comuna por tipo de dependencia (Particular Subvencionado, Municipal DAEM, SLE…) @done
-    Selector en la barra de la comuna con los tipos presentes y su cantidad, sacados de los datos (no lista fija: el directorio de RBD trae sus propios textos). El filtro se mantiene al pasar de una comuna a otra.
-  ✔ Observaciones en la ficha del establecimiento @done
-    Columna nueva ESTABLECIMIENTO.observaciones (TEXT NULL, respaldo previo en backup_ESTABLECIMIENTO_2026-10-04.json del scratchpad). Se guardan con PATCH /geo/establecimientos/:id/observaciones, aparte del PUT, para que guardar el formulario de datos no las pise. En la tabla, un ícono de nota marca los colegios que tienen.
-  ✔ Buscar en Geo también por nombre, con RBD, dirección y comuna en la sugerencia @done
-    El buscador solo hacía LIKE sobre el RBD. Ahora busca RBD o nombre (cada palabra en cualquier orden; la collation ya ignora tildes) y suma la comuna, porque nombres como "Liceo Bicentenario" se repiten. El parámetro sigue llamándose `rbd`: si el front se publicaba antes que el back con un parámetro nuevo, el back viejo lo ignoraba y devolvía los ~7.800 colegios.
-
-Usuarios (2026-10-05):
-  ✔ eliminar usuarios, con permiso propio usuario.eliminar (117) para ADMIN y Coordinador de convivencia (ENCARGADO) @done
-    DELETE /usuarios/:id borra la cuenta solo si no tiene historial. No basta con dejar actuar a las FKs: varias son ON DELETE SET NULL (bitácora del protocolo, quién completó un paso, quién atendió un registro) y el borrado dejaba esos hechos sin autor. Se revisan antes todas las columnas que apuntan a USUARIO (leídas de information_schema, así una tabla nueva queda cubierta); con historial responde 409 y sugiere desactivar. Mismas guardias que restablecer clave: no a uno mismo, no a un ADMIN, solo dentro del propio colegio. Migración en docs/usuario_eliminar.sql, respaldo en backup_permisos_2026-10-05.json del scratchpad. El permiso viaja en el token: el coordinador ve el botón recién al volver a iniciar sesión.
-    Bug al desplegar: el back no arrancaba en Render ("Cannot DELETE" porque seguía la versión anterior). Causa: el id 117 estaba en Permiso pero no en CODIGO_POR_ID, y requirePermission lanza al cargar las rutas si el id no está en ese catálogo. Al agregar un permiso hay que tocar los dos mapas de src/constants/permisos.js, y levantar el back en local antes de subir (el build del front no lo detecta).
-
-Canal de denuncias (2026-10-06):
-  ☐ probar en el navegador "QR denuncias" (ADMIN y ENCARGADO, re-login para el token nuevo): QR, link, afiche Imprimir/Descargar, bandeja, ver identidad, crear registro, desestimar
-    Ley 21.809 (art. 46 e LGE): canal seguro y confidencial con reserva de identidad. Formulario público /denuncia/:token sin login (anónima o con reserva), bandeja en /denuncias. Una denuncia no es un registro: entra a DENUNCIA (folio DEN-AAAA-NNN) y el coordinador crea el registro (POST /registros con id_denuncia, misma transacción) o la desestima con motivo; derivar va por el registro. Identidad en tabla aparte, solo por GET /denuncias/:id/identidad que deja constancia en DENUNCIA_IDENTIDAD_ACCESO. Sin IP ni user-agent guardados; rate limit en memoria. Permisos 118 denuncia.ver (ítem del menú), 119 denuncia.gestionar, 120 denuncia.ver_identidad. Migración en docs/canal_denuncias.sql, respaldo en backup_canal_denuncias_2026-10-06.json del scratchpad.
-  ☐ probar el formulario público desde el teléfono ("estoy en peligro", anónima y con reserva)
-  ✔ formulario público simplificado: sin adjuntos, fecha, lugar ni "quiénes estaban" @done
-    La ley (art. 46 e LGE) no exige ningún dato para denunciar: pide canal seguro, reserva de identidad y no revictimizar. Pedirle fecha, lugar, nombres y pruebas a quien lo está pasando mal es cargarle el armado del caso; eso se recoge después en el registro. Además las fotos eran un riesgo para el anonimato: si la compresión no ganaba peso se guardaba el original, con metadatos EXIF (GPS, modelo del teléfono). Quedó: "estoy en peligro", anónima/reserva (nombre, curso, contacto) y un solo campo de relato. El endpoint público ya no acepta archivos (JSON, sin multer). Las columnas lugar/fecha_hechos/personas_involucradas y DENUNCIA_ARCHIVO quedan en la base sin uso.
-  ✔ el QR abría 404 y después pedía iniciar sesión @done
-    Causa: la app usa hash routing (app.config.ts, withHashLocation) y el link del QR se armaba sin #. /denuncia/<token> no existe en Render (404); el primer "arreglo", /?denuncia=<token>, deja el parámetro fuera del #, el router ve la ruta vacía y la manda al dashboard, que exige sesión. Solución: el link es /#/denuncia/<token>; la raíz igual redirige ?denuncia= leyéndolo de location.search, por si el QR intermedio alcanzó a circular. Lección: antes de diagnosticar "falta rewrite en Render", mirar si la app usa hash routing; probar el link real en un Chrome headless (--dump-dom), no solo con curl.
-  ✔ al crear el registro de una denuncia no sugería protocolo al elegir el motivo @done
-    No era la denuncia: el formulario sugiere según TIPO_FALTA_PROTOCOLO, y solo LICEO MANUEL MONTT tenía esos vínculos (cargados a mano). COLEGIO MICONVIVENCIA tenía los mismos motivos y protocolos, sin unir. Causa raíz: el alta siembra los motivos de la plantilla pero nunca sus vínculos. Ahora la plantilla lleva `protocolo_generico` por motivo y vincularProtocolosPlantilla() los une al darse de alta y CADA VEZ QUE SE ADOPTA un protocolo genérico (solo motivos sin ningún vínculo, buscados por nombre). Se aplicó a COLEGIO MICONVIVENCIA (13 vínculos; respaldo backup_tipo_falta_protocolo_2026-10-06.json). En la plantilla "Riesgo grave para la seguridad" queda sin protocolo (el Liceo lo tiene en ideación suicida, que no corresponde) y "Acoso o abuso sexual" va a connotación sexual.
-  ✔ profesores veían registros del canal de denuncias y la existencia de los confidenciales @done
-    Ningún profesor tenía permisos del canal (118-120); los veían por Registros (PROFESOR tiene registro.ver_todos) y sobre todo por la ficha del estudiante, que lista todo su historial a quien tenga estudiante.ver. reducirSiConfidencial solo recortaba el contenido: la fila seguía a la vista, y los registros nacidos de una denuncia salían completos. Ahora filtroRegistrosVisibles() (utils/confidencial.js) saca la fila por completo: confidencial sin registro.ver_confidencial, o registro de denuncia sin denuncia.ver. Siempre lo ven el autor y quien recibió una derivación. Aplica a listado, detalle y PDF (404), ficha del estudiante, últimos del dashboard, escrituras y atender/derivar. Es por permiso, no por rol: Director e Inspectoría tampoco ven ya la fila recortada de un confidencial.
-  ☐ revisar con LICEO MANUEL MONTT: "Riesgo grave para la seguridad" vinculado a ideación suicida y "Acoso o abuso sexual" sin protocolo
-  ☐ AULA HOSPITALARIA SAN ANTONIO es tenant pero no tiene motivos ni protocolos (la siembra no corrió)
-  ☐ fase 2: código de seguimiento + PIN para que quien denunció vea el estado y responda preguntas sin revelar su identidad
-  ☐ fase 2: métricas del canal (tiempo al primer contacto, % que termina en registro)
-
-Datos de prueba (2026-10-06):
-  ✔ casos de prueba de LICEO MANUEL MONTT pasados a COLEGIO MICONVIVENCIA, sobre RUN del demo @done
-    Los 16 registros y 18 protocolos de prueba del Liceo (6258) colgaban de estudiantes reales importados (ABURTO, ABARCA, OLAVARRÍA...). Se movieron al demo (12059) en vez de copiarlos: mover conserva los ids y arrastra pasos, bitácora, archivos y medidas sin tocarlos. Lo que sí hubo que remapear porque es propio de cada colegio: motivo (por nombre), protocolo del colegio (por id_protocolo del catálogo; los propios "Prueba de protocolo nuevo" y "Seguimiento" se movieron enteros), usuarios por cargo (1→17, 2→22, 6→24, 8→18, 14→20) y los 11 estudiantes a 11 RUN distintos del demo (90000001–08 en 5° Básico A, 26–31 en 1° Medio A), con nombre/RUT/curso del involucrado y los nombres en la bitácora. Ojo con REGISTRO_CONVIVENCIA.fecha_modificacion: tiene ON UPDATE y hay que fijarla a sí misma en cada UPDATE. Los folios del Liceo quedaron igual (eran anteriores) y el registro/protocolo propio del demo pasó a REG-2026-017 / PROT-2026-019. El texto OCR de los 2 documentos digitalizados (REG-001 y 002) sigue con los nombres originales. Respaldo en backup_casos_liceo_a_demo_2026-10-06.json del scratchpad.
+Geo — usuarios de ventas (ventas1/ventas2@active2.cl, solo Geo):
+  ✔ creados en producción (id 30 y 31) sin rol, con los permisos 1-26 menos establecimiento.eliminar vía USUARIO_PERMISOS @done(2026-10-16)
+    Sin rol a propósito: un rol global "GEO" lo podría asignar cualquier ENCARGADO (tiene usuario.asignar_rol) y daría Geo nacional a gente de un colegio. Los permisos directos por usuario no son asignables desde ningún colegio.
+  ✔ al subir: correr docs/establecimiento_cambiar_acceso.sql en producción (permiso 123) junto con el deploy del back @done(2026-10-16)
+  ✔ rol VENTAS en el Colegio MiConvivencia (RBD 99001-9) + pestaña "Ventas" y botón "Nuevo vendedor" en Usuarios; el ADMIN entra por defecto a ese colegio @done(2026-10-16)
+    El rol propio del colegio reabría lo que el "sin rol" evitaba: la demo tiene coordinador@ (ENCARGADO, con usuario.crear/asignar_rol/restablecer_password) y podía darse VENTAS o restablecerle la clave a un vendedor. Se cerró con ROLES_SOLO_ADMIN (src/constants/roles.js): ADMIN y VENTAS solo los otorga, ve y administra un ADMIN. Probado contra la API local con tokens de ADMIN y de coordinador@.
+  ✔ subido a producción (rama rol-ventas, solo estos archivos; permisos.js/ts con el 123 y sin el 122 de protocolos): 123 → push back → verificado con coordinador@ (403) → rol_ventas.sql → push front @done(2026-10-16)
+  ✔ ventas1/ventas2 (id 30, 31) pasados al Colegio MiConvivencia con rol VENTAS; sus 25 USUARIO_PERMISOS se borraron porque el rol da exactamente los mismos (verificado en VW_PERMISOS_EFECTIVOS) @done(2026-10-16)
+    Ojo al mergear protocolo-tarjetas: permisos.js/ts y estos controllers ya están en main con el mismo contenido.
+  ✔ teléfonos de Geo con +56 y código de área, y botón "Llamar" en la ficha @done(2026-10-16)
+    Causa: el directorio MINEDUC trae ~3.600 fijos de región sin código ("2213296" en Temuco) y formatos previos a los cambios de 2013 (+2 a los fijos) y 2016 (+9 a los celulares). src/utils/telefono.js los reconstruye con el código de área por PROVINCIA (no por región: Osorno 64, Puerto Montt 65). 7.717 de 7.743 quedan marcables; los 26 restantes son ceros o basura y se muestran sin botón. El dato original no se toca.
+  ✔ subido a producción (rama geo-telefonos, back + front) y verificado en Render @done(2026-10-16)
 
 ## Registro de tiempo
-- 2026-10-04 11:19 → 16:17 (28h57m)
-- 2026-10-05 11:53 → 16:17 (4h23m)
-- 2026-10-04 09:43 → 10:01 (17m)
-- 2026-09-30 10:26 → 09:43 (95h16m)
-- 2026-09-30 12:00 → 09:43 (93h42m)
-- 2026-09-30 11:55 → 09:43 (93h47m)
-- 2026-09-30 09:21 → 10:20 (59m)
-- 2026-09-28 13:27 → 10:20 (44h53m)
-- 2026-09-24 08:49 → 14:53 (6h3m)
-- 2026-09-24 12:57 → 14:53 (1h55m)
-- 2026-09-23 15:13 → 17:04 (1h51m)
-- 2026-09-23 16:44 → 17:04 (20m)
-- 2026-09-18 17:48 → 18:51 (1h3m)
-- 2026-09-18 17:48 → 18:51 (1h3m)
-- 2026-09-08 11:51 → 00:45 (132h53m)
-- 2026-09-08 12:44 → 00:45 (132h1m)
-- 2026-09-08 10:49 → 00:45 (133h56m)
-- 2026-09-07 15:49 → 00:19 (8h30m)
-- 2026-09-07 15:33 → 00:19 (8h45m)
-- 2026-09-03 17:50 → 17:59 (8m)
-- 2026-09-03 15:27 → 17:59 (2h31m)
-- 2026-09-02 13:31 → 19:21 (5h49m)
-- 2026-09-02 17:31 → 19:21 (1h49m)
-- 2026-09-02 16:56 → 19:21 (2h24m)
+- 2026-10-16 08:02 → 22:05 (62h2m)
+- 2026-10-18 13:23 → 22:05 (8h41m)
+- 2026-10-18 15:10 → 22:05 (6h55m)
+- 2026-10-18 16:52 → 22:05 (5h12m)
+- 2026-10-15 11:05 → 23:55 (12h49m)
+- 2026-10-13 12:18 → 21:11 (32h52m)
+- 2026-10-13 09:48 → 21:11 (35h22m)
+## Registro de tiempo
+- 2026-10-06 09:31 → 16:56 (79h24m)
+- 2026-10-06 08:53 → 16:56 (80h2m)
+

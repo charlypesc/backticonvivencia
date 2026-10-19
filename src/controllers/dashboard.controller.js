@@ -1,4 +1,5 @@
 const pool = require('../db/connection');
+const { esSupervisor } = require('../utils/accesoCaso');
 const { puedeVerConfidencial, filtroRegistrosVisibles } = require('../utils/confidencial');
 const { tienePermiso } = require('../middleware/auth');
 const { Permiso } = require('../constants/permisos');
@@ -301,8 +302,11 @@ const getResumen = async (req, res) => {
     // Casos con el plazo legal de investigación vencido o por vencer (menos de
     // un mes). El contador de cumplimiento decía cuántos, pero no quiénes: con
     // la lista, el coordinador ve a qué estudiantes se está dejando esperando.
+    // Es una lista de casos del colegio con el nombre de cada estudiante: la ve
+    // la supervisión (utils/accesoCaso.js), no un permiso de rol, igual que el
+    // listado completo de Protocolos activados.
     let plazos_investigacion = [];
-    if (tienePermiso(req, Permiso.ProtocoloActivadoVerTodos)) {
+    if (esSupervisor(req)) {
       const visibles = filtroRegistrosVisibles(req, 'r');
       [plazos_investigacion] = await pool.query(
         `SELECT pa.id_protocolo_activado, pa.codigo, pa.nombre_protocolo, pa.fecha_limite_investigacion,

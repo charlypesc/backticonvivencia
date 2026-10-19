@@ -8,6 +8,7 @@ const {
   validarCampo,
   normalizarOpciones,
   normalizarMedidaRequerida,
+  requiereMedida,
   esPasoDeAprobacion,
 } = require('./flujoProtocolo');
 
@@ -88,8 +89,8 @@ const valoresPaso = (p, plazo, previo = {}) => [
   p.orden_visual ?? 0,
   p.por_involucrado_rol || null,
   p.requiere_notificacion ? 1 : 0,
-  p.requiere_medida ? 1 : 0,
-  normalizarMedidaRequerida(p),
+  requiereMedida({ ...p, tipo_paso: p.tipo_paso || previo.tipo_paso }),
+  normalizarMedidaRequerida({ ...p, tipo_paso: p.tipo_paso || previo.tipo_paso }),
   p.plazo_desde || previo.plazo_desde || 'inicio_paso',
 ];
 

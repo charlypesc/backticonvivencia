@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { CODIGO_POR_ID, codigoDe } = require('../constants/permisos');
+const { estaBloqueado } = require('../utils/accesoBloqueado');
 
 // Los permisos viajan en el token como ids numéricos. Los tokens emitidos
 // antes de este cambio los traen como códigos string; se traducen acá para no
@@ -40,7 +41,22 @@ const verifyToken = (req, res, next) => {
       message: 'Tienes que cambiar tu contraseña temporal antes de continuar',
       cambio_password_requerido: true,
     });
-  next();
+
+  // Establecimiento suspendido desde Geo: corta también las sesiones que ya
+  // estaban abiertas al suspenderlo (el login solo frena las nuevas). 401 con
+  // sesion_expirada para que el front vuelva al login, que muestra el motivo.
+  // El ADMIN queda exento, igual que en el login.
+  if (esAdmin(req)) return next();
+  estaBloqueado(req.user.id_establecimiento)
+    .then((bloqueado) => {
+      if (bloqueado)
+        return res.status(401).json({
+          message: 'El acceso de este establecimiento está suspendido. Contacte al administrador.',
+          sesion_expirada: true,
+        });
+      next();
+    })
+    .catch(next);
 };
 
 // Los tokens emitidos antes de RBAC solo traen `rol` (string). El fallback los
@@ -68,7 +84,7 @@ const requirePermission = (id) => {
   if (typeof id !== 'number')
     throw new TypeError(
       `requirePermission espera un id de Permiso (número), recibió ${JSON.stringify(id)}. ` +
-      'Usá Permiso.RecursoAccion en vez del código string.'
+      'Usa Permiso.RecursoAccion en vez del código string.'
     );
   if (!CODIGO_POR_ID[id])
     throw new Error(`requirePermission recibió el id ${id}, que no existe en el catálogo de permisos`);

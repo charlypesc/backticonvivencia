@@ -1,4 +1,5 @@
 const pool = require('../db/connection');
+const { insertarPasoRelatos } = require('../constants/pasoRelatos');
 
 const getAll = async (req, res) => {
   try {
@@ -18,16 +19,24 @@ const create = async (req, res) => {
   if (!nombre)
     return res.status(400).json({ message: 'Nombre es requerido' });
 
+  // El protocolo nace con su paso de acogida de relatos: todos lo llevan.
+  const conn = await pool.getConnection();
   try {
-    const [result] = await pool.query(
+    await conn.beginTransaction();
+    const [result] = await conn.query(
       `INSERT INTO CATALOGO_PROTOCOLOS_GENERICOS (nombre, descripcion)
        VALUES (?, ?)`,
       [nombre, descripcion || null]
     );
+    await insertarPasoRelatos(conn, 'catalogo', result.insertId);
+    await conn.commit();
     res.status(201).json({ id_protocolo: result.insertId, message: 'Protocolo genérico creado' });
   } catch (err) {
+    await conn.rollback();
     console.error(err);
     res.status(500).json({ message: 'Error al crear protocolo genérico' });
+  } finally {
+    conn.release();
   }
 };
 

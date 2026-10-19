@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const pool   = require('../db/connection');
+const { participaEnAlgunCaso } = require('../utils/accesoCaso');
+const { Permiso } = require('../constants/permisos');
 
 const login = async (req, res) => {
   const { correo, password } = req.body;
@@ -152,9 +154,17 @@ const me = async (req, res) => {
        WHERE u.id_usuario = ?`,
       [req.user.rol ?? null, req.user.id]
     );
+    // Quien tiene algún caso por lista de acceso o encargo ve "Protocolos
+    // activados" en el menú aunque su rol no lo tenga (utils/accesoCaso.js). Es
+    // solo para la pantalla: el back vuelve a decidirlo en cada petición.
+    const permisos = [...(req.user.permisos ?? [])];
+    if (!req.user.roles?.includes('ADMIN') && (await participaEnAlgunCaso(pool, req.user.id)))
+      for (const p of [Permiso.ProtocoloActivadoVer, Permiso.ProtocoloActivadoVerTodos])
+        if (!permisos.includes(p)) permisos.push(p);
     res.json({
       usuario: {
         ...req.user,
+        permisos,
         // Si la cuenta se borró entremedio, al menos vuelve lo del token.
         ...(fila ?? {}),
         rbd_establecimiento: fila?.rbd ?? null,

@@ -183,7 +183,7 @@ const create = async (req, res) => {
   const cod = codigo ? String(codigo).trim().toUpperCase() : derivarCodigo(nombre);
   if (!cod)
     return res.status(400).json({
-      message: 'No se pudo generar un código a partir del nombre. Indicá uno a mano.',
+      message: 'No se pudo generar un código a partir del nombre. Indica uno a mano.',
     });
   if (cod === 'ADMIN')
     return res.status(409).json({ message: 'El código ADMIN está reservado' });
@@ -215,7 +215,7 @@ const create = async (req, res) => {
       return res.status(409).json({
         message: codigo
           ? `Ya existe ${donde} con el código ${cod}`
-          : `Ya existe ${donde} con el código ${cod} (generado a partir del nombre). Usá otro nombre o indicá un código distinto.`,
+          : `Ya existe ${donde} con el código ${cod} (generado a partir del nombre). Usa otro nombre o indica un código distinto.`,
       });
     }
 
@@ -320,8 +320,8 @@ const setPermisos = async (req, res) => {
       conn.release();
       return res.status(403).json({
         message:
-          `Ese rol tiene permisos que vos no tenés (${invisibles.join(', ')}), ` +
-          'así que no podés reconfigurarlo. Pedíselo a un administrador.',
+          `Ese rol tiene permisos que tú no tienes (${invisibles.join(', ')}), ` +
+          'así que no puedes reconfigurarlo. Pídeselo a un administrador.',
       });
     }
 

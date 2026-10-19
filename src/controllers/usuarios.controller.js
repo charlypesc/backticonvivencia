@@ -796,7 +796,7 @@ const guardarPermisosComoRol = async (req, res) => {
 
     const codigo = derivarCodigo(nombre);
     if (!codigo)
-      return res.status(400).json({ message: 'El nombre no genera un código válido. Usá letras o números.' });
+      return res.status(400).json({ message: 'El nombre no genera un código válido. Usa letras o números.' });
     if (codigo === 'ADMIN')
       return res.status(409).json({ message: 'El código ADMIN está reservado' });
 
@@ -806,7 +806,7 @@ const guardarPermisosComoRol = async (req, res) => {
     );
     if (dup.length > 0)
       return res.status(409).json({
-        message: `Tu establecimiento ya tiene un rol llamado así (${codigo}). Usá otro nombre.`,
+        message: `Tu establecimiento ya tiene un rol llamado así (${codigo}). Usa otro nombre.`,
       });
 
     await conn.beginTransaction();
@@ -843,7 +843,7 @@ const guardarPermisosComoRol = async (req, res) => {
       rol_id: rol.insertId,
       codigo,
       message: `Rol "${nombre}" creado y asignado`,
-      advertencia: 'Ya podés asignárselo a otras personas desde el alta o la edición de usuarios. ' +
+      advertencia: 'Ya puedes asignárselo a otras personas desde el alta o la edición de usuarios. ' +
         'Los cambios se aplican cuando cada una vuelva a iniciar sesión.',
     });
   } catch (err) {

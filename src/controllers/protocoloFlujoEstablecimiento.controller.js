@@ -12,6 +12,7 @@ const {
   validarTechoLegal,
   normalizarOpciones,
   normalizarMedidaRequerida,
+  requiereMedida,
   esPasoDeAprobacion,
 } = require('../utils/flujoProtocolo');
 const {
@@ -267,8 +268,8 @@ const personalizar = async (req, res) => {
             id_protocolo_establecimiento, p.id_paso, p.nombre, p.descripcion, p.tipo_paso,
             p.plazo_valor, p.plazo_unidad, p.plazo_desde, p.accion_al_vencer,
             p.es_paso_inicial, p.es_paso_final, p.orden_visual,
-            p.por_involucrado_rol, p.requiere_notificacion, p.requiere_medida,
-            p.tipo_medida_requerida,
+            p.por_involucrado_rol, p.requiere_notificacion, requiereMedida(p),
+            normalizarMedidaRequerida(p),
           ]
         );
         mapa.set(p.id_paso, r.insertId);
@@ -395,7 +396,7 @@ const crearPaso = async (req, res) => {
         id_protocolo_establecimiento, nombre.trim(), descripcion?.trim() || null,
         tipo_paso || 'informativo', plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiereMedida(req.body),
         normalizarMedidaRequerida(req.body),
       ]
     );
@@ -459,8 +460,8 @@ const actualizarPaso = async (req, res) => {
         nombre.trim(), descripcion?.trim() || null, tipo_paso || paso.tipo_paso,
         plazo.valor, plazo.unidad, accion_al_vencer || 'notificar',
         es_paso_inicial ? 1 : 0, es_paso_final ? 1 : 0, orden_visual ?? 0,
-        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiere_medida ? 1 : 0,
-        normalizarMedidaRequerida(req.body),
+        por_involucrado_rol || null, requiere_notificacion ? 1 : 0, requiereMedida({ ...req.body, tipo_paso: tipo_paso || paso.tipo_paso }),
+        normalizarMedidaRequerida({ ...req.body, tipo_paso: tipo_paso || paso.tipo_paso }),
         id_paso, id_protocolo_establecimiento,
       ]
     );

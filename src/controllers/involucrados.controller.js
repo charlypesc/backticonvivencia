@@ -20,7 +20,9 @@
 const pool = require('../db/connection');
 const { formatearNombreCurso } = require('../utils/curso');
 const { errorDeMedida, insertarMedida } = require('./medidasProteccion.controller');
+const { errorDeDestinatario } = require('../constants/medidasProteccion');
 const { errorDeMedidaDisciplinaria, insertarMedidaDisciplinaria } = require('./medidasDisciplinarias.controller');
+const { errorDeCautelar, insertarSuspensionCautelar } = require('./suspensionCautelar.controller');
 const {
   ROLES_INVOLUCRADO, TIPOS_PERSONA, MEDIOS_NOTIFICACION, SQL_ROL_ALCANZA_PASO,
 } = require('../utils/flujoProtocolo');
@@ -385,7 +387,7 @@ const quitar = async (req, res) => {
 const registrarGestion = async (req, res) => {
   const {
     estado, fecha_gestion, observacion, fecha_notificacion, medio_notificacion,
-    medida_proteccion, medida_disciplinaria,
+    medida_proteccion, medida_disciplinaria, medida_cautelar,
   } = req.body;
 
   if (estado && !['pendiente', 'cumplido', 'no_aplica'].includes(estado))
@@ -400,14 +402,18 @@ const registrarGestion = async (req, res) => {
     if (!activado) return res.status(404).json({ message: 'Protocolo activado no encontrado' });
 
     const [filas] = await pool.query(
-      `SELECT pi.*, i.nombre AS involucrado_nombre, i.id_estudiante, p.nombre AS paso_nombre,
+      `SELECT pi.*, i.nombre AS involucrado_nombre, i.id_estudiante, i.rol AS involucrado_rol,
+              i.tipo_persona AS involucrado_tipo_persona, p.nombre AS paso_nombre,
               p.id_activado_paso, p.tipo_medida_requerida,
               (SELECT m.id_medida_proteccion FROM MEDIDA_PROTECCION m
                 WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
                 LIMIT 1) AS id_medida_proteccion,
               (SELECT m.id_medida FROM MEDIDA_DISCIPLINARIA m
                 WHERE m.id_activado_paso = pi.id_activado_paso AND m.id_involucrado = pi.id_involucrado
-                LIMIT 1) AS id_medida_disciplinaria
+                LIMIT 1) AS id_medida_disciplinaria,
+              (SELECT s.id_suspension_cautelar FROM SUSPENSION_CAUTELAR s
+                WHERE s.id_activado_paso = pi.id_activado_paso AND s.id_involucrado = pi.id_involucrado
+                LIMIT 1) AS id_suspension_cautelar
        FROM PROTOCOLO_ACTIVADO_PASO_INVOLUCRADO pi
        JOIN PROTOCOLO_ACTIVADO_INVOLUCRADO i ON i.id_involucrado = pi.id_involucrado
        JOIN PROTOCOLO_ACTIVADO_PASO p ON p.id_activado_paso = pi.id_activado_paso
@@ -432,7 +438,9 @@ const registrarGestion = async (req, res) => {
         return res.status(400).json({
           message: `Indica la medida de protección aplicada a ${fila.involucrado_nombre}`,
         });
-      const invalida = errorDeMedida(medida_proteccion);
+      const invalida = errorDeMedida(medida_proteccion) ?? errorDeDestinatario(medida_proteccion.tipo, {
+        nombre: fila.involucrado_nombre, rol: fila.involucrado_rol, tipo_persona: fila.involucrado_tipo_persona,
+      });
       if (invalida) return res.status(400).json({ message: `${fila.involucrado_nombre}: ${invalida}` });
     }
 
@@ -456,9 +464,40 @@ const registrarGestion = async (req, res) => {
       }
     }
 
+    // Y en el paso de medida cautelar, con cada señalado: la tarjeta decreta la
+    // suspensión con sus fundamentos y la notificación escrita, igual que el
+    // botón "Decretar suspensión" (mismas reglas: errorDeCautelar). La fecha de
+    // la gestión es la de la notificación, que es desde donde corren los plazos.
+    const decretaCautelar = fila.tipo_medida_requerida === 'cautelar' && nuevoEstado === 'cumplido'
+      && !fila.id_suspension_cautelar;
+    const datosCautelar = decretaCautelar ? {
+      fundamento: medida_cautelar?.fundamento,
+      fecha_notificacion: (fecha_gestion || new Date().toISOString()).slice(0, 10),
+      medio_notificacion: medida_cautelar?.medio_notificacion,
+    } : null;
+    if (decretaCautelar) {
+      const invalida = errorDeCautelar(datosCautelar);
+      if (invalida) return res.status(400).json({ message: `${fila.involucrado_nombre}: ${invalida}` });
+    }
+
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      if (decretaCautelar) {
+        const r = await insertarSuspensionCautelar(conn, {
+          id_protocolo_activado: activado.id_protocolo_activado,
+          id_establecimiento: req.id_establecimiento,
+          id_estudiante: fila.id_estudiante ?? null,
+          id_involucrado: fila.id_involucrado,
+          ...datosCautelar,
+          id_usuario: req.user.id,
+          id_activado_paso: fila.id_activado_paso,
+        });
+        if (r.error) {
+          await conn.rollback();
+          return res.status(409).json({ message: `${fila.involucrado_nombre}: ${r.error}` });
+        }
+      }
       if (resuelveSenalado && modoResolucion === 'medida') {
         // La descripción es la de la tarjeta; si se dejó vacía, el nombre de
         // la medida (la columna no admite vacío y "Amonestación" ya dice qué se
@@ -505,7 +544,11 @@ const registrarGestion = async (req, res) => {
              id_usuario = ?
          WHERE id_paso_involucrado = ?`,
         [nuevoEstado, nuevoEstado, fecha_gestion || null, observacion?.trim() || null,
-         fecha_notificacion || null, medio_notificacion || null, req.user.id, req.params.id_paso_involucrado]
+         // La cautelar se notifica por escrito al decretarla: esa misma es la
+         // notificación de la gestión, no hace falta registrarla dos veces.
+         fecha_notificacion || datosCautelar?.fecha_notificacion || null,
+         medio_notificacion || datosCautelar?.medio_notificacion || null,
+         req.user.id, req.params.id_paso_involucrado]
       );
       await registrarEvento(conn, {
         id_protocolo_activado: req.params.id, id_establecimiento: req.id_establecimiento,
@@ -520,7 +563,8 @@ const registrarGestion = async (req, res) => {
       });
       await conn.commit();
       res.json({
-        message: aplicaMedida ? 'Gestión y medida de protección registradas'
+        message: decretaCautelar ? 'Gestión y suspensión cautelar registradas'
+          : aplicaMedida ? 'Gestión y medida de protección registradas'
           : resuelveSenalado && modoResolucion === 'medida' ? 'Gestión y medida disciplinaria registradas'
           : 'Gestión registrada',
       });

@@ -27,6 +27,18 @@ const MARGEN = 54;
 
 const fecha = (f) => formatearFecha(f) || '—';
 
+// Cómo se dibuja cada línea de detalle de un bloque. `aire` es el espacio
+// extra antes de la primera línea: separa un relato del anterior.
+const ESTILO_DETALLE = {
+  normal:    { tamano: 9,   fuente: 'normal',     color: [107, 114, 128], sangria: 0,  aire: 0 },
+  subtitulo: { tamano: 9,   fuente: 'bold',       color: [17, 24, 39],    sangria: 0,  aire: 6 },
+  meta:      { tamano: 8.5, fuente: 'normal',     color: [107, 114, 128], sangria: 0,  aire: 0 },
+  cita:      { tamano: 9.5, fuente: 'normal',     color: [17, 24, 39],    sangria: 10, aire: 1 },
+  nota:      { tamano: 8.5, fuente: 'italic',     color: [107, 114, 128], sangria: 10, aire: 1 },
+};
+// Un relato se acredita con la hora en que se ingresó, no solo con el día.
+const fechaHora = (f) => formatearFecha(f, true) || '—';
+
 /**
  * Texto listo para el papel: traduce los códigos de la base (`inicio_paso` no
  * es castellano), formatea las fechas pegadas en la frase y saca lo que no es
@@ -118,6 +130,59 @@ const numeroDeAnexo = (lista, coincide) => {
 };
 
 /** Estructura del expediente; es la fuente única del documento. */
+/** "3 personas: 2 relatos acogidos, 1 sin acoger (con motivo)". */
+const resumenRelatos = (relatos) => {
+  const acogidos = relatos.filter((r) => r.se_acoge && r.relatos.length).length;
+  const no = relatos.filter((r) => r.se_acoge === false).length;
+  const faltan = relatos.length - acogidos - no;
+  return [
+    `${relatos.length} ${relatos.length === 1 ? 'persona' : 'personas'}`,
+    `${acogidos} con relato`,
+    ...(no ? [`${no} sin acoger (con motivo)`] : []),
+    ...(faltan ? [`${faltan} pendiente${faltan === 1 ? '' : 's'}`] : []),
+  ].join(' · ');
+};
+
+/** El bloque de una persona en la sección de relatos. */
+const itemDeRelatos = (paso, r, e) => {
+  const t = texto;
+  const variosPasos = (e.pasos ?? []).filter((p) => (p.relatos ?? []).length).length > 1;
+  const quien = r.involucrado?.nombre ?? r.involucrado?.iniciales ?? '-';
+  const rol = t(r.involucrado?.rol, 'rol_involucrado');
+  const titulo = `${quien}${rol ? ` (${rol})` : ''}${variosPasos ? ` — ${t(paso.nombre)}` : ''}`;
+  if (r.se_acoge === null)
+    return { titulo, marca: 'Sin decisión', alerta: true, detalles: ['No consta si se le acogió el relato.'] };
+  if (!r.se_acoge)
+    return { titulo, marca: 'No se acoge', detalles: [{ texto: `Motivo: ${t(r.motivo)}`, estilo: 'cita' }] };
+  if (!r.relatos.length)
+    return { titulo, marca: 'Sin relato', alerta: true, detalles: ['Se indicó que se le acogería el relato, pero no hay ninguno registrado.'] };
+  return {
+    titulo,
+    marca: r.relatos.length === 1 ? '1 relato' : `${r.relatos.length} relatos`,
+    detalles: r.relatos.flatMap((x, i) => {
+      return [
+        {
+          texto: `Relato ${i + 1} · ${fechaHora(x.fecha_registro)}` + (x.registrado_por ? ` · ${t(x.registrado_por)}` : ''),
+          estilo: 'subtitulo',
+        },
+        { texto: t(x.relato), estilo: 'cita' },
+        ...(x.fecha_modificacion
+          ? [{
+              texto: `Corregido el ${fechaHora(x.fecha_modificacion)}` +
+                (x.modificado_por ? ` por ${t(x.modificado_por)}` : '') + '.',
+              estilo: 'nota',
+            }]
+          : []),
+        ...(x.versiones_anteriores ?? []).map((v, j) => ({
+          texto: `Texto ${j === 0 ? 'original' : 'anterior'} (${fechaHora(v.fecha)}` +
+            (v.escrito_por ? `, ${t(v.escrito_por)}` : '') + `): ${t(v.relato)}`,
+          estilo: 'nota',
+        })),
+      ];
+    }),
+  };
+};
+
 const secciones = (e) => {
   const t = texto;
   const cumplimiento = {
@@ -273,11 +338,53 @@ const secciones = (e) => {
                 : '');
             // La observación va sangrada bajo la línea de su persona: repetir
             // el nombre acá lo duplicaba en cada paso del expediente.
-            return [cabeza, ...(g.observacion ? [`   Observación: ${t(g.observacion)}`] : [])];
+            // En un paso de notificación la observación es lo que se le dijo a la
+            // persona (es también lo que va al acta bajo "SE NOTIFICA"): se
+            // escribe así y no como una nota suelta.
+            const obs = g.observacion
+              ? p.requiere_notificacion && g.fecha_notificacion
+                ? `   Se le notificó lo siguiente: ${t(g.observacion)}`
+                : `   Observación: ${t(g.observacion)}`
+              : null;
+            return [cabeza, ...(obs ? [obs] : [])];
           }),
+          // La tarjeta "Medidas": una línea por involucrado.
+          ...(p.medidas_personas ?? []).map((mp) => {
+            // Las de protección de un paso anterior que aquí se mantuvieron.
+            const mantenidas = (mp.mantenidas ?? []).map((m) =>
+              `se mantiene ${t(m.etiqueta).toLowerCase()}` + (m.paso ? ` (adoptada en «${t(m.paso)}»)` : '') +
+              (m.estado !== 'vigente' ? `, después ${m.estado}` : ''));
+            const nuevas = mp.medidas.map((m) =>
+              t(m.etiqueta) + (m.dias_habiles ? ` (${m.dias_habiles} días hábiles)` : '') +
+              (m.documento
+                ? ' · resolución del director ' +
+                  (m.documento_firmado ? 'firmada' : 'SIN FIRMAR')
+                : ''));
+            return `${nombreDe(mp.involucrado)}: ` +
+              (nuevas.length || mantenidas.length
+                ? [...nuevas, ...mantenidas].join(', ')
+                : mp.sin_medida
+                  ? 'Sin medidas' + (mp.sin_medida.motivo ? `. Motivo: ${t(mp.sin_medida.motivo)}` : '')
+                  : 'SIN MEDIDA INDICADA');
+          }),
+          // Los relatos van en su propia sección (más abajo): acá solo cuántos.
+          ...((p.relatos ?? []).length
+            ? [`Relatos: ${resumenRelatos(p.relatos)}. El detalle de cada uno, en la sección Acogida de relatos.`]
+            : []),
         ],
       })),
     },
+    // Acogida de relatos: un bloque por persona, con cada relato numerado, quién
+    // lo tomó y cuándo, el texto y sus versiones anteriores. Antes iba todo
+    // dentro del paso, una línea por relato repitiendo nombre y rol, y no se
+    // distinguía dónde terminaba una persona y empezaba la siguiente.
+    ...((e.pasos ?? []).some((p) => (p.relatos ?? []).length)
+      ? [{
+          titulo: 'Acogida de relatos',
+          tipo: 'items',
+          items: (e.pasos ?? []).flatMap((p) => (p.relatos ?? []).map((r) => itemDeRelatos(p, r, e))),
+        }]
+      : []),
     // Solo si el caso tuvo ramas descartadas.
     ...((e.pasos_no_aplicables ?? []).length
       ? [{
@@ -532,11 +639,22 @@ const documento = (e) => {
     doc.setFontSize(10).setFont('helvetica', 'bold');
     const lineasTitulo = doc.splitTextToSize(plano(item.titulo) || '-', util - marcaAncho - 20);
 
-    doc.setFontSize(9).setFont('helvetica', 'normal');
-    const detalles = (item.detalles ?? []).flatMap((d) => doc.splitTextToSize(plano(d), util - 14));
+    // Un detalle es un texto (gris, como siempre) o { texto, estilo } para los
+    // relatos: el encabezado de cada uno en negrita, su texto en tinta y con
+    // sangría, y las correcciones apagadas. Cada línea lleva su estilo para
+    // dibujarla igual que se midió.
+    const detalles = (item.detalles ?? []).flatMap((d) => {
+      const { texto: txt, estilo = 'normal' } = typeof d === 'string' ? { texto: d } : d;
+      const e = ESTILO_DETALLE[estilo];
+      doc.setFontSize(e.tamano).setFont('helvetica', e.fuente);
+      return doc.splitTextToSize(plano(txt), util - 14 - e.sangria).map((linea, i) => ({
+        linea, estilo, aire: i === 0 ? e.aire : 0,
+      }));
+    });
     // Un bloque más alto que una hoja se parte igual: pedir más que una hoja
     // entera solo agregaría una página en blanco.
-    const alto = Math.min(lineasTitulo.length * 12 + detalles.length * 11 + 14, piso - m - 10);
+    const altoDetalles = detalles.reduce((t, d) => t + 11 + d.aire, 0);
+    const alto = Math.min(lineasTitulo.length * 12 + altoDetalles + 14, piso - m - 10);
     return { marca, lineasTitulo, detalles, alto };
   };
 
@@ -610,9 +728,11 @@ const documento = (e) => {
       }
       y += lineasTitulo.length * 12 + 1;
 
-      doc.setFontSize(9).setFont('helvetica', 'normal').setTextColor(...GRIS);
-      for (const linea of detalles) {
-        doc.text(linea, m + 14, y);
+      for (const { linea, estilo, aire } of detalles) {
+        const e = ESTILO_DETALLE[estilo];
+        y += aire;
+        doc.setFontSize(e.tamano).setFont('helvetica', e.fuente).setTextColor(...e.color);
+        doc.text(linea, m + 14 + e.sangria, y);
         y += 11;
       }
 

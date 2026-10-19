@@ -2,6 +2,7 @@ const pool = require('../db/connection');
 const XLSX = require('xlsx');
 const crypto = require('crypto');
 const { telefonoParaMarcar } = require('../utils/telefono');
+const { invalidarAccesoBloqueado } = require('../utils/accesoBloqueado');
 
 // Jobs de importación en memoria: { job_id -> estado }. Un solo proceso Node,
 // vida corta (minutos) — no hace falta persistirlo en BD ni en Redis.
@@ -197,6 +198,9 @@ const cambiarAcceso = async (req, res) => {
     );
     if (result.affectedRows === 0)
       return res.status(404).json({ message: 'Establecimiento no encontrado' });
+
+    // Que verifyToken corte (o devuelva) las sesiones abiertas desde ya.
+    invalidarAccesoBloqueado();
 
     res.json({
       acceso_bloqueado: bloqueado,
