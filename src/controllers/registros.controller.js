@@ -1,5 +1,5 @@
 const pool = require('../db/connection');
-const { tienePermiso } = require('../middleware/auth');
+const { tienePermiso, esAdmin } = require('../middleware/auth');
 const { Permiso } = require('../constants/permisos');
 const {
   puedeVerConfidencial,
@@ -704,40 +704,73 @@ const update = async (req, res) => {
   }
 };
 
-// DELETE /api/registros/:id —
+// DELETE /api/registros/:id
+//
+// Un registro con protocolo activado arrastra todo el expediente (pasos,
+// relatos, medidas, suspensiones, informes de expulsión). Eso solo lo puede
+// borrar quien creó el registro —o ADMIN—: con el permiso de eliminar a secas,
+// alguien podía hacer desaparecer el expediente de un caso ajeno. Sin
+// protocolo basta el permiso, como siempre.
+//
+// Va en una transacción: antes cada DELETE iba suelto y, cuando el último
+// chocaba con la FK RESTRICT de PROTOCOLO_ACTIVADO, el registro quedaba en pie
+// pero ya sin sus estudiantes ni su documento digitalizado.
 const remove = async (req, res) => {
+  const id = req.params.id;
+  const registro = req.registroActual; // lo cargó bloquearEscrituraConfidencial
+
+  let ids;
   try {
-
-        await pool.query(
-      `DELETE FROM REGISTRO_ESTUDIANTE WHERE id_registro = ?`,
-      [req.params.id]
-    );
-
-    // Tiene ON DELETE CASCADE, pero se borra explícito igual que
-    // REGISTRO_ESTUDIANTE arriba: consistencia con el resto del método, no
-    // depender de si la FK de turno cascadea o no.
-    await pool.query(
-      `DELETE FROM REGISTRO_INVOLUCRADO_NO_ESTUDIANTE WHERE id_registro = ?`,
-      [req.params.id]
-    );
-
-    await pool.query(
-      `DELETE FROM DOCUMENTO_DIGITALIZADO WHERE id_registro = ?`,
-      [req.params.id]
-    );
-
-    const [result] = await pool.query(
-      `DELETE FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?`,
-      [req.params.id]
-    );
-
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Registro no encontrado' });
-
-    res.json({ message: 'Registro eliminado' });
+    const [protocolos] = await pool.query(
+      'SELECT id_protocolo_activado FROM PROTOCOLO_ACTIVADO WHERE id_registro = ?', [id]);
+    ids = protocolos.map((p) => p.id_protocolo_activado);
   } catch (err) {
     console.error(err);
+    return res.status(500).json({ message: 'Error al eliminar registro' });
+  }
+
+  if (ids.length && !esAdmin(req) && registro.id_usuario !== req.user.id)
+    return res.status(403).json({
+      message: 'Este registro tiene un protocolo activado: solo quien lo creó puede eliminarlo',
+    });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Primero lo que cuelga con RESTRICT; el resto del expediente (pasos,
+    // relatos, involucrados, eventos, accesos…) cae en cascada con el protocolo.
+    if (ids.length) {
+      await conn.query(
+        'DELETE FROM INFORME_EXPULSION WHERE id_registro = ? OR id_protocolo_activado IN (?)', [id, ids]);
+      await conn.query('DELETE FROM SUSPENSION_CAUTELAR WHERE id_protocolo_activado IN (?)', [ids]);
+      await conn.query('DELETE FROM MEDIDA_PROTECCION WHERE id_protocolo_activado IN (?)', [ids]);
+    } else {
+      await conn.query('DELETE FROM INFORME_EXPULSION WHERE id_registro = ?', [id]);
+    }
+    await conn.query('DELETE FROM MEDIDA_DISCIPLINARIA WHERE id_registro = ?', [id]);
+    await conn.query('DELETE FROM PROTOCOLO_ACTIVADO WHERE id_registro = ?', [id]);
+
+    await conn.query('DELETE FROM REGISTRO_ESTUDIANTE WHERE id_registro = ?', [id]);
+    // Tiene ON DELETE CASCADE, pero se borra explícito igual que
+    // REGISTRO_ESTUDIANTE: no depender de si la FK de turno cascadea o no.
+    await conn.query('DELETE FROM REGISTRO_INVOLUCRADO_NO_ESTUDIANTE WHERE id_registro = ?', [id]);
+    await conn.query('DELETE FROM DOCUMENTO_DIGITALIZADO WHERE id_registro = ?', [id]);
+
+    const [result] = await conn.query('DELETE FROM REGISTRO_CONVIVENCIA WHERE id_registro = ?', [id]);
+    if (result.affectedRows === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Registro no encontrado' });
+    }
+
+    await conn.commit();
+    res.json({ message: 'Registro eliminado' });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
     res.status(500).json({ message: 'Error al eliminar registro' });
+  } finally {
+    conn.release();
   }
 };
 const confirmar = async (req, res) => {
