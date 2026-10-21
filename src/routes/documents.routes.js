@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { verifyToken, requirePermission } = require('../middleware/auth');
+const { verifyToken, requirePermission, noAdminAutor } = require('../middleware/auth');
 const { resolverScope, requireEstablecimiento } = require('../middleware/scope');
 const { bloquearEscrituraConfidencial } = require('../middleware/confidencial');
 const { subirDocumento, obtenerPorRegistro } = require('../controllers/documentos.controller');
@@ -28,7 +28,9 @@ const upload = multer({
 // subir documentos. Ahora van por permiso, como el resto del sistema.
 router.use(verifyToken, resolverScope, requireEstablecimiento);
 
-router.post('/', requirePermission(Permiso.DocumentoSubir), upload.single('archivo'), subirDocumento);
+// Subir un documento crea un registro nuevo a nombre de quien sube: misma regla
+// que el alta directa, ADMIN no firma registros.
+router.post('/', noAdminAutor, requirePermission(Permiso.DocumentoSubir), upload.single('archivo'), subirDocumento);
 // El documento digitalizado guarda el texto OCR del acta: si el registro es
 // confidencial, entregarlo sería devolver el mismo contenido que se está
 // ocultando en /api/registros, solo que por otra puerta.

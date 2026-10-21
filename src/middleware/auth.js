@@ -102,4 +102,16 @@ const requirePermission = (id) => {
 
 const tienePermiso = (req, id) => esAdmin(req) || (req.user.permisos ?? []).includes(id);
 
-module.exports = { verifyToken, requireRole, requirePermission, rolesDe, esAdmin, tienePermiso };
+// Un registro de convivencia queda firmado por quien lo crea, y esa autoría es
+// parte del expediente: tiene que ser una persona del colegio (el coordinador,
+// un inspector), no la cuenta de administración del sistema. Por eso la cuenta
+// ADMIN, que pasa todos los demás chequeos, no crea registros. Va antes que
+// requirePermission porque el bypass de ADMIN está justamente ahí.
+const MSG_ADMIN_NO_CREA =
+  'La cuenta de administrador no crea registros: ingresa con la cuenta del coordinador de convivencia u otro funcionario del colegio.';
+const noAdminAutor = (req, res, next) =>
+  esAdmin(req) ? res.status(403).json({ message: MSG_ADMIN_NO_CREA }) : next();
+
+module.exports = {
+  verifyToken, requireRole, requirePermission, rolesDe, esAdmin, tienePermiso, noAdminAutor,
+};

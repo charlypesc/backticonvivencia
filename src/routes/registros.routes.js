@@ -3,7 +3,7 @@ const {
   getAll, getById, create, update, remove, confirmar,
   atender, derivar, marcarDerivacionAtendida, getPdf,
 } = require('../controllers/registros.controller');
-const { verifyToken, requirePermission } = require('../middleware/auth');
+const { verifyToken, requirePermission, noAdminAutor } = require('../middleware/auth');
 const { resolverScope, requireEstablecimiento } = require('../middleware/scope');
 const { bloquearEscrituraConfidencial } = require('../middleware/confidencial');
 const { Permiso } = require('../constants/permisos');
@@ -13,7 +13,7 @@ router.use(verifyToken, resolverScope, requireEstablecimiento);
 
 router.get('/',           getAll);
 router.get('/:id',        getById);
-router.post('/',          requirePermission(Permiso.RegistroCrear),    create);
+router.post('/',          noAdminAutor, requirePermission(Permiso.RegistroCrear), create);
 router.put('/:id',        requirePermission(Permiso.RegistroEditar),   bloquearEscrituraConfidencial, update);
 router.delete('/:id',     requirePermission(Permiso.RegistroEliminar), bloquearEscrituraConfidencial, remove);
 router.patch('/:id/confirmar', requirePermission(Permiso.RegistroConfirmar), bloquearEscrituraConfidencial, confirmar);
