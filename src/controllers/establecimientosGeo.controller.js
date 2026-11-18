@@ -216,15 +216,45 @@ const cambiarAcceso = async (req, res) => {
 // etc.). Endpoint propio y no parte del PUT: se editan desde la ficha, y así
 // guardar el formulario de datos no pisa una observación escrita en otra
 // pestaña. Vacío se guarda como NULL.
+// Actualiza ESTABLECIMIENTO y deja en ESTABLECIMIENTO_GESTION quién lo hizo
+// (docs/establecimiento_gestion.sql), en la misma transacción: si el registro
+// falla, el cambio tampoco queda, así no hay gestiones sin autor. Es un
+// historial interno para saber qué colegios trabajó cada vendedor; ningún
+// endpoint lo devuelve. Devuelve affectedRows del UPDATE (0 = no existe).
+const actualizarConGestion = async (req, sqlUpdate, paramsUpdate, accion, estadoCorreo = null) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [r] = await conn.query(sqlUpdate, paramsUpdate);
+    if (r.affectedRows > 0) {
+      const rol = (req.user.roles?.join(',') || req.user.rol || '').slice(0, 50) || null;
+      await conn.query(
+        `INSERT INTO ESTABLECIMIENTO_GESTION (id_establecimiento, id_usuario, rol, accion, estado_correo)
+         VALUES (?, ?, ?, ?, ?)`,
+        [req.params.id, req.user.id ?? null, rol, accion, estadoCorreo]
+      );
+    }
+    await conn.commit();
+    return r.affectedRows;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+};
+
 const cambiarObservaciones = async (req, res) => {
   const observaciones = String(req.body.observaciones ?? '').trim() || null;
 
   try {
-    const [result] = await pool.query(
+    const filas = await actualizarConGestion(
+      req,
       `UPDATE ESTABLECIMIENTO SET observaciones = ? WHERE id_establecimiento = ?`,
-      [observaciones, req.params.id]
+      [observaciones, req.params.id],
+      'observaciones'
     );
-    if (result.affectedRows === 0)
+    if (filas === 0)
       return res.status(404).json({ message: 'Establecimiento no encontrado' });
 
     res.json({ observaciones, message: 'Observaciones guardadas' });
@@ -260,11 +290,14 @@ const cambiarEstadoCorreo = async (req, res) => {
   const fecha = estado === 0 ? null : new Date();
 
   try {
-    const [r] = await pool.query(
+    const filas = await actualizarConGestion(
+      req,
       `UPDATE ESTABLECIMIENTO SET estado_correo = ?, fecha_estado_correo = ? WHERE id_establecimiento = ?`,
-      [estado, fecha, req.params.id]
+      [estado, fecha, req.params.id],
+      'estado_correo',
+      estado
     );
-    if (r.affectedRows === 0)
+    if (filas === 0)
       return res.status(404).json({ message: 'Establecimiento no encontrado' });
 
     res.json({ estado_correo: estado, fecha_estado_correo: fecha, message: MENSAJES_ESTADO_CORREO[estado] });
